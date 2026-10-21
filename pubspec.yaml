@@ -58,6 +58,8 @@ dependency_overrides:
     path: third_party/pusher_client_socket
 
 flutter:
+  config:
+    enable-swift-package-manager: false
   uses-material-design: true
   assets:
     - assets/images/

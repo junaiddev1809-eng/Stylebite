@@ -23,8 +23,7 @@ Pods/
 Podfile.lock
 DerivedData/
 *.moved-aside
-*.xcworkspace
-!default.xcworkspace
+xcuserdata/
 
 # IDEs
 .idea/

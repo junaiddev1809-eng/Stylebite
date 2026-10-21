@@ -1,0 +1,64 @@
+name: stylebite
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.10+21
+
+environment:
+  sdk: ^3.11.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  get: ^4.7.2
+  google_fonts: ^6.3.2
+  animations: ^2.2.0
+  cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.1
+  video_player: ^2.10.0
+  image_picker: ^1.2.0
+  mime: ^2.0.0
+  pro_image_editor: ^13.0.0
+  path_provider: ^2.1.5
+  fluttertoast: ^9.0.0
+  shared_preferences: ^2.5.5
+  firebase_core: ^3.15.2
+  firebase_messaging: ^15.2.10
+  package_info_plus: ^10.1.0
+  device_info_plus: ^13.2.0
+  http: ^1.5.0
+  dio: ^5.7.0
+  heroicons: ^0.11.0
+  mobile_scanner: ^7.1.2
+  qr_flutter: ^4.1.0
+  share_plus: ^13.1.0
+  geolocator: ^14.0.1
+  geocoding: ^4.0.0
+  dropdown_search: ^5.0.5
+  google_sign_in: ^7.2.0
+  sign_in_with_apple: ^8.0.0
+  google_mobile_ads: ^8.0.0
+  app_links: ^6.3.2
+  google_maps_flutter: ^2.12.3
+  google_places_autocomplete_text_field: ^1.0.0
+  pusher_client_socket: ^0.0.8
+  flutter_local_notifications: ^22.2.0
+  url_launcher: ^6.3.1
+  webview_flutter: ^4.10.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  mocktail: ^1.0.4
+
+dependency_overrides:
+  pusher_client_socket:
+    path: third_party/pusher_client_socket
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/svg/

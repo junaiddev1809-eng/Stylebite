@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches AppColors.primaryLight in lib/core/theme/app_colors.dart —
+         used as the notification accent/tint color. -->
+    <color name="notification_color">#E64C73</color>
+    <color name="splash_background">#F9F6F5</color>
+</resources>

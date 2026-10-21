@@ -1,0 +1,9 @@
+const double kBottomNavHeight = 74;
+const double kBottomNavHorizontalMargin = 18;
+const double kBottomNavVerticalMargin = 16;
+const double kBottomNavHorizontalPadding = 10;
+const double kBottomNavVerticalPadding = 10;
+const double kBottomNavItemSize = 36;
+const double kBottomNavCenterItemSize = 42;
+const double kBottomNavIconSize = 24;
+const double kBottomNavCenterIconSize = 28;

@@ -1,0 +1,70 @@
+{
+  "project_info": {
+    "project_number": "144396214843",
+    "project_id": "stylebite-f28fa",
+    "storage_bucket": "stylebite-f28fa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:144396214843:android:f3228843dd5c1675eb321e",
+        "android_client_info": {
+          "package_name": "com.stylebite.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "144396214843-9oeac6o6bef91kdshdam7iasd4jfl5uc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.stylebite.app",
+            "certificate_hash": "ee1ecc1550ca5b193d54c97248df75d3de2a16aa"
+          }
+        },
+        {
+          "client_id": "144396214843-abmv20rlrb96dblbl1jtppimhb760jok.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.stylebite.app",
+            "certificate_hash": "a4530e7d3027cd5693ce2a151a230c2fbae51c7d"
+          }
+        },
+        {
+          "client_id": "144396214843-n63fbgtlkblr0odjhm7v3h68rdf7rouj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.stylebite.app",
+            "certificate_hash": "30a3da7d9a0a0e14881a7a0f5da9bffb38832e65"
+          }
+        },
+        {
+          "client_id": "144396214843-6fe3bp9iit9jrd4iuvedls0elmt53hg6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_dMAQ90mLBWE6qAOTcHP0w-sdWQs_R-U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "144396214843-6fe3bp9iit9jrd4iuvedls0elmt53hg6.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "144396214843-kfqfddi5ch1p3nn18ijo972mjg0oua3s.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.stylebite.stylebite"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

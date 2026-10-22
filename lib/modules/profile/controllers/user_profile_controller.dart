@@ -15,6 +15,7 @@ import '../../reports/api/reports_api.dart';
 import '../../post/services/post_interaction_store.dart';
 import '../models/profile_model.dart';
 import '../models/style_rating_model.dart';
+import '../utils/profile_overview_query.dart';
 import 'saved_post_sync.dart';
 
 class UserProfileController extends GetxController {
@@ -373,16 +374,12 @@ class UserProfileController extends GetxController {
     int? foodPage,
     int? savedPage,
   }) async {
-    final params = <String, String>{'per_page': '$_pageSize'};
-    if (outfitPage != null) {
-      params['outfit_page'] = '$outfitPage';
-    }
-    if (foodPage != null) {
-      params['food_page'] = '$foodPage';
-    }
-    if (savedPage != null) {
-      params['saved_page'] = '$savedPage';
-    }
+    final params = profileOverviewQuery(
+      outfitPage: outfitPage,
+      foodPage: foodPage,
+      savedPage: savedPage,
+      perPage: _pageSize,
+    );
 
     final uri = Uri(
       path: 'profiles/${Uri.encodeComponent(username)}/overview',

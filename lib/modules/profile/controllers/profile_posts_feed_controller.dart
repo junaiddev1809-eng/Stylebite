@@ -19,6 +19,7 @@ import '../../post/utils/post_detail_open_helper.dart';
 import '../../reports/api/reports_api.dart';
 import '../../story/story_marker.dart';
 import '../models/profile_model.dart';
+import '../utils/profile_overview_query.dart';
 
 class ProfilePostsFeedController extends GetxController {
   ProfilePostsFeedController({
@@ -454,20 +455,13 @@ class ProfilePostsFeedController extends GetxController {
   }
 
   Future<ProfileOverviewModel> _fetchOverviewPage(int page) async {
-    final params = <String, String>{'per_page': '$_pageSize'};
-    switch (tab) {
-      case ProfileContentTab.outfits:
-        params['outfit_page'] = '$page';
-        break;
-      case ProfileContentTab.food:
-        params['food_page'] = '$page';
-        break;
-      case ProfileContentTab.saved:
-        params['saved_page'] = '$page';
-        break;
-      case ProfileContentTab.more:
-        break;
-    }
+    final pages = profileSectionPages(tab, page);
+    final params = profileOverviewQuery(
+      outfitPage: pages.outfitPage,
+      foodPage: pages.foodPage,
+      savedPage: pages.savedPage,
+      perPage: _pageSize,
+    );
 
     final path = isOwnProfile
         ? 'profile/me/overview'

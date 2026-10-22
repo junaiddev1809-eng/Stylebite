@@ -51,6 +51,48 @@ class ProfileController extends GetxController {
   final Rxn<StyleRatingModel> styleRating = Rxn<StyleRatingModel>();
   final RxList<ProfilePostModel> outfitPosts = <ProfilePostModel>[].obs;
   final RxList<ProfilePostModel> foodPosts = <ProfilePostModel>[].obs;
+  final Map<int, ProfilePostModel> _localPosts = <int, ProfilePostModel>{};
+  final Map<int, ProfilePostModel> _confirmedPosts = <int, ProfilePostModel>{};
+
+  void showLocalPost(ProfilePostModel post) {
+    _localPosts[post.id] = post;
+    _placeLocalPost(post);
+  }
+
+  void replaceLocalPost(int localId, ProfilePostModel serverPost) {
+    _localPosts.remove(localId);
+    outfitPosts.removeWhere((post) => post.id == localId);
+    foodPosts.removeWhere((post) => post.id == localId);
+    _confirmedPosts[serverPost.id] = serverPost;
+    _placeLocalPost(serverPost);
+  }
+
+  void removeLocalPost(int localId) {
+    _localPosts.remove(localId);
+    outfitPosts.removeWhere((post) => post.id == localId);
+    foodPosts.removeWhere((post) => post.id == localId);
+  }
+
+  void _placeLocalPost(ProfilePostModel post) {
+    final list = post.postType == 'food' ? foodPosts : outfitPosts;
+    list.removeWhere((item) => item.id == post.id);
+    list.insert(0, post);
+  }
+
+  void _restoreLocalPosts() {
+    for (final post in _localPosts.values) {
+      _placeLocalPost(post);
+    }
+    final confirmed = _confirmedPosts.values.toList(growable: false);
+    for (final post in confirmed) {
+      final list = post.postType == 'food' ? foodPosts : outfitPosts;
+      if (list.any((item) => item.id == post.id)) {
+        _confirmedPosts.remove(post.id);
+        continue;
+      }
+      _placeLocalPost(post);
+    }
+  }
   final RxList<SavedProfilePostModel> savedPosts =
       <SavedProfilePostModel>[].obs;
 
@@ -513,6 +555,7 @@ class ProfileController extends GetxController {
       outfitPagination.value = overview.outfitPagination;
       foodPagination.value = overview.foodPagination;
       savedPagination.value = overview.savedPagination;
+      _restoreLocalPosts();
       return;
     }
 

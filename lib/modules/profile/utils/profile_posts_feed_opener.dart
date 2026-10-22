@@ -19,12 +19,14 @@ class ProfilePostsFeedOpener {
     required int currentPage,
     required bool hasMore,
   }) async {
-    final accessible = await PostDetailOpenHelper.isAccessible(
-      selected.id.toString(),
-    );
-    if (!accessible) {
-      errorSnackBar(message: 'Post not found or not accessible.');
-      return;
+    if (selected.id >= 0) {
+      final accessible = await PostDetailOpenHelper.isAccessible(
+        selected.id.toString(),
+      );
+      if (!accessible) {
+        errorSnackBar(message: 'Post not found or not accessible.');
+        return;
+      }
     }
 
     final authorName = user.displayName.trim().isNotEmpty

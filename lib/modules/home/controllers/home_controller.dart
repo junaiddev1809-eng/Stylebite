@@ -76,6 +76,46 @@ class HomeController extends GetxController {
 
   final Map<String, _FeedSessionState> _feedCache =
       <String, _FeedSessionState>{};
+  final Map<String, HomePostModel> _localPosts = <String, HomePostModel>{};
+  final Map<String, HomePostModel> _pinnedPosts = <String, HomePostModel>{};
+
+  bool _isPendingPost(String postId) =>
+      postId.startsWith('local-') || postId.startsWith('-');
+
+  void showLocalPost(HomePostModel post) {
+    _localPosts[post.id] = post;
+    if (selectedFeedType.value != post.feedType) {
+      setFeedType(post.feedType);
+      return;
+    }
+    _publishVisiblePosts(<HomePostModel>[post, ...visiblePosts]);
+  }
+
+  void replaceLocalPost(String localId, HomePostModel serverPost) {
+    _localPosts.remove(localId);
+    _dropPostId(localId);
+    _pinnedPosts[serverPost.id] = serverPost;
+    if (serverPost.feedType != selectedFeedType.value) {
+      return;
+    }
+    _publishVisiblePosts(List<HomePostModel>.from(visiblePosts));
+  }
+
+  void removeLocalPost(String localId) {
+    _localPosts.remove(localId);
+    _dropPostId(localId);
+    _publishVisiblePosts(List<HomePostModel>.from(visiblePosts));
+  }
+
+  void _dropPostId(String postId) {
+    visiblePosts.removeWhere((post) => post.id == postId);
+    _publishedPosts.removeWhere((post) => post.id == postId);
+    _postSubjects.remove(postId);
+    for (final cache in _feedCache.values) {
+      cache.posts.removeWhere((post) => post.id == postId);
+      cache.loadedPostIds.remove(postId);
+    }
+  }
   final Queue<String> _recentMediaUrls = Queue<String>();
   final Completer<void> _firstLoadReady = Completer<void>();
 
@@ -305,6 +345,9 @@ class HomeController extends GetxController {
   }
 
   Future<void> toggleLike(String postId) async {
+    if (_isPendingPost(postId)) {
+      return;
+    }
     final currentPost = _findPost(postId);
     if (currentPost == null) {
       return;
@@ -354,6 +397,9 @@ class HomeController extends GetxController {
   }
 
   void toggleSave(String postId) {
+    if (_isPendingPost(postId)) {
+      return;
+    }
     final currentPost = _findPost(postId);
     if (currentPost == null) {
       return;
@@ -402,6 +448,9 @@ class HomeController extends GetxController {
     required String shareChannel,
     int? targetUserId,
   }) async {
+    if (_isPendingPost(postId)) {
+      return;
+    }
     await _runPostAction(
       loadingSet: shareLoadingIds,
       postId: postId,
@@ -414,6 +463,9 @@ class HomeController extends GetxController {
   }
 
   Future<void> votePost(String postId, int rating) async {
+    if (_isPendingPost(postId)) {
+      return;
+    }
     final previousRating = selectedRatings[postId];
     final previousPost = _findPost(postId);
     if (previousPost == null) {
@@ -544,6 +596,9 @@ class HomeController extends GetxController {
   }
 
   Future<bool> deletePost(String postId) async {
+    if (_isPendingPost(postId)) {
+      return false;
+    }
     try {
       final response = await ApiHelper.deleteRequestWithAuthorization(
         'posts/$postId',
@@ -987,7 +1042,24 @@ class HomeController extends GetxController {
   }
 
   void _publishVisiblePosts(List<HomePostModel> posts) {
-    _publishedPosts = List<HomePostModel>.from(posts);
+    final incomingIds = posts.map((post) => post.id).toSet();
+    _pinnedPosts.removeWhere((id, post) => incomingIds.contains(id));
+    final locals = _localPosts.values
+        .where((post) => post.feedType == selectedFeedType.value)
+        .toList(growable: false);
+    final pinned = _pinnedPosts.values
+        .where(
+          (post) =>
+              post.feedType == selectedFeedType.value &&
+              !incomingIds.contains(post.id),
+        )
+        .toList(growable: false);
+    final merged = <HomePostModel>[
+      ...locals,
+      ...pinned,
+      ...posts.where((post) => !_localPosts.containsKey(post.id)),
+    ];
+    _publishedPosts = List<HomePostModel>.from(merged);
     for (final post in _publishedPosts) {
       _syncPostSubject(post);
     }

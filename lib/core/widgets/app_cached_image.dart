@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:stylebite/core/widgets/app_hero_icon.dart';
@@ -51,6 +53,26 @@ class AppCachedImage extends StatelessWidget {
     );
   }
 
+  static File? _localImageFile(String raw) {
+    var value = raw.trim();
+    if (value.isEmpty) {
+      return null;
+    }
+    if (value.startsWith('file://')) {
+      value = Uri.parse(value).toFilePath();
+    } else if (value.startsWith('http://') || value.startsWith('https://')) {
+      return null;
+    } else if (!value.startsWith('/') && !value.contains(r':\')) {
+      return null;
+    }
+    try {
+      final file = File(value);
+      return file.existsSync() ? file : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Widget _buildImage(double? resolvedWidth, double? resolvedHeight) {
     final decode = _aspectSafeDecode(
       memCacheWidth: memCacheWidth,
@@ -60,11 +82,25 @@ class AppCachedImage extends StatelessWidget {
     );
 
     Widget child;
+    final localFile = _localImageFile(imageUrl);
     if (imageUrl.trim().isEmpty) {
       child = _FallbackBox(
         icon: Icons.image_not_supported_outlined,
         width: resolvedWidth,
         height: resolvedHeight,
+      );
+    } else if (localFile != null) {
+      child = Image.file(
+        localFile,
+        fit: fit,
+        width: resolvedWidth,
+        height: resolvedHeight,
+        filterQuality: filterQuality,
+        errorBuilder: (context, error, stackTrace) => _FallbackBox(
+          icon: Icons.broken_image_outlined,
+          width: resolvedWidth,
+          height: resolvedHeight,
+        ),
       );
     } else {
       child = CachedNetworkImage(

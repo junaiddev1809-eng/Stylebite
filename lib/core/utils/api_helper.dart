@@ -17,7 +17,7 @@ class ApiHelper {
   // it) hanging forever instead of ever reaching a catch/finally block.
   static const Duration _requestTimeout = Duration(seconds: 20);
   // Media uploads legitimately take longer than a plain JSON request.
-  static const Duration _uploadTimeout = Duration(seconds: 90);
+  static const Duration _uploadTimeout = Duration(minutes: 3);
 
   static bool _isHandlingSessionExpiry = false;
   static bool _isHandlingAccountRestriction = false;

@@ -104,7 +104,13 @@ class ProfilePostsFeedController extends GetxController {
     super.onClose();
   }
 
+  bool _isPendingPost(String postId) =>
+      PostDetailOpenHelper.isPendingId(postId);
+
   Future<void> toggleLike(String postId) async {
+    if (_isPendingPost(postId)) {
+      return;
+    }
     final currentPost = _findPost(postId);
     if (currentPost == null) {
       return;
@@ -154,6 +160,9 @@ class ProfilePostsFeedController extends GetxController {
   }
 
   void toggleSave(String postId) {
+    if (_isPendingPost(postId)) {
+      return;
+    }
     final currentPost = _findPost(postId);
     if (currentPost == null) {
       return;
@@ -198,6 +207,9 @@ class ProfilePostsFeedController extends GetxController {
   }
 
   Future<void> sharePost(String postId, {required String shareChannel}) async {
+    if (_isPendingPost(postId)) {
+      return;
+    }
     await _runPostAction(
       loadingSet: shareLoadingIds,
       postId: postId,
@@ -207,6 +219,9 @@ class ProfilePostsFeedController extends GetxController {
   }
 
   Future<void> votePost(String postId, int rating) async {
+    if (_isPendingPost(postId)) {
+      return;
+    }
     final previousRating = selectedRatings[postId];
     final previousPost = _findPost(postId);
     if (previousPost == null) {
@@ -257,6 +272,9 @@ class ProfilePostsFeedController extends GetxController {
   }
 
   Future<void> deletePost(String postId) async {
+    if (_isPendingPost(postId)) {
+      return;
+    }
     try {
       final response = await ApiHelper.deleteRequestWithAuthorization(
         'posts/$postId',
@@ -423,6 +441,9 @@ class ProfilePostsFeedController extends GetxController {
   }
 
   Future<void> _refreshPost(String postId) async {
+    if (_isPendingPost(postId)) {
+      return;
+    }
     final updated = await PostDetailOpenHelper.fetchPost(postId);
     if (updated == null) {
       return;

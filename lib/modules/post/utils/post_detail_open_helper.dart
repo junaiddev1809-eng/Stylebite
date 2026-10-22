@@ -12,11 +12,18 @@ import '../screens/post_detail_screen.dart';
 class PostDetailOpenHelper {
   const PostDetailOpenHelper._();
 
+  static bool isPendingId(String postId) {
+    final id = postId.trim();
+    return id.startsWith('local-') || id.startsWith('-');
+  }
+
   static Future<bool> openIfAccessible(HomePostModel post) async {
-    final accessible = await isAccessible(post.id);
-    if (!accessible) {
-      errorSnackBar(message: 'Post not found or not accessible.');
-      return false;
+    if (!isPendingId(post.id)) {
+      final accessible = await isAccessible(post.id);
+      if (!accessible) {
+        errorSnackBar(message: 'Post not found or not accessible.');
+        return false;
+      }
     }
 
     if (ReelOpenHelper.isReel(post)) {

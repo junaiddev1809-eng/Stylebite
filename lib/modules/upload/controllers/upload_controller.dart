@@ -12,8 +12,13 @@ import '../../../core/media/picked_media.dart';
 import '../../../core/utils/api_helper.dart';
 import '../../../core/utils/app_helper.dart';
 import '../../../core/utils/google_places_service.dart';
+import '../../../core/utils/local_storage.dart';
+import '../../home/controllers/home_controller.dart';
+import '../../home/models/home_post_model.dart';
 import '../../landing/controllers/landing_controller.dart';
 import '../../post/utils/hashtag_caption_limit.dart';
+import '../../profile/controllers/profile_controller.dart';
+import '../../profile/models/profile_model.dart';
 import '../models/upload_post_model.dart';
 import '../services/carousel_media_store.dart';
 
@@ -274,87 +279,138 @@ class UploadController extends GetxController {
       return;
     }
 
-    isUploading.value = true;
-    uploadFailed.value = false;
-    uploadProgress.value = 0;
-    try {
-      uploadProgress.value = 0.25;
-      final mediaItems = selectedMediaItems.toList(growable: false);
-      final media = mediaItems.first;
-      final location = locationController.text.trim();
-      if (location.isNotEmpty && (_latitude == null || _longitude == null)) {
-        await _geocodeTypedLocation(location);
+    final mediaItems = selectedMediaItems.toList(growable: false);
+    final location = locationController.text.trim();
+    final caption = HashtagCaptionLimit.enforce(captionController.text.trim());
+    final tagNames = HashtagCaptionLimit.tagsIn(caption)
+        .map((tag) => tag.replaceFirst('#', '').trim())
+        .where((tag) => tag.isNotEmpty)
+        .toList(growable: false);
+    final fields = <String, String>{
+      'post_type': postTypeValue,
+      'caption': caption,
+      'tags': tagNames.join(','),
+      'visibility': visibilityValue,
+    };
+    if (location.isNotEmpty) {
+      fields['location'] = location;
+      if (_latitude != null && _longitude != null) {
+        fields['lat'] = _latitude.toString();
+        fields['lng'] = _longitude.toString();
       }
+    }
 
-      final caption = HashtagCaptionLimit.enforce(
-        captionController.text.trim(),
+    final dishName = dishNameController.text.trim();
+    final restaurant = restaurantController.text.trim();
+    if (isOutfitPost) {
+      fields['rating_enabled'] = '0';
+    } else {
+      if (dishName.isNotEmpty) {
+        fields['dish_name'] = dishName;
+      }
+      if (restaurant.isNotEmpty) {
+        fields['restaurant'] = restaurant;
+      }
+      fields['food_rating'] = (foodRatings['food'] ?? 0)
+          .round()
+          .clamp(1, 5)
+          .toString();
+      fields['service_rating'] = (foodRatings['service'] ?? 0)
+          .round()
+          .clamp(1, 5)
+          .toString();
+      fields['staff_rating'] = (foodRatings['staff'] ?? 0)
+          .round()
+          .clamp(1, 5)
+          .toString();
+      fields['ambience_rating'] = (foodRatings['ambience'] ?? 0)
+          .round()
+          .clamp(1, 5)
+          .toString();
+    }
+    fields['image_count'] = mediaItems.length.toString();
+
+    final localId = 'local-${DateTime.now().microsecondsSinceEpoch}';
+    final profileLocalId = -DateTime.now().millisecondsSinceEpoch;
+    final showOnFeed = visibilityValue != 'private';
+    final paths = [for (final item in mediaItems) item.path];
+    if (showOnFeed) {
+      HomeController.ensureController().showLocalPost(
+        _localHomePost(
+          id: localId,
+          caption: caption,
+          location: location,
+          tagNames: tagNames,
+          dishName: dishName,
+          restaurant: restaurant,
+          mediaItems: mediaItems,
+        ),
       );
-      final tagNames = HashtagCaptionLimit.tagsIn(caption)
-          .map((tag) => tag.replaceFirst('#', '').trim())
-          .where((tag) => tag.isNotEmpty)
-          .toList(growable: false);
-      final fields = <String, String>{
-        'post_type': postTypeValue,
-        'caption': caption,
-        'tags': tagNames.join(','),
-        'visibility': visibilityValue,
-      };
-      if (location.isNotEmpty) {
-        fields['location'] = location;
-        if (_latitude != null && _longitude != null) {
-          fields['lat'] = _latitude.toString();
-          fields['lng'] = _longitude.toString();
-        }
-      }
+    }
+    final profile = Get.isRegistered<ProfileController>()
+        ? Get.find<ProfileController>()
+        : Get.put(ProfileController());
+    profile.showLocalPost(
+      _localProfilePost(
+        id: profileLocalId,
+        caption: caption,
+        location: location,
+        dishName: dishName,
+        mediaItems: mediaItems,
+      ),
+    );
+    if (paths.length > 1) {
+      unawaited(
+        CarouselMediaStore.remember(postId: localId, sourcePaths: paths),
+      );
+      unawaited(
+        CarouselMediaStore.remember(
+          postId: profileLocalId.toString(),
+          sourcePaths: paths,
+        ),
+      );
+    }
 
-      if (isOutfitPost) {
-        fields['rating_enabled'] = '0';
-      } else {
-        final dishName = dishNameController.text.trim();
-        final restaurant = restaurantController.text.trim();
-        if (dishName.isNotEmpty) {
-          fields['dish_name'] = dishName;
-        }
-        if (restaurant.isNotEmpty) {
-          fields['restaurant'] = restaurant;
-        }
-        fields['food_rating'] = (foodRatings['food'] ?? 0)
-            .round()
-            .clamp(1, 5)
-            .toString();
-        fields['service_rating'] = (foodRatings['service'] ?? 0)
-            .round()
-            .clamp(1, 5)
-            .toString();
-        fields['staff_rating'] = (foodRatings['staff'] ?? 0)
-            .round()
-            .clamp(1, 5)
-            .toString();
-        fields['ambience_rating'] = (foodRatings['ambience'] ?? 0)
-            .round()
-            .clamp(1, 5)
-            .toString();
-      }
+    resetForm();
+    if (Get.isRegistered<LandingController>()) {
+      Get.find<LandingController>().onTabChanged(0);
+    }
 
-      uploadProgress.value = 0.55;
-      fields['image_count'] = mediaItems.length.toString();
+    unawaited(
+      _uploadCreatedPost(
+        localId: localId,
+        profileLocalId: profileLocalId,
+        fields: fields,
+        mediaItems: mediaItems,
+        showOnFeed: showOnFeed,
+      ),
+    );
+  }
+
+  Future<void> _uploadCreatedPost({
+    required String localId,
+    required int profileLocalId,
+    required Map<String, String> fields,
+    required List<PickedMedia> mediaItems,
+    required bool showOnFeed,
+  }) async {
+    try {
       final extras = mediaItems.skip(1).toList(growable: false);
       final response = await ApiHelper.multipartRequestWithAuthorization(
         'posts',
         fields: fields,
         fileFieldName: 'file',
-        filePath: media.path,
+        filePath: mediaItems.first.path,
         files: [
           for (var i = 0; i < extras.length; i++)
             MapEntry('images[$i]', extras[i].path),
         ],
       );
-
       if (response == null) {
-        throw Exception('No response returned from server.');
+        _removeLocalPost(localId, profileLocalId, showOnFeed: showOnFeed);
+        return;
       }
 
-      uploadProgress.value = 0.85;
       final materialized = await http.Response.fromStream(response);
       final payload = jsonDecode(materialized.body) as Map<String, dynamic>;
       if (materialized.statusCode < 200 ||
@@ -365,28 +421,139 @@ class UploadController extends GetxController {
         );
       }
 
-      uploadProgress.value = 1;
-      uploadFailed.value = false;
-      if (mediaItems.length > 1) {
-        await CarouselMediaStore.remember(
-          postId: _createdPostId(payload),
-          sourcePaths: [for (final item in mediaItems) item.path],
+      final created = payload['post'];
+      if (created is! Map) {
+        return;
+      }
+      final map = Map<String, dynamic>.from(created);
+      final createdType = (map['post_type'] ?? '').toString();
+      final serverHome = HomePostModel.fromJson(
+        map,
+        responseType: createdType == 'food' ? 'food' : 'outfit',
+      );
+      final serverProfile = ProfilePostModel.fromMap(map);
+      if (showOnFeed) {
+        HomeController.ensureController().replaceLocalPost(localId, serverHome);
+      }
+      if (Get.isRegistered<ProfileController>()) {
+        Get.find<ProfileController>().replaceLocalPost(
+          profileLocalId,
+          serverProfile,
         );
       }
-
-      resetForm();
-
-      successSnackBar(message: (payload['message'] ?? 'Post uploaded successfully.').toString());
-      if (Get.isRegistered<LandingController>()) {
-        Get.find<LandingController>().onTabChanged(0);
+      final paths = [for (final item in mediaItems) item.path];
+      if (paths.length > 1) {
+        await CarouselMediaStore.remember(
+          postId: serverHome.id,
+          sourcePaths: paths,
+        );
+        await CarouselMediaStore.remember(
+          postId: serverProfile.id.toString(),
+          sourcePaths: paths,
+        );
       }
     } catch (error) {
-      uploadFailed.value = true;
-      uploadMessage.value = error.toString().replaceFirst('Exception: ', '');
-      errorSnackBar(message: uploadMessage.value);
-    } finally {
-      isUploading.value = false;
+      _removeLocalPost(localId, profileLocalId, showOnFeed: showOnFeed);
+      errorSnackBar(message: error.toString().replaceFirst('Exception: ', ''));
     }
+  }
+
+  void _removeLocalPost(
+    String localId,
+    int profileLocalId, {
+    required bool showOnFeed,
+  }) {
+    if (showOnFeed) {
+      HomeController.ensureController().removeLocalPost(localId);
+    }
+    if (Get.isRegistered<ProfileController>()) {
+      Get.find<ProfileController>().removeLocalPost(profileLocalId);
+    }
+  }
+
+  HomePostModel _localHomePost({
+    required String id,
+    required String caption,
+    required String location,
+    required List<String> tagNames,
+    required String dishName,
+    required String restaurant,
+    required List<PickedMedia> mediaItems,
+  }) {
+    final first = mediaItems.first;
+    final isVideo = first.type == AppMediaType.video;
+    final username = LocalStorage.getUsername() ?? '';
+    return HomePostModel(
+      id: id,
+      feedType: isOutfitPost ? HomeFeedType.style : HomeFeedType.bite,
+      mediaType: isVideo ? HomeMediaType.video : HomeMediaType.image,
+      contentType: isOutfitPost
+          ? HomeContentType.fashion
+          : HomeContentType.food,
+      username: username,
+      location: location,
+      streakLabel: '',
+      avatarUrl: LocalStorage.getAvatarUrl() ?? '',
+      imageUrl: isVideo ? '' : first.path,
+      displayRating: 0,
+      likes: '0',
+      comments: '0',
+      defaultSelectedRate: 0,
+      caption: caption,
+      postedAt: 'Just now',
+      mediaUrl: first.path,
+      authorName: username,
+      profileUsername: username,
+      media: [
+        for (final item in mediaItems)
+          HomePostMedia(
+            fileUrl: item.path,
+            type: item.type == AppMediaType.video
+                ? HomeMediaType.video
+                : HomeMediaType.image,
+          ),
+      ],
+      tags: tagNames,
+      dishName: dishName,
+      restaurant: restaurant,
+      visibility: visibilityValue,
+      publishedAt: DateTime.now(),
+    );
+  }
+
+  ProfilePostModel _localProfilePost({
+    required int id,
+    required String caption,
+    required String location,
+    required String dishName,
+    required List<PickedMedia> mediaItems,
+  }) {
+    final isVideo = mediaItems.first.type == AppMediaType.video;
+    return ProfilePostModel(
+      id: id,
+      postType: isOutfitPost ? 'outfit' : 'food',
+      caption: caption.isNotEmpty
+          ? caption
+          : (dishName.isNotEmpty ? dishName : 'Post'),
+      mediaKind: isVideo ? 'video' : 'image',
+      location: location,
+      likeCount: 0,
+      commentCount: 0,
+      shareCount: 0,
+      saveCount: 0,
+      ratingAvg: null,
+      createdAt: 'Just now',
+      visibility: visibilityValue,
+      media: [
+        for (final item in mediaItems)
+          ProfileMediaModel(
+            id: 0,
+            mediaType: item.type == AppMediaType.video ? 'video' : 'image',
+            fileUrl: item.path,
+            thumbnailUrl: '',
+          ),
+      ],
+    );
   }
 
   Future<void> fetchCurrentLocation({bool silent = false}) async {
@@ -546,29 +713,6 @@ class UploadController extends GetxController {
     final label = details.label.isNotEmpty ? details.label : fallback;
     setLocation(label, details.latitude, details.longitude);
     _fillRestaurantName(details.name);
-  }
-
-  String _createdPostId(Map<String, dynamic> payload) {
-    for (final key in <String>['post', 'data', 'item']) {
-      final nested = payload[key];
-      if (nested is! Map) {
-        continue;
-      }
-      final id = (nested['id'] ?? nested['post_id'] ?? '').toString().trim();
-      if (id.isNotEmpty && id != 'null') {
-        return id;
-      }
-    }
-    return '';
-  }
-
-  Future<void> _geocodeTypedLocation(String query) async {
-    final details = await GooglePlacesService.geocode(query);
-    if (details == null) {
-      return;
-    }
-    _latitude = details.latitude;
-    _longitude = details.longitude;
   }
 
   void resetForm() {

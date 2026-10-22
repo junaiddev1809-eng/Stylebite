@@ -7,7 +7,6 @@ import 'package:stylebite/core/widgets/app_hero_icon.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_cached_image.dart';
 import '../../../core/widgets/app_sliding_toggle.dart';
-import '../../profile/controllers/profile_controller.dart';
 import '../../../core/widgets/states/app_empty_state.dart';
 import '../../../core/widgets/states/app_error_state.dart';
 import '../../../core/widgets/states/app_shimmer_box.dart';
@@ -522,9 +521,8 @@ class _HomeTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final profileController = Get.isRegistered<ProfileController>()
-        ? Get.find<ProfileController>()
-        : Get.put(ProfileController());
+    // Avatar comes from session storage. Do not start ProfileController here —
+    // that would load overview and ratings-distribution before Profile opens.
     final notificationsController = Get.isRegistered<NotificationsController>()
         ? Get.find<NotificationsController>()
         : Get.put(NotificationsController(), permanent: true);
@@ -552,36 +550,35 @@ class _HomeTopBar extends StatelessWidget {
               onTap: () {
                 Get.to<void>(() => const ProfileDetailScreen());
               },
-              child: Obx(() {
-                final avatarUrl = profileController.avatarImageUrl.value
-                    .trim()
-                    .isNotEmpty
-                    ? profileController.avatarImageUrl.value.trim()
-                    : (LocalStorage.getAvatarUrl() ?? '');
-                return ClipOval(
-                  child: SizedBox(
-                    width: 40,
-                    height: 40,
-                    child: avatarUrl.isEmpty
-                        ? const ColoredBox(
-                            color: Color(0xFFE7E3E1),
-                            child: Center(
-                              child: AppHeroIconData(
-                                Icons.person_rounded,
-                                color: AppColors.hintText,
+              child: ValueListenableBuilder<String>(
+                valueListenable: LocalStorage.avatarUrlListenable,
+                builder: (context, avatarUrl, _) {
+                  final trimmed = avatarUrl.trim();
+                  return ClipOval(
+                    child: SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: trimmed.isEmpty
+                          ? const ColoredBox(
+                              color: Color(0xFFE7E3E1),
+                              child: Center(
+                                child: AppHeroIconData(
+                                  Icons.person_rounded,
+                                  color: AppColors.hintText,
+                                ),
                               ),
+                            )
+                          : AppCachedImage(
+                              imageUrl: trimmed,
+                              width: 40,
+                              height: 40,
+                              fit: BoxFit.cover,
+                              memCacheWidth: 120,
                             ),
-                          )
-                        : AppCachedImage(
-                            imageUrl: avatarUrl,
-                            width: 40,
-                            height: 40,
-                            fit: BoxFit.cover,
-                            memCacheWidth: 120,
-                          ),
-                  ),
-                );
-              }),
+                    ),
+                  );
+                },
+              ),
             ),
             const SizedBox(width: 10),
             _FeedTypeToggle(controller: controller),

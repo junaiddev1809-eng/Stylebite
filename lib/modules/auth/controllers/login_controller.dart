@@ -260,6 +260,10 @@ class LoginController extends GetxController {
         if (userId != null && userId > 0) {
           LocalStorage.setUserId(userId: userId);
         }
+        final avatarUrl = user['avatar_url']?.toString().trim();
+        if (avatarUrl != null && avatarUrl.isNotEmpty) {
+          LocalStorage.setAvatarUrl(avatarUrl: avatarUrl);
+        }
       } else {
         LocalStorage.getUsername();
       }

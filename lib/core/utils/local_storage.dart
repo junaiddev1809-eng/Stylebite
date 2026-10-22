@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
@@ -17,9 +18,16 @@ class LocalStorage {
   static const String _rememberLoginIdConsentKey = 'rememberLoginIdConsent';
   static const String _backendOriginKey = 'backendOrigin';
 
+  /// Reactive view of [getAvatarUrl] for widgets that must update without
+  /// starting ProfileController (for example the Home top-bar avatar).
+  static final ValueNotifier<String> avatarUrlListenable = ValueNotifier<String>(
+    '',
+  );
+
   static Future<void> initStorage() async {
     prefs = await SharedPreferences.getInstance();
     await bindSessionToCurrentBackend();
+    avatarUrlListenable.value = getAvatarUrl() ?? '';
   }
 
   /// Drop a leftover production (or other host) session when the compile-time
@@ -35,6 +43,7 @@ class LocalStorage {
     await prefs.remove(_usernameKey);
     await prefs.remove(_userIdKey);
     await prefs.remove(_avatarUrlKey);
+    avatarUrlListenable.value = '';
     await prefs.setString(_backendOriginKey, baseUrl);
   }
 
@@ -140,7 +149,9 @@ class LocalStorage {
   }
 
   static void setAvatarUrl({required String avatarUrl}) {
-    prefs.setString(_avatarUrlKey, avatarUrl.trim());
+    final next = avatarUrl.trim();
+    prefs.setString(_avatarUrlKey, next);
+    avatarUrlListenable.value = next;
   }
 
   static String? getAvatarUrl() {
@@ -153,6 +164,7 @@ class LocalStorage {
 
   static Future<void> removeAvatarUrl() async {
     await prefs.remove(_avatarUrlKey);
+    avatarUrlListenable.value = '';
   }
 
   static void setSavedLoginId({required String loginId}) {

@@ -1157,7 +1157,7 @@ class HomeController extends GetxController {
       }
       try {
         final response = await ApiHelper.fetchDataWithAuthorization(
-          'reels?type=$apiType&page=$page&per_page=24&sort=trending',
+          'reels?type=$apiType&page=$page&per_page=15&sort=trending',
         );
         if (response == null || response.statusCode != 200) {
           break;

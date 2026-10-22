@@ -926,7 +926,7 @@ class HomeController extends GetxController {
 
   Future<void> _hydrateMissingHashtags(List<HomePostModel> incoming) async {
     for (final post in incoming) {
-      if (post.tags.isNotEmpty) {
+      if (!post.needsHashtagHydration) {
         continue;
       }
       unawaited(_refreshSinglePost(post.id));

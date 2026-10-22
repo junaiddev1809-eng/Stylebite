@@ -96,6 +96,7 @@ class HomePostModel {
     this.authorName = '',
     this.media = const [],
     this.tags = const [],
+    this.tagsIncluded = false,
     this.shareCount = 0,
     this.saveCount = 0,
     this.viewCount = 0,
@@ -144,6 +145,15 @@ class HomePostModel {
   final String authorName;
   final List<HomePostMedia> media;
   final List<String> tags;
+
+  /// True when the payload contained a `tags` key, including an empty list.
+  final bool tagsIncluded;
+
+  /// Detail hydration is only for payloads that omitted tags entirely.
+  /// Caption hashtags are already parsed, and an empty list means the post
+  /// has no hashtags.
+  bool get needsHashtagHydration => !tagsIncluded && tags.isEmpty;
+
   final int shareCount;
   final int saveCount;
   final int viewCount;
@@ -314,6 +324,7 @@ class HomePostModel {
     String? authorName,
     List<HomePostMedia>? media,
     List<String>? tags,
+    bool? tagsIncluded,
     int? shareCount,
     int? saveCount,
     int? viewCount,
@@ -362,6 +373,7 @@ class HomePostModel {
       authorName: authorName ?? this.authorName,
       media: media ?? this.media,
       tags: tags ?? this.tags,
+      tagsIncluded: tagsIncluded ?? this.tagsIncluded,
       shareCount: shareCount ?? this.shareCount,
       saveCount: saveCount ?? this.saveCount,
       viewCount: viewCount ?? this.viewCount,
@@ -491,6 +503,7 @@ class HomePostModel {
         ...parsePostTags(json),
         ...hashtagsFromCaption((json['caption'] ?? '').toString()),
       ]),
+      tagsIncluded: json.containsKey('tags'),
       shareCount: _asInt(json['share_count'] ?? engagement.shareCount),
       saveCount: _asInt(json['save_count'] ?? engagement.saveCount),
       viewCount: _asInt(json['view_count'] ?? engagement.viewCount),

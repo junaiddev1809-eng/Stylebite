@@ -15,6 +15,7 @@ import '../../post/services/post_interaction_store.dart';
 import '../models/profile_model.dart';
 import '../models/style_rating_model.dart';
 import '../utils/profile_overview_query.dart';
+import '../utils/profile_pagination.dart';
 import 'saved_post_sync.dart';
 
 class ProfileController extends GetxController {
@@ -278,7 +279,15 @@ class ProfileController extends GetxController {
       return;
     }
     if (_loadedTabs.contains(tab)) {
-      Future<void>.delayed(const Duration(milliseconds: 60), loadMoreActiveTab);
+      // Only fill the next page when the list is already near the bottom
+      // (or too short to scroll). Reselecting a tab at the top must not
+      // prefetch page 2.
+      Future<void>.delayed(const Duration(milliseconds: 60), () {
+        if (!_isNearPaginationEdge()) {
+          return;
+        }
+        loadMoreActiveTab();
+      });
       return;
     }
     unawaited(ensureTabLoaded(tab));
@@ -696,14 +705,22 @@ class ProfileController extends GetxController {
     }
   }
 
-  void _onScroll() {
+  bool _isNearPaginationEdge() {
     if (!detailScrollController.hasClients) {
-      return;
+      return false;
     }
     final position = detailScrollController.position;
-    if (position.pixels >= position.maxScrollExtent - 220) {
-      loadMoreActiveTab();
+    return isNearProfilePaginationEdge(
+      pixels: position.pixels,
+      maxScrollExtent: position.maxScrollExtent,
+    );
+  }
+
+  void _onScroll() {
+    if (!_isNearPaginationEdge()) {
+      return;
     }
+    loadMoreActiveTab();
   }
 
   void _setLoadingMore(ProfileContentTab tab, bool value) {

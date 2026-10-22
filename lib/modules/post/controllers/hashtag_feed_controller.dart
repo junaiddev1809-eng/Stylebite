@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
@@ -16,6 +15,7 @@ import '../../reel/models/reel_item_model.dart';
 import '../../reports/api/reports_api.dart';
 import '../../search/utils/explore_media_mapper.dart';
 import '../controllers/restaurant_review_store.dart';
+import '../services/post_interaction_store.dart';
 import '../utils/like_toggle.dart';
 import '../utils/rating_math.dart';
 import '../utils/post_detail_open_helper.dart';
@@ -34,10 +34,7 @@ class HashtagFeedController extends GetxController {
   final RxSet<String> saveLoadingIds = <String>{}.obs;
   final RxSet<String> shareLoadingIds = <String>{}.obs;
   final RxSet<String> voteLoadingIds = <String>{}.obs;
-  final LikeToggleSync _likeSync = LikeToggleSync();
-  final SaveToggleSync _saveSync = SaveToggleSync();
-  final Map<String, HomePostModel> _likeBaseline = {};
-  final Map<String, HomePostModel> _saveBaseline = {};
+  Worker? _interactionWorker;
   final RxBool isInitialLoading = false.obs;
   final RxBool isLoadingMore = false.obs;
   final RxBool hasMore = false.obs;
@@ -57,12 +54,19 @@ class HashtagFeedController extends GetxController {
   void onInit() {
     super.onInit();
     scrollController.addListener(_onScroll);
+    _interactionWorker = ever(PostInteractionStore.ensure().revision, (_) {
+      final id = PostInteractionStore.ensure().lastChangedId;
+      if (id != null) {
+        _applySharedInteraction(id);
+      }
+    });
     _seedFromCaches();
     unawaited(refreshFeed());
   }
 
   @override
   void onClose() {
+    _interactionWorker?.dispose();
     scrollController
       ..removeListener(_onScroll)
       ..dispose();
@@ -83,47 +87,13 @@ class HashtagFeedController extends GetxController {
     if (currentPost == null) {
       return;
     }
-
-    _likeBaseline.putIfAbsent(postId, () => currentPost);
-    final nextLiked = !currentPost.isLiked;
-    final nextLikeCount = nextLiked
-        ? _parseCount(currentPost.likes) + 1
-        : math.max(_parseCount(currentPost.likes) - 1, 0);
-    _replacePost(
-      currentPost.copyWith(
-        isLiked: nextLiked,
-        likes: _formatCount(nextLikeCount),
-      ),
-    );
-
-    _likeSync.run(
-      id: postId,
-      endpoint: 'feed/posts/$postId/like',
-      desiredLiked: () => _findPost(postId)?.isLiked ?? nextLiked,
-      onConfirmed: (result) {
-        _likeBaseline.remove(postId);
-        final latest = _findPost(postId);
-        if (latest == null) {
-          return;
-        }
-        _replacePost(
-          latest.copyWith(
-            isLiked: result.isLiked,
-            likes: result.likeCount == null
-                ? latest.likes
-                : _formatCount(result.likeCount!),
-          ),
-        );
-      },
-      onError: (error) {
-        final saved = _likeBaseline.remove(postId);
-        if (saved != null) {
-          _replacePost(saved);
-        }
-        errorSnackBar(
-          message: error.toString().replaceFirst('Exception: ', ''),
-        );
-      },
+    final shared = PostInteractionStore.ensure().stateFor(postId);
+    PostInteractionStore.ensure().toggleLike(
+      postId: postId,
+      isLiked: shared?.isLiked ?? currentPost.isLiked,
+      likeCount: shared?.likeCount ?? parseLikeCount(currentPost.likes),
+      isSaved: currentPost.isSaved,
+      saveCount: currentPost.saveCount,
     );
   }
 
@@ -132,43 +102,23 @@ class HashtagFeedController extends GetxController {
     if (currentPost == null) {
       return;
     }
-
-    _saveBaseline.putIfAbsent(postId, () => currentPost);
-    final nextSaved = !currentPost.isSaved;
-    final nextCount = nextSaved
-        ? currentPost.saveCount + 1
-        : math.max(currentPost.saveCount - 1, 0);
-    _replacePost(
-      currentPost.copyWith(isSaved: nextSaved, saveCount: nextCount),
+    final shared = PostInteractionStore.ensure().stateFor(postId);
+    PostInteractionStore.ensure().toggleSave(
+      postId: postId,
+      isSaved: shared?.isSaved ?? currentPost.isSaved,
+      saveCount: shared?.saveCount ?? currentPost.saveCount,
+      isLiked: currentPost.isLiked,
+      likeCount: parseLikeCount(currentPost.likes),
+      draft: SavedPostDraft.fromHome(currentPost),
     );
+  }
 
-    _saveSync.run(
-      id: postId,
-      endpoint: 'feed/posts/$postId/save',
-      desiredSaved: () => _findPost(postId)?.isSaved ?? nextSaved,
-      onConfirmed: (isSaved, saveCount) {
-        _saveBaseline.remove(postId);
-        final latest = _findPost(postId);
-        if (latest == null) {
-          return;
-        }
-        _replacePost(
-          latest.copyWith(
-            isSaved: isSaved,
-            saveCount: saveCount ?? latest.saveCount,
-          ),
-        );
-      },
-      onError: (error) {
-        final saved = _saveBaseline.remove(postId);
-        if (saved != null) {
-          _replacePost(saved);
-        }
-        errorSnackBar(
-          message: error.toString().replaceFirst('Exception: ', ''),
-        );
-      },
-    );
+  void _applySharedInteraction(String postId) {
+    final current = _findPost(postId);
+    if (current == null) {
+      return;
+    }
+    _replacePost(PostInteractionStore.ensure().presentHome(current));
   }
 
   Future<void> sharePost(String postId, {required String shareChannel}) async {
@@ -413,6 +363,7 @@ class HashtagFeedController extends GetxController {
 
       while (scanned < _maxScanPages && more) {
         scanned += 1;
+        final observedAt = PostInteractionStore.ensure().observedClock;
         final result = await _fetchPage(page);
         final reels = await _fetchMatchingReels(page);
         page = result.page;
@@ -420,6 +371,7 @@ class HashtagFeedController extends GetxController {
         final additions = _appendPosts(
           [...result.posts, ...reels.posts],
           replace: false,
+          observedAt: observedAt,
         );
         _currentPage = page;
         hasMore.value = more;
@@ -670,21 +622,33 @@ class HashtagFeedController extends GetxController {
     return fallback;
   }
 
-  int _appendPosts(List<HomePostModel> incoming, {required bool replace}) {
+  int _appendPosts(
+    List<HomePostModel> incoming, {
+    required bool replace,
+    int? observedAt,
+  }) {
+    final store = PostInteractionStore.ensure();
+    final hydrated = incoming
+        .map(
+          (post) => observedAt == null
+              ? store.presentHome(post)
+              : store.ingestHome(post, observedAt: observedAt),
+        )
+        .toList(growable: false);
     if (replace) {
       _seenIds
         ..clear()
-        ..addAll(incoming.map((post) => post.id));
-      posts.assignAll(incoming);
-      for (final post in incoming) {
+        ..addAll(hydrated.map((post) => post.id));
+      posts.assignAll(hydrated);
+      for (final post in hydrated) {
         selectedRatings[post.id] =
             selectedRatings[post.id] ?? post.defaultSelectedRate;
       }
-      RestaurantReviewStore.instance.ingestPosts(incoming);
-      return incoming.length;
+      RestaurantReviewStore.instance.ingestPosts(hydrated);
+      return hydrated.length;
     }
 
-    final additions = incoming
+    final additions = hydrated
         .where((post) => _seenIds.add(post.id))
         .toList(growable: false);
     if (additions.isEmpty) {
@@ -734,11 +698,14 @@ class HashtagFeedController extends GetxController {
   }
 
   Future<void> _refreshPost(String postId) async {
+    final observedAt = PostInteractionStore.ensure().observedClock;
     final updated = await PostDetailOpenHelper.fetchPost(postId);
     if (updated == null) {
       return;
     }
-    _replacePost(updated);
+    _replacePost(
+      PostInteractionStore.ensure().ingestHome(updated, observedAt: observedAt),
+    );
     RestaurantReviewStore.instance.ingestPosts(<HomePostModel>[updated]);
   }
 
@@ -772,29 +739,6 @@ class HashtagFeedController extends GetxController {
     } finally {
       loadingSet.remove(postId);
     }
-  }
-
-  int _parseCount(String value) {
-    final normalized = value.trim().toLowerCase();
-    if (normalized.endsWith('k')) {
-      return ((double.tryParse(normalized.replaceAll('k', '')) ?? 0) * 1000)
-          .round();
-    }
-    if (normalized.endsWith('m')) {
-      return ((double.tryParse(normalized.replaceAll('m', '')) ?? 0) * 1000000)
-          .round();
-    }
-    return int.tryParse(normalized.replaceAll(',', '')) ?? 0;
-  }
-
-  String _formatCount(int value) {
-    if (value >= 1000000) {
-      return '${(value / 1000000).toStringAsFixed(value % 1000000 == 0 ? 0 : 1)}m';
-    }
-    if (value >= 1000) {
-      return '${(value / 1000).toStringAsFixed(value % 1000 == 0 ? 0 : 1)}k';
-    }
-    return value.toString();
   }
 }
 

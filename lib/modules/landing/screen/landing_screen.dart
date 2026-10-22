@@ -11,6 +11,7 @@ import '../widgets/landing_home_tab.dart';
 import '../../contest/screen/contest_screen.dart';
 import '../../notifications/controllers/notifications_controller.dart';
 import '../../post/controllers/restaurant_review_store.dart';
+import '../../post/services/post_interaction_store.dart';
 import '../../profile/screen/profile_swipe_screen.dart';
 import '../../reel/controllers/reel_controller.dart';
 import '../../reel/screen/reel_screen.dart';
@@ -41,6 +42,7 @@ class _LandingScreenState extends State<LandingScreen> {
     if (!Get.isRegistered<RestaurantReviewStore>()) {
       Get.put(RestaurantReviewStore(), permanent: true);
     }
+    PostInteractionStore.ensure();
     ReelController.ensureTabController();
     _warm(0);
 

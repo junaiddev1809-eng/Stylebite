@@ -344,6 +344,16 @@ class ProfilePostModel {
     return images > 1;
   }
 
+  /// Small image for the profile grid. The opened post still uses the full file.
+  String get gridImageUrl {
+    for (final item in media) {
+      if (item.thumbnailUrl.isNotEmpty) {
+        return item.thumbnailUrl;
+      }
+    }
+    return primaryImageUrl;
+  }
+
   String get primaryImageUrl {
     for (final item in media) {
       // A video's file_url points at the raw video file, not something
@@ -487,7 +497,7 @@ class SavedProfilePostModel {
     );
   }
 
-  String get imageUrl => post.primaryImageUrl;
+  String get imageUrl => post.gridImageUrl;
 }
 
 class ProfileMediaModel {

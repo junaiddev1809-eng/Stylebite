@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
@@ -18,6 +16,7 @@ import '../../../core/utils/local_storage.dart';
 import '../../reports/api/reports_api.dart';
 import '../../contest/services/contest_enrollment_store.dart';
 import '../../post/controllers/restaurant_review_store.dart';
+import '../../post/services/post_interaction_store.dart';
 import '../../post/utils/like_toggle.dart';
 import '../../reel/controllers/reel_controller.dart';
 import '../../reel/models/reel_item_model.dart';
@@ -64,10 +63,7 @@ class HomeController extends GetxController {
   final RxSet<String> saveLoadingIds = <String>{}.obs;
   final RxSet<String> shareLoadingIds = <String>{}.obs;
   final RxSet<String> voteLoadingIds = <String>{}.obs;
-  final LikeToggleSync _likeSync = LikeToggleSync();
-  final SaveToggleSync _saveSync = SaveToggleSync();
-  final Map<String, HomePostModel> _likeBaseline = {};
-  final Map<String, HomePostModel> _saveBaseline = {};
+  Worker? _interactionWorker;
 
   // New state to track location permission
   final RxBool isLocationDenied = false.obs;
@@ -211,15 +207,30 @@ class HomeController extends GetxController {
   void onInit() {
     super.onInit();
     scrollController.addListener(_onScroll);
+    _interactionWorker = ever(PostInteractionStore.ensure().revision, (_) {
+      final id = PostInteractionStore.ensure().lastChangedId;
+      if (id != null) {
+        _applySharedInteraction(id);
+      }
+    });
     refreshFeed();
   }
 
   @override
   void onClose() {
+    _interactionWorker?.dispose();
     scrollController
       ..removeListener(_onScroll)
       ..dispose();
     super.onClose();
+  }
+
+  void _applySharedInteraction(String postId) {
+    final current = _findPost(postId);
+    if (current == null) {
+      return;
+    }
+    _updatePost(PostInteractionStore.ensure().presentHome(current));
   }
 
   bool _isManualRefreshing = false;
@@ -352,47 +363,13 @@ class HomeController extends GetxController {
     if (currentPost == null) {
       return;
     }
-
-    _likeBaseline.putIfAbsent(postId, () => currentPost);
-    final nextLiked = !currentPost.isLiked;
-    final nextLikeCount = nextLiked
-        ? _parseCount(currentPost.likes) + 1
-        : math.max(_parseCount(currentPost.likes) - 1, 0);
-    _updatePost(
-      currentPost.copyWith(
-        isLiked: nextLiked,
-        likes: _formatCount(nextLikeCount),
-      ),
-    );
-
-    _likeSync.run(
-      id: postId,
-      endpoint: 'feed/posts/$postId/like',
-      desiredLiked: () => _findPost(postId)?.isLiked ?? nextLiked,
-      onConfirmed: (result) {
-        _likeBaseline.remove(postId);
-        final latest = _findPost(postId);
-        if (latest == null) {
-          return;
-        }
-        _updatePost(
-          latest.copyWith(
-            isLiked: result.isLiked,
-            likes: result.likeCount == null
-                ? latest.likes
-                : _formatCount(result.likeCount!),
-          ),
-        );
-      },
-      onError: (error) {
-        final saved = _likeBaseline.remove(postId);
-        if (saved != null) {
-          _updatePost(saved);
-        }
-        errorSnackBar(
-          message: error.toString().replaceFirst('Exception: ', ''),
-        );
-      },
+    final shared = PostInteractionStore.ensure().stateFor(postId);
+    PostInteractionStore.ensure().toggleLike(
+      postId: postId,
+      isLiked: shared?.isLiked ?? currentPost.isLiked,
+      likeCount: shared?.likeCount ?? parseLikeCount(currentPost.likes),
+      isSaved: currentPost.isSaved,
+      saveCount: currentPost.saveCount,
     );
   }
 
@@ -404,42 +381,14 @@ class HomeController extends GetxController {
     if (currentPost == null) {
       return;
     }
-
-    _saveBaseline.putIfAbsent(postId, () => currentPost);
-    final nextSaved = !currentPost.isSaved;
-    final nextCount = nextSaved
-        ? currentPost.saveCount + 1
-        : math.max(currentPost.saveCount - 1, 0);
-    _updatePost(
-      currentPost.copyWith(isSaved: nextSaved, saveCount: nextCount),
-    );
-
-    _saveSync.run(
-      id: postId,
-      endpoint: 'feed/posts/$postId/save',
-      desiredSaved: () => _findPost(postId)?.isSaved ?? nextSaved,
-      onConfirmed: (isSaved, saveCount) {
-        _saveBaseline.remove(postId);
-        final latest = _findPost(postId);
-        if (latest == null) {
-          return;
-        }
-        _updatePost(
-          latest.copyWith(
-            isSaved: isSaved,
-            saveCount: saveCount ?? latest.saveCount,
-          ),
-        );
-      },
-      onError: (error) {
-        final saved = _saveBaseline.remove(postId);
-        if (saved != null) {
-          _updatePost(saved);
-        }
-        errorSnackBar(
-          message: error.toString().replaceFirst('Exception: ', ''),
-        );
-      },
+    final shared = PostInteractionStore.ensure().stateFor(postId);
+    PostInteractionStore.ensure().toggleSave(
+      postId: postId,
+      isSaved: shared?.isSaved ?? currentPost.isSaved,
+      saveCount: shared?.saveCount ?? currentPost.saveCount,
+      isLiked: currentPost.isLiked,
+      likeCount: parseLikeCount(currentPost.likes),
+      draft: SavedPostDraft.fromHome(currentPost),
     );
   }
 
@@ -800,6 +749,7 @@ class HomeController extends GetxController {
         _applyContestEnrollment();
       }),
     );
+    final observedAt = PostInteractionStore.ensure().observedClock;
     final response = await ApiHelper.fetchDataWithAuthorization(
       _buildFeedEndpoint(page, lat: lat, lng: lng),
     );
@@ -815,9 +765,12 @@ class HomeController extends GetxController {
 
     final parsed = HomeFeedResponse.fromJson(payload);
     final filteredFeed = parsed.feed.where(_matchesCurrentSelection).toList();
-    final rankedFeed = selectedDiscoverType.value == HomeDiscoverType.forYou
-        ? TrendingRanker.rankPosts(filteredFeed)
-        : filteredFeed;
+    final store = PostInteractionStore.ensure();
+    final rankedFeed = (selectedDiscoverType.value == HomeDiscoverType.forYou
+            ? TrendingRanker.rankPosts(filteredFeed)
+            : filteredFeed)
+        .map((post) => store.ingestHome(post, observedAt: observedAt))
+        .toList(growable: false);
     final cache = _session;
     final merged = replaceExisting
         ? rankedFeed
@@ -981,6 +934,7 @@ class HomeController extends GetxController {
   }
 
   Future<void> _refreshSinglePost(String postId) async {
+    final observedAt = PostInteractionStore.ensure().observedClock;
     final response = await ApiHelper.fetchDataWithAuthorization(
       'feed/posts/$postId?comments_page=1',
     );
@@ -1002,10 +956,13 @@ class HomeController extends GetxController {
               .toString(),
     );
     upsertPost(
-      preferLocalVote(
-        incoming: parsed,
-        selected: selectedRatings[postId],
-        local: _findPost(postId),
+      PostInteractionStore.ensure().ingestHome(
+        preferLocalVote(
+          incoming: parsed,
+          selected: selectedRatings[postId],
+          local: _findPost(postId),
+        ),
+        observedAt: observedAt,
       ),
     );
   }
@@ -1059,7 +1016,8 @@ class HomeController extends GetxController {
       ...pinned,
       ...posts.where((post) => !_localPosts.containsKey(post.id)),
     ];
-    _publishedPosts = List<HomePostModel>.from(merged);
+    final store = PostInteractionStore.ensure();
+    _publishedPosts = merged.map(store.presentHome).toList(growable: false);
     for (final post in _publishedPosts) {
       _syncPostSubject(post);
     }
@@ -1109,37 +1067,6 @@ class HomeController extends GetxController {
       return;
     }
     list[index] = updatedPost;
-  }
-
-  int _parseCount(String value) {
-    final normalized = value.trim().toLowerCase().replaceAll(',', '');
-    if (normalized.isEmpty) {
-      return 0;
-    }
-
-    final multiplier = normalized.endsWith('k')
-        ? 1000
-        : normalized.endsWith('m')
-        ? 1000000
-        : 1;
-    final raw = multiplier == 1
-        ? normalized
-        : normalized.substring(0, normalized.length - 1);
-    final parsed = double.tryParse(raw);
-    if (parsed == null) {
-      return 0;
-    }
-    return (parsed * multiplier).round();
-  }
-
-  String _formatCount(int value) {
-    if (value >= 1000000) {
-      return '${(value / 1000000).toStringAsFixed(value % 1000000 == 0 ? 0 : 1)}m';
-    }
-    if (value >= 1000) {
-      return '${(value / 1000).toStringAsFixed(value % 1000 == 0 ? 0 : 1)}k';
-    }
-    return value.toString();
   }
 
   bool _matchesUsername(String candidate, String normalizedTarget) {

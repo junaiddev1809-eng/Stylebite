@@ -21,7 +21,7 @@ import '../../earnings/controllers/earnings_controller.dart';
 import '../../home/controllers/home_controller.dart';
 import '../../home/models/home_post_model.dart';
 import '../../post/models/post_comment_model.dart';
-import '../../post/utils/like_toggle.dart';
+import '../../post/services/post_interaction_store.dart';
 import '../../post/utils/rating_math.dart';
 import '../../post/utils/post_detail_open_helper.dart';
 import '../../profile/models/profile_model.dart';
@@ -56,10 +56,7 @@ class ReelController extends GetxController {
   final RxBool isMuted = false.obs;
   final RxnString pausedReelId = RxnString();
   final RxBool isLikeLoading = false.obs;
-  final LikeToggleSync _likeSync = LikeToggleSync();
-  final SaveToggleSync _saveSync = SaveToggleSync();
-  final Map<String, ReelItemModel> _likeBaseline = {};
-  final Map<String, ReelItemModel> _saveBaseline = {};
+  Worker? _interactionWorker;
   final RxBool isSaveLoading = false.obs;
   final RxBool isShareLoading = false.obs;
   final RxBool isVoteLoading = false.obs;
@@ -169,6 +166,12 @@ class ReelController extends GetxController {
       isMuted.value = SharedVideoMute.muted.value;
     }
     _ensureEligibilityFetched();
+    _interactionWorker = ever(PostInteractionStore.ensure().revision, (_) {
+      final id = PostInteractionStore.ensure().lastChangedId;
+      if (id != null) {
+        _applySharedInteraction(id);
+      }
+    });
     if (viewerSeed != null) {
       selectedFeedType.value = viewerType ?? viewerSeed!.feedType;
       unawaited(_startFromSeed(viewerSeed!));
@@ -179,6 +182,7 @@ class ReelController extends GetxController {
 
   @override
   void onClose() {
+    _interactionWorker?.dispose();
     _stopWatchTimeTracking();
     _adRetryTimer?.cancel();
     _clearInterstitialState();
@@ -815,48 +819,13 @@ class ReelController extends GetxController {
     if (currentReel == null) {
       return;
     }
-
-    _likeBaseline.putIfAbsent(reelId, () => currentReel);
-    final nextLiked = !currentReel.isLiked;
-    final nextCount = nextLiked
-        ? currentReel.likeCount + 1
-        : (currentReel.likeCount > 0 ? currentReel.likeCount - 1 : 0);
-    _updateReel(
-      currentReel.copyWith(
-        isLiked: nextLiked,
-        likeCount: nextCount,
-        likes: _formatCount(nextCount),
-      ),
-    );
-
-    _likeSync.run(
-      id: reelId,
-      endpoint: 'reels/$reelId/like',
-      desiredLiked: () => _findReel(reelId)?.isLiked ?? nextLiked,
-      onConfirmed: (result) {
-        _likeBaseline.remove(reelId);
-        final latest = _findReel(reelId);
-        if (latest == null) {
-          return;
-        }
-        final count = result.likeCount ?? latest.likeCount;
-        _updateReel(
-          latest.copyWith(
-            isLiked: result.isLiked,
-            likeCount: count,
-            likes: _formatCount(count),
-          ),
-        );
-      },
-      onError: (error) {
-        final saved = _likeBaseline.remove(reelId);
-        if (saved != null) {
-          _updateReel(saved);
-        }
-        errorSnackBar(
-          message: error.toString().replaceFirst('Exception: ', ''),
-        );
-      },
+    final shared = PostInteractionStore.ensure().stateFor(reelId);
+    PostInteractionStore.ensure().toggleLike(
+      postId: reelId,
+      isLiked: shared?.isLiked ?? currentReel.isLiked,
+      likeCount: shared?.likeCount ?? currentReel.likeCount,
+      isSaved: currentReel.isSaved,
+      saveCount: currentReel.saveCount,
     );
   }
 
@@ -865,43 +834,23 @@ class ReelController extends GetxController {
     if (currentReel == null) {
       return;
     }
-
-    _saveBaseline.putIfAbsent(reelId, () => currentReel);
-    final nextSaved = !currentReel.isSaved;
-    final nextCount = nextSaved
-        ? currentReel.saveCount + 1
-        : (currentReel.saveCount > 0 ? currentReel.saveCount - 1 : 0);
-    _updateReel(
-      currentReel.copyWith(isSaved: nextSaved, saveCount: nextCount),
+    final shared = PostInteractionStore.ensure().stateFor(reelId);
+    PostInteractionStore.ensure().toggleSave(
+      postId: reelId,
+      isSaved: shared?.isSaved ?? currentReel.isSaved,
+      saveCount: shared?.saveCount ?? currentReel.saveCount,
+      isLiked: currentReel.isLiked,
+      likeCount: currentReel.likeCount,
+      draft: SavedPostDraft.fromReel(currentReel),
     );
+  }
 
-    _saveSync.run(
-      id: reelId,
-      endpoint: 'reels/$reelId/save',
-      desiredSaved: () => _findReel(reelId)?.isSaved ?? nextSaved,
-      onConfirmed: (isSaved, saveCount) {
-        _saveBaseline.remove(reelId);
-        final latest = _findReel(reelId);
-        if (latest == null) {
-          return;
-        }
-        _updateReel(
-          latest.copyWith(
-            isSaved: isSaved,
-            saveCount: saveCount ?? latest.saveCount,
-          ),
-        );
-      },
-      onError: (error) {
-        final saved = _saveBaseline.remove(reelId);
-        if (saved != null) {
-          _updateReel(saved);
-        }
-        errorSnackBar(
-          message: error.toString().replaceFirst('Exception: ', ''),
-        );
-      },
-    );
+  void _applySharedInteraction(String postId) {
+    final current = _findReel(postId);
+    if (current == null) {
+      return;
+    }
+    _updateReel(PostInteractionStore.ensure().presentReel(current));
   }
 
   Future<void> registerShare(
@@ -1209,6 +1158,7 @@ class ReelController extends GetxController {
     }
 
     unawaited(ContestEnrollmentStore.instance.ensureLoaded());
+    final observedAt = PostInteractionStore.ensure().observedClock;
     final response = await ApiHelper.fetchDataWithAuthorization(
       _buildEndpoint(page),
     );
@@ -1235,6 +1185,10 @@ class ReelController extends GetxController {
               ? reel
               : reel.copyWith(feedType: tabType),
         )
+        .map((reel) => PostInteractionStore.ensure().ingestReel(
+              reel,
+              observedAt: observedAt,
+            ))
         .toList();
 
     final session = _session;
@@ -1252,11 +1206,13 @@ class ReelController extends GetxController {
   }
 
   void _applyVisibleReels() {
+    final store = PostInteractionStore.ensure();
     final filtered = _session.reels
         .where((item) => item.matchesCity(selectedCity.value))
         .where(
           (item) => !StoryMarker.isStory(tags: item.tags, caption: item.caption),
         )
+        .map(store.presentReel)
         .toList();
     visibleReels.assignAll(filtered);
     hasMore.value = _session.hasMore;
@@ -1394,6 +1350,7 @@ class ReelController extends GetxController {
     final path = scope.isOwnProfile
         ? 'profile/me/overview'
         : 'profiles/${Uri.encodeComponent(scope.username)}/overview';
+    final observedAt = PostInteractionStore.ensure().observedClock;
     final response = await ApiHelper.fetchDataWithAuthorization(
       Uri(path: path, queryParameters: params).toString(),
     );
@@ -1429,6 +1386,10 @@ class ReelController extends GetxController {
         )
         .where(ReelOpenHelper.isReel)
         .map(ReelOpenHelper.fromPost)
+        .map((reel) => PostInteractionStore.ensure().ingestReel(
+              reel,
+              observedAt: observedAt,
+            ))
         .toList();
 
     final pagination = switch (scope.tab) {

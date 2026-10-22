@@ -10,6 +10,7 @@ import 'package:stylebite/core/utils/local_storage.dart';
 
 import '../../app/routes/app_routes.dart';
 import '../../modules/messages/services/chat_socket_service.dart';
+import '../../modules/post/services/post_interaction_store.dart';
 
 class ApiHelper {
   // Without this, a stalled connection leaves the awaiting call (and
@@ -99,6 +100,7 @@ class ApiHelper {
     await LocalStorage.removeUsername();
     await LocalStorage.removeUserId();
     await LocalStorage.removeAvatarUrl();
+    PostInteractionStore.ensure().clear();
     await ChatSocketService.instance.disconnect();
     errorSnackBar(message: message);
     Get.offAllNamed(AppRoutes.login);
@@ -135,6 +137,7 @@ class ApiHelper {
     await LocalStorage.removeUsername();
     await LocalStorage.removeUserId();
     await LocalStorage.removeAvatarUrl();
+    PostInteractionStore.ensure().clear();
     await ChatSocketService.instance.disconnect();
 
     Get.offAllNamed(

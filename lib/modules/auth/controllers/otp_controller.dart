@@ -10,6 +10,7 @@ import '../../../core/utils/app_location_service.dart';
 import '../../../core/utils/local_storage.dart';
 import '../../../core/utils/app_session.dart';
 import '../../../core/utils/deep_link_service.dart';
+import '../../post/services/post_interaction_store.dart';
 
 class OtpController extends GetxController {
   final otpController = TextEditingController();
@@ -99,6 +100,7 @@ class OtpController extends GetxController {
             if (userId != null && userId > 0) {
               LocalStorage.setUserId(userId: userId);
             }
+            PostInteractionStore.ensure().bindCurrentUser();
             final avatarUrl = userData['avatar_url']?.toString().trim();
             if (avatarUrl != null && avatarUrl.isNotEmpty) {
               LocalStorage.setAvatarUrl(avatarUrl: avatarUrl);

@@ -663,9 +663,18 @@ class _PublicTabContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Obx(() {
+      return _buildTab();
+    });
+  }
+
+  Widget _buildTab() {
     switch (controller.activeTab.value) {
       case ProfileContentTab.outfits:
         if (controller.outfitPosts.isEmpty) {
+          if (controller.isLoadingMoreOutfits.value) {
+            return const _PublicTabLoading();
+          }
           return const _PublicEmptyState(
             title: 'No outfit posts yet',
             subtitle: 'This user has not posted any outfit content yet.',
@@ -677,14 +686,14 @@ class _PublicTabContent extends StatelessWidget {
         // out of sync, so tapping tile N could open the wrong post once any
         // earlier post had no displayable image.
         final visibleOutfitPosts = controller.outfitPosts
-            .where((post) => post.primaryImageUrl.trim().isNotEmpty)
+            .where((post) => post.gridImageUrl.trim().isNotEmpty)
             .where(
               (post) =>
                   !StoryMarker.isStory(tags: post.tags, caption: post.caption),
             )
             .toList(growable: false);
         final images = visibleOutfitPosts
-            .map((post) => post.primaryImageUrl)
+            .map((post) => post.gridImageUrl)
             .toList(growable: false);
         final carousel = visibleOutfitPosts
             .map((post) => post.isCarousel)
@@ -705,6 +714,9 @@ class _PublicTabContent extends StatelessWidget {
         );
       case ProfileContentTab.saved:
         if (controller.savedPosts.isEmpty) {
+          if (controller.isLoadingMoreSaved.value) {
+            return const _PublicTabLoading();
+          }
           return const _PublicEmptyState(
             title: 'No saved looks visible',
             subtitle: 'There are no saved looks available on this profile.',
@@ -741,12 +753,15 @@ class _PublicTabContent extends StatelessWidget {
             ),
             _PublicPaginationFooter(
               isLoading: controller.isLoadingMoreSaved.value,
-              hasMore: controller.hasMoreOutfits,
+              hasMore: controller.hasMoreSaved,
             ),
           ],
         );
       case ProfileContentTab.food:
         if (controller.foodPosts.isEmpty) {
+          if (controller.isLoadingMoreFood.value) {
+            return const _PublicTabLoading();
+          }
           return const _PublicEmptyState(
             title: 'No food posts yet',
             subtitle: 'This user has not shared any food reviews yet.',
@@ -761,7 +776,7 @@ class _PublicTabContent extends StatelessWidget {
             ),
             _PublicPaginationFooter(
               isLoading: controller.isLoadingMoreFood.value,
-              hasMore: controller.hasMoreOutfits,
+              hasMore: controller.hasMoreFood,
             ),
           ],
         );
@@ -795,7 +810,7 @@ class _PublicTabContent extends StatelessWidget {
     switch (controller.activeTab.value) {
       case ProfileContentTab.outfits:
         return controller.outfitPosts
-            .where((item) => item.primaryImageUrl.trim().isNotEmpty)
+            .where((item) => item.gridImageUrl.trim().isNotEmpty)
             .toList(growable: false);
       case ProfileContentTab.food:
         return controller.foodPosts.toList(growable: false);
@@ -840,6 +855,18 @@ class _PublicPaginationFooter extends StatelessWidget {
       );
     }
     return const SizedBox(height: 8);
+  }
+}
+
+class _PublicTabLoading extends StatelessWidget {
+  const _PublicTabLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 48),
+      child: Center(child: CircularProgressIndicator()),
+    );
   }
 }
 

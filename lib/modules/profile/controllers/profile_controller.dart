@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
@@ -10,8 +11,10 @@ import '../../../core/utils/api_helper.dart';
 import '../../../core/utils/app_helper.dart';
 import '../../../core/utils/local_storage.dart';
 import '../../contest/services/contest_enrollment_store.dart';
+import '../../post/services/post_interaction_store.dart';
 import '../models/profile_model.dart';
 import '../models/style_rating_model.dart';
+import 'saved_post_sync.dart';
 
 class ProfileController extends GetxController {
   static const int _pageSize = 10;
@@ -19,6 +22,7 @@ class ProfileController extends GetxController {
   final Rx<ProfileContentTab> activeTab = ProfileContentTab.outfits.obs;
 
   final ScrollController detailScrollController = ScrollController();
+  Worker? _interactionWorker;
 
   Future<void> scrollToTop() async {
     if (detailScrollController.hasClients &&
@@ -53,6 +57,7 @@ class ProfileController extends GetxController {
   final RxList<ProfilePostModel> foodPosts = <ProfilePostModel>[].obs;
   final Map<int, ProfilePostModel> _localPosts = <int, ProfilePostModel>{};
   final Map<int, ProfilePostModel> _confirmedPosts = <int, ProfilePostModel>{};
+  final Set<ProfileContentTab> _loadedTabs = <ProfileContentTab>{};
 
   void showLocalPost(ProfilePostModel post) {
     _localPosts[post.id] = post;
@@ -229,6 +234,9 @@ class ProfileController extends GetxController {
   void onInit() {
     super.onInit();
     detailScrollController.addListener(_onScroll);
+    _interactionWorker = ever(PostInteractionStore.ensure().revision, (_) {
+      applySavedChange(savedPosts);
+    });
     fetchProfileOverview();
     fetchStyleRating();
   }
@@ -256,6 +264,7 @@ class ProfileController extends GetxController {
 
   @override
   void onClose() {
+    _interactionWorker?.dispose();
     detailScrollController
       ..removeListener(_onScroll)
       ..dispose();
@@ -264,7 +273,14 @@ class ProfileController extends GetxController {
 
   void setTab(ProfileContentTab tab) {
     activeTab.value = tab;
-    Future<void>.delayed(const Duration(milliseconds: 60), loadMoreActiveTab);
+    if (tab == ProfileContentTab.more) {
+      return;
+    }
+    if (_loadedTabs.contains(tab)) {
+      Future<void>.delayed(const Duration(milliseconds: 60), loadMoreActiveTab);
+      return;
+    }
+    unawaited(ensureTabLoaded(tab));
   }
 
   void setWallpaper(String url) {
@@ -284,8 +300,22 @@ class ProfileController extends GetxController {
     errorMessage.value = '';
 
     try {
-      final overview = await _fetchOverviewPage();
-      _applyOverview(overview, replaceAll: true);
+      final tab = forceRefresh && activeTab.value != ProfileContentTab.more
+          ? activeTab.value
+          : ProfileContentTab.outfits;
+      final observedAt = PostInteractionStore.ensure().observedClock;
+      final overview = await _fetchOverviewPage(
+        outfitPage: tab == ProfileContentTab.outfits ? 1 : null,
+        foodPage: tab == ProfileContentTab.food ? 1 : null,
+        savedPage: tab == ProfileContentTab.saved ? 1 : null,
+      );
+      _applyOverview(
+        overview,
+        appendTab: tab,
+        replaceSection: true,
+        savedObservedAt: observedAt,
+      );
+      _loadedTabs.add(tab);
     } catch (error) {
       hasError.value = true;
       errorMessage.value = error.toString().replaceFirst('Exception: ', '');
@@ -325,7 +355,7 @@ class ProfileController extends GetxController {
 
   Future<void> fetchMyImages({bool silent = false}) async {
     try {
-      final overview = await _fetchOverviewPage();
+      final overview = await _fetchOverviewPage(outfitPage: 1);
       _applyUser(overview.user);
     } catch (error) {
       if (!silent) {
@@ -483,6 +513,7 @@ class ProfileController extends GetxController {
 
   Future<void> _loadMoreForTab(ProfileContentTab tab) async {
     _setLoadingMore(tab, true);
+    final observedAt = PostInteractionStore.ensure().observedClock;
     try {
       final overview = await _fetchOverviewPage(
         outfitPage: tab == ProfileContentTab.outfits
@@ -495,7 +526,7 @@ class ProfileController extends GetxController {
             ? savedPagination.value.currentPage + 1
             : null,
       );
-      _applyOverview(overview, appendTab: tab);
+      _applyOverview(overview, appendTab: tab, savedObservedAt: observedAt);
     } catch (error) {
       errorSnackBar(message: error.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -541,39 +572,112 @@ class ProfileController extends GetxController {
     return ProfileOverviewResponseModel.fromMap(payload).overview;
   }
 
+  Future<void> ensureTabLoaded(ProfileContentTab tab) async {
+    if (tab == ProfileContentTab.more || _loadedTabs.contains(tab)) {
+      return;
+    }
+    if (_isSectionLoading(tab)) {
+      return;
+    }
+    _setLoadingMore(tab, true);
+    final observedAt = PostInteractionStore.ensure().observedClock;
+    try {
+      final overview = await _fetchOverviewPage(
+        outfitPage: tab == ProfileContentTab.outfits ? 1 : null,
+        foodPage: tab == ProfileContentTab.food ? 1 : null,
+        savedPage: tab == ProfileContentTab.saved ? 1 : null,
+      );
+      _applyOverview(
+        overview,
+        appendTab: tab,
+        replaceSection: true,
+        savedObservedAt: observedAt,
+      );
+      _loadedTabs.add(tab);
+    } catch (error) {
+      errorSnackBar(message: error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      _setLoadingMore(tab, false);
+    }
+  }
+
+  bool _isSectionLoading(ProfileContentTab tab) {
+    switch (tab) {
+      case ProfileContentTab.outfits:
+        return isLoadingMoreOutfits.value;
+      case ProfileContentTab.saved:
+        return isLoadingMoreSaved.value;
+      case ProfileContentTab.food:
+        return isLoadingMoreFood.value;
+      case ProfileContentTab.more:
+        return false;
+    }
+  }
+
   void _applyOverview(
     ProfileOverviewModel overview, {
     bool replaceAll = false,
     ProfileContentTab? appendTab,
+    bool replaceSection = false,
+    int savedObservedAt = 0,
   }) {
     _applyUser(overview.user);
+    final saved = savedPostsForResponse(
+      overview.savedPosts,
+      observedAt: savedObservedAt,
+    );
 
     if (replaceAll || appendTab == null) {
       outfitPosts.assignAll(overview.outfitPosts);
       foodPosts.assignAll(overview.foodPosts);
-      savedPosts.assignAll(overview.savedPosts);
+      savedPosts.assignAll(saved);
       outfitPagination.value = overview.outfitPagination;
       foodPagination.value = overview.foodPagination;
       savedPagination.value = overview.savedPagination;
+      _loadedTabs
+        ..clear()
+        ..addAll(const [
+          ProfileContentTab.outfits,
+          ProfileContentTab.food,
+          ProfileContentTab.saved,
+        ]);
       _restoreLocalPosts();
       return;
     }
 
     switch (appendTab) {
       case ProfileContentTab.outfits:
-        outfitPosts.addAll(overview.outfitPosts);
+        if (replaceSection) {
+          outfitPosts.assignAll(overview.outfitPosts);
+        } else {
+          outfitPosts.addAll(overview.outfitPosts);
+        }
         outfitPagination.value = overview.outfitPagination;
         break;
       case ProfileContentTab.saved:
-        savedPosts.addAll(overview.savedPosts);
+        if (replaceSection) {
+          savedPosts.assignAll(saved);
+        } else {
+          final existing = savedPosts.map((item) => item.post.id).toSet();
+          savedPosts.addAll(
+            saved.where((item) => !existing.contains(item.post.id)),
+          );
+        }
         savedPagination.value = overview.savedPagination;
         break;
       case ProfileContentTab.food:
-        foodPosts.addAll(overview.foodPosts);
+        if (replaceSection) {
+          foodPosts.assignAll(overview.foodPosts);
+        } else {
+          foodPosts.addAll(overview.foodPosts);
+        }
         foodPagination.value = overview.foodPagination;
         break;
       case ProfileContentTab.more:
         break;
+    }
+    if (replaceSection) {
+      _restoreLocalPosts();
     }
   }
 

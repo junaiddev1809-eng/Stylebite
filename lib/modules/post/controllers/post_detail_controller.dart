@@ -14,6 +14,7 @@ import '../../home/models/home_post_model.dart';
 import '../../reports/api/reports_api.dart';
 import '../models/post_comment_model.dart';
 import '../models/post_detail_model.dart';
+import '../services/post_interaction_store.dart';
 import '../utils/like_toggle.dart';
 import '../utils/rating_math.dart';
 import 'restaurant_review_store.dart';
@@ -35,10 +36,6 @@ class PostDetailController extends GetxController {
   final RxBool hasMoreComments = true.obs;
   final RxBool canVote = false.obs;
   final RxBool isLikeLoading = false.obs;
-  final LikeToggleSync _likeSync = LikeToggleSync();
-  final SaveToggleSync _saveSync = SaveToggleSync();
-  HomePostModel? _likeBaseline;
-  HomePostModel? _saveBaseline;
   final RxBool isSaveLoading = false.obs;
   final RxBool isShareLoading = false.obs;
   final RxBool isVoteLoading = false.obs;
@@ -52,17 +49,24 @@ class PostDetailController extends GetxController {
   int _currentCommentsPage = 0;
   StreamSubscription<ChatPushEvent>? _pushSubscription;
 
+  Worker? _interactionWorker;
+
   @override
   void onInit() {
     super.onInit();
     commentsScrollController.addListener(_onCommentsScroll);
     _pushSubscription = ChatEventBus.instance.stream.listen(_handlePushEvent);
+    post.value = PostInteractionStore.ensure().presentHome(post.value);
+    _interactionWorker = ever(PostInteractionStore.ensure().revision, (_) {
+      _applySharedInteraction();
+    });
     RestaurantReviewStore.instance.ingestPosts(<HomePostModel>[post.value]);
     fetchDetail();
   }
 
   @override
   void onClose() {
+    _interactionWorker?.dispose();
     commentsScrollController
       ..removeListener(_onCommentsScroll)
       ..dispose();
@@ -77,15 +81,20 @@ class PostDetailController extends GetxController {
     hasError.value = false;
 
     try {
+      final observedAt = PostInteractionStore.ensure().observedClock;
       final detail = await _fetchDetailResponse();
       if (detail == null) {
         return;
       }
 
-      post.value = detail.post;
+      final shown = PostInteractionStore.ensure().ingestHome(
+        detail.post,
+        observedAt: observedAt,
+      );
+      post.value = shown;
       canVote.value = detail.canVote;
-      _syncHomeFeedPost(detail.post);
-      RestaurantReviewStore.instance.ingestPosts(<HomePostModel>[detail.post]);
+      _syncHomeFeedPost(shown);
+      RestaurantReviewStore.instance.ingestPosts(<HomePostModel>[shown]);
       unawaited(
         RestaurantReviewStore.instance.ensureRestaurantLoaded(detail.post),
       );
@@ -154,86 +163,30 @@ class PostDetailController extends GetxController {
 
   Future<void> toggleLike() async {
     final current = post.value;
-    _likeBaseline ??= current;
-    final nextLiked = !current.isLiked;
-    final currentCount = parseLikeCount(current.likes);
-    final nextCount = nextLiked
-        ? currentCount + 1
-        : (currentCount > 0 ? currentCount - 1 : 0);
-    _applyLikedPost(
-      current.copyWith(
-        isLiked: nextLiked,
-        likes: formatLikeCount(nextCount),
-      ),
-    );
-
-    _likeSync.run(
-      id: postId,
-      endpoint: 'feed/posts/$postId/like',
-      desiredLiked: () => post.value.isLiked,
-      onConfirmed: (result) {
-        _likeBaseline = null;
-        _applyLikedPost(
-          post.value.copyWith(
-            isLiked: result.isLiked,
-            likes: result.likeCount == null
-                ? post.value.likes
-                : formatLikeCount(result.likeCount!),
-          ),
-        );
-      },
-      onError: (error) {
-        final saved = _likeBaseline;
-        _likeBaseline = null;
-        if (saved != null) {
-          _applyLikedPost(saved);
-        }
-        errorSnackBar(
-          message: error.toString().replaceFirst('Exception: ', ''),
-        );
-      },
+    final shared = PostInteractionStore.ensure().stateFor(postId);
+    PostInteractionStore.ensure().toggleLike(
+      postId: postId,
+      isLiked: shared?.isLiked ?? current.isLiked,
+      likeCount: shared?.likeCount ?? parseLikeCount(current.likes),
+      isSaved: current.isSaved,
+      saveCount: current.saveCount,
     );
   }
 
-  void _applyLikedPost(HomePostModel updated) {
-    post.value = updated;
-    _syncHomeFeedPost(updated);
+  void _applySharedInteraction() {
+    post.value = PostInteractionStore.ensure().presentHome(post.value);
   }
 
   void toggleSave() {
     final current = post.value;
-    _saveBaseline ??= current;
-    final nextSaved = !current.isSaved;
-    final nextCount = nextSaved
-        ? current.saveCount + 1
-        : (current.saveCount > 0 ? current.saveCount - 1 : 0);
-    _applyLikedPost(
-      current.copyWith(isSaved: nextSaved, saveCount: nextCount),
-    );
-
-    _saveSync.run(
-      id: postId,
-      endpoint: 'feed/posts/$postId/save',
-      desiredSaved: () => post.value.isSaved,
-      onConfirmed: (isSaved, saveCount) {
-        _saveBaseline = null;
-        _applyLikedPost(
-          post.value.copyWith(
-            isSaved: isSaved,
-            saveCount: saveCount ?? post.value.saveCount,
-          ),
-        );
-      },
-      onError: (error) {
-        final saved = _saveBaseline;
-        _saveBaseline = null;
-        if (saved != null) {
-          _applyLikedPost(saved);
-        }
-        errorSnackBar(
-          message: error.toString().replaceFirst('Exception: ', ''),
-        );
-      },
+    final shared = PostInteractionStore.ensure().stateFor(postId);
+    PostInteractionStore.ensure().toggleSave(
+      postId: postId,
+      isSaved: shared?.isSaved ?? current.isSaved,
+      saveCount: shared?.saveCount ?? current.saveCount,
+      isLiked: current.isLiked,
+      likeCount: parseLikeCount(current.likes),
+      draft: SavedPostDraft.fromHome(current),
     );
   }
 

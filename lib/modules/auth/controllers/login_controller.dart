@@ -16,6 +16,7 @@ import 'package:stylebite/core/utils/app_session.dart';
 import 'package:stylebite/core/utils/deep_link_service.dart';
 
 import '../../../app/routes/app_routes.dart';
+import '../../post/services/post_interaction_store.dart';
 import '../models/login_credentials_model.dart';
 
 class LoginController extends GetxController {
@@ -262,6 +263,7 @@ class LoginController extends GetxController {
       } else {
         LocalStorage.getUsername();
       }
+      PostInteractionStore.ensure().bindCurrentUser();
       await AppSession.attachRealtimeIfNeeded();
       unawaited(AppDeviceService.syncPushToken());
 

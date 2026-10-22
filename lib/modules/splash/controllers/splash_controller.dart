@@ -11,6 +11,7 @@ import 'package:stylebite/core/utils/push_notification_service.dart';
 
 import '../../../app/routes/app_routes.dart';
 import '../../home/controllers/home_controller.dart';
+import '../../post/services/post_interaction_store.dart';
 import '../../reel/controllers/reel_controller.dart';
 import '../models/splash_model.dart';
 
@@ -121,6 +122,7 @@ class SplashController extends GetxController {
     await LocalStorage.removeUsername();
     await LocalStorage.removeUserId();
     await LocalStorage.removeAvatarUrl();
+    PostInteractionStore.ensure().clear();
     if (Get.currentRoute == AppRoutes.login) {
       return;
     }

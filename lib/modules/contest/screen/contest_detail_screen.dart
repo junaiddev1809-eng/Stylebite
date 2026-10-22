@@ -20,7 +20,7 @@ import '../../../core/widgets/app_media_source_sheet.dart';
 import '../../../core/widgets/app_cached_image.dart';
 import '../../../core/widgets/states/app_empty_state.dart';
 import '../../home/models/home_post_model.dart';
-import '../../post/utils/like_toggle.dart';
+import '../../post/services/post_interaction_store.dart';
 import '../../post/utils/rating_math.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../../profile/models/profile_model.dart';
@@ -47,15 +47,8 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
   late final ContestController _controller;
   late final int _contestId;
   Timer? _liveRefreshTimer;
+  Worker? _interactionWorker;
   final Set<String> _participantLikeLoadingIds = <String>{};
-  final LikeToggleSync _likeSync = LikeToggleSync();
-  final SaveToggleSync _saveSync = SaveToggleSync();
-  final Map<String, bool> _likeBaselineLiked = {};
-  final Map<String, int> _likeBaselineCount = {};
-  final Map<String, bool> _participantLikedOverrides = <String, bool>{};
-  final Map<String, int> _participantLikeCounts = <String, int>{};
-  final Map<String, bool> _saveBaseline = {};
-  final Map<String, bool> _participantSavedOverrides = <String, bool>{};
   final Set<String> _participantShareLoadingIds = <String>{};
   // Viewer's own rating per submission id — set optimistically on tap so the
   // selector reflects the given score immediately, then kept in sync with
@@ -94,6 +87,11 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
       _participantQuery.value = participantQuery;
     }
     if (_contestId > 0) {
+      _interactionWorker = ever(PostInteractionStore.ensure().revision, (_) {
+        if (mounted) {
+          setState(() {});
+        }
+      });
       _controller.fetchDetail(_contestId);
       _liveRefreshTimer = Timer.periodic(const Duration(seconds: 20), (_) {
         if (!mounted) {
@@ -106,6 +104,7 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
 
   @override
   void dispose() {
+    _interactionWorker?.dispose();
     _liveRefreshTimer?.cancel();
     _participantSearchController.dispose();
     super.dispose();
@@ -755,7 +754,10 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
     final count = _voteCountOverrides[submission.id] ?? submission.totalVotes;
     final average =
         _ratingAverageOverrides[submission.id] ?? submission.ratingAverage;
-    final likes = _participantLikeCounts[postId] ?? submission.likeCount;
+    final store = PostInteractionStore.ensure();
+    final likes = store.hasLike(postId)
+        ? (store.stateFor(postId)?.likeCount ?? submission.likeCount)
+        : submission.likeCount;
     final nextAverage = nextRatingAverage(
       average: average,
       count: count,
@@ -973,105 +975,29 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
     ContestDetailModel contest,
   ) {
     final base = _toPost(submission, contest);
-    final postId = base.id;
-    return base.copyWith(
-      isLiked: _participantLikedOverrides[postId] ?? base.isLiked,
-      likes: (_participantLikeCounts[postId] ?? submission.likeCount)
-          .toString(),
-      isSaved: _participantSavedOverrides[postId] ?? base.isSaved,
-    );
+    return PostInteractionStore.ensure().presentHome(base);
   }
 
   Future<void> _toggleParticipantLike(HomePostModel post) async {
-    final postId = post.id;
-    final previousLiked = _participantLikedOverrides[postId] ?? post.isLiked;
-    final previousCount =
-        _participantLikeCounts[postId] ?? int.tryParse(post.likes) ?? 0;
-    _likeBaselineLiked.putIfAbsent(postId, () => previousLiked);
-    _likeBaselineCount.putIfAbsent(postId, () => previousCount);
-    final nextLiked = !previousLiked;
-    final nextCount = nextLiked
-        ? previousCount + 1
-        : (previousCount > 0 ? previousCount - 1 : 0);
-
-    setState(() {
-      _participantLikedOverrides[postId] = nextLiked;
-      _participantLikeCounts[postId] = nextCount;
-    });
-
-    _likeSync.run(
-      id: postId,
-      endpoint: 'feed/posts/$postId/like',
-      desiredLiked: () => _participantLikedOverrides[postId] ?? nextLiked,
-      onConfirmed: (result) {
-        if (!mounted) {
-          return;
-        }
-        _likeBaselineLiked.remove(postId);
-        _likeBaselineCount.remove(postId);
-        setState(() {
-          _participantLikedOverrides[postId] = result.isLiked;
-          if (result.likeCount != null) {
-            _participantLikeCounts[postId] = result.likeCount!;
-          }
-        });
-      },
-      onError: (error) {
-        if (!mounted) {
-          return;
-        }
-        final liked = _likeBaselineLiked.remove(postId);
-        final count = _likeBaselineCount.remove(postId);
-        setState(() {
-          if (liked != null) {
-            _participantLikedOverrides[postId] = liked;
-          }
-          if (count != null) {
-            _participantLikeCounts[postId] = count;
-          }
-        });
-        errorSnackBar(
-          message: error.toString().replaceFirst('Exception: ', ''),
-        );
-      },
+    final shared = PostInteractionStore.ensure().stateFor(post.id);
+    PostInteractionStore.ensure().toggleLike(
+      postId: post.id,
+      isLiked: shared?.isLiked ?? post.isLiked,
+      likeCount: shared?.likeCount ?? int.tryParse(post.likes) ?? 0,
+      isSaved: post.isSaved,
+      saveCount: post.saveCount,
     );
   }
 
   void _toggleParticipantSave(HomePostModel post) {
-    final postId = post.id;
-    final previousSaved = _participantSavedOverrides[postId] ?? post.isSaved;
-    _saveBaseline.putIfAbsent(postId, () => previousSaved);
-    setState(() {
-      _participantSavedOverrides[postId] = !previousSaved;
-    });
-
-    _saveSync.run(
-      id: postId,
-      endpoint: 'feed/posts/$postId/save',
-      desiredSaved: () => _participantSavedOverrides[postId] ?? !previousSaved,
-      onConfirmed: (isSaved, _) {
-        if (!mounted) {
-          return;
-        }
-        _saveBaseline.remove(postId);
-        setState(() {
-          _participantSavedOverrides[postId] = isSaved;
-        });
-      },
-      onError: (error) {
-        if (!mounted) {
-          return;
-        }
-        final saved = _saveBaseline.remove(postId);
-        setState(() {
-          if (saved != null) {
-            _participantSavedOverrides[postId] = saved;
-          }
-        });
-        errorSnackBar(
-          message: error.toString().replaceFirst('Exception: ', ''),
-        );
-      },
+    final shared = PostInteractionStore.ensure().stateFor(post.id);
+    PostInteractionStore.ensure().toggleSave(
+      postId: post.id,
+      isSaved: shared?.isSaved ?? post.isSaved,
+      saveCount: shared?.saveCount ?? post.saveCount,
+      isLiked: post.isLiked,
+      likeCount: int.tryParse(post.likes) ?? 0,
+      draft: SavedPostDraft.fromHome(post),
     );
   }
 

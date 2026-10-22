@@ -12,6 +12,7 @@ import '../../contest/services/contest_enrollment_store.dart';
 import '../../home/controllers/home_controller.dart';
 import '../../home/models/home_post_model.dart';
 import '../../post/controllers/restaurant_review_store.dart';
+import '../../post/services/post_interaction_store.dart';
 import '../../post/utils/like_toggle.dart';
 import '../../post/utils/rating_math.dart';
 import '../../post/utils/post_detail_open_helper.dart';
@@ -32,7 +33,11 @@ class ProfilePostsFeedController extends GetxController {
     required bool initialHasMore,
   }) : selectedPostId = selectedPostId.obs,
        _currentPage = initialPage {
-    posts.assignAll(initialPosts);
+    final store = PostInteractionStore.ensure();
+    posts.assignAll(initialPosts.map(store.presentHome));
+    for (final post in posts) {
+      store.rememberDraft(SavedPostDraft.fromHome(post));
+    }
     hasMore.value = initialHasMore;
     for (final post in initialPosts) {
       selectedRatings[post.id] =
@@ -55,10 +60,7 @@ class ProfilePostsFeedController extends GetxController {
   final RxSet<String> saveLoadingIds = <String>{}.obs;
   final RxSet<String> shareLoadingIds = <String>{}.obs;
   final RxSet<String> voteLoadingIds = <String>{}.obs;
-  final LikeToggleSync _likeSync = LikeToggleSync();
-  final SaveToggleSync _saveSync = SaveToggleSync();
-  final Map<String, HomePostModel> _likeBaseline = {};
-  final Map<String, HomePostModel> _saveBaseline = {};
+  Worker? _interactionWorker;
   final RxBool isLoadingMore = false.obs;
   final RxBool hasMore = false.obs;
 
@@ -92,12 +94,19 @@ class ProfilePostsFeedController extends GetxController {
   void onInit() {
     super.onInit();
     scrollController.addListener(_onScroll);
+    _interactionWorker = ever(PostInteractionStore.ensure().revision, (_) {
+      final id = PostInteractionStore.ensure().lastChangedId;
+      if (id != null) {
+        _applySharedInteraction(id);
+      }
+    });
     RestaurantReviewStore.instance.ingestPosts(posts);
     unawaited(_hydrateVisiblePosts());
   }
 
   @override
   void onClose() {
+    _interactionWorker?.dispose();
     scrollController
       ..removeListener(_onScroll)
       ..dispose();
@@ -115,47 +124,13 @@ class ProfilePostsFeedController extends GetxController {
     if (currentPost == null) {
       return;
     }
-
-    _likeBaseline.putIfAbsent(postId, () => currentPost);
-    final nextLiked = !currentPost.isLiked;
-    final nextLikeCount = nextLiked
-        ? _parseCount(currentPost.likes) + 1
-        : math.max(_parseCount(currentPost.likes) - 1, 0);
-    _replacePost(
-      currentPost.copyWith(
-        isLiked: nextLiked,
-        likes: _formatCount(nextLikeCount),
-      ),
-    );
-
-    _likeSync.run(
-      id: postId,
-      endpoint: 'feed/posts/$postId/like',
-      desiredLiked: () => _findPost(postId)?.isLiked ?? nextLiked,
-      onConfirmed: (result) {
-        _likeBaseline.remove(postId);
-        final latest = _findPost(postId);
-        if (latest == null) {
-          return;
-        }
-        _replacePost(
-          latest.copyWith(
-            isLiked: result.isLiked,
-            likes: result.likeCount == null
-                ? latest.likes
-                : _formatCount(result.likeCount!),
-          ),
-        );
-      },
-      onError: (error) {
-        final saved = _likeBaseline.remove(postId);
-        if (saved != null) {
-          _replacePost(saved);
-        }
-        errorSnackBar(
-          message: error.toString().replaceFirst('Exception: ', ''),
-        );
-      },
+    final shared = PostInteractionStore.ensure().stateFor(postId);
+    PostInteractionStore.ensure().toggleLike(
+      postId: postId,
+      isLiked: shared?.isLiked ?? currentPost.isLiked,
+      likeCount: shared?.likeCount ?? parseLikeCount(currentPost.likes),
+      isSaved: currentPost.isSaved,
+      saveCount: currentPost.saveCount,
     );
   }
 
@@ -167,43 +142,23 @@ class ProfilePostsFeedController extends GetxController {
     if (currentPost == null) {
       return;
     }
-
-    _saveBaseline.putIfAbsent(postId, () => currentPost);
-    final nextSaved = !currentPost.isSaved;
-    final nextCount = nextSaved
-        ? currentPost.saveCount + 1
-        : math.max(currentPost.saveCount - 1, 0);
-    _replacePost(
-      currentPost.copyWith(isSaved: nextSaved, saveCount: nextCount),
+    final shared = PostInteractionStore.ensure().stateFor(postId);
+    PostInteractionStore.ensure().toggleSave(
+      postId: postId,
+      isSaved: shared?.isSaved ?? currentPost.isSaved,
+      saveCount: shared?.saveCount ?? currentPost.saveCount,
+      isLiked: currentPost.isLiked,
+      likeCount: parseLikeCount(currentPost.likes),
+      draft: SavedPostDraft.fromHome(currentPost),
     );
+  }
 
-    _saveSync.run(
-      id: postId,
-      endpoint: 'feed/posts/$postId/save',
-      desiredSaved: () => _findPost(postId)?.isSaved ?? nextSaved,
-      onConfirmed: (isSaved, saveCount) {
-        _saveBaseline.remove(postId);
-        final latest = _findPost(postId);
-        if (latest == null) {
-          return;
-        }
-        _replacePost(
-          latest.copyWith(
-            isSaved: isSaved,
-            saveCount: saveCount ?? latest.saveCount,
-          ),
-        );
-      },
-      onError: (error) {
-        final saved = _saveBaseline.remove(postId);
-        if (saved != null) {
-          _replacePost(saved);
-        }
-        errorSnackBar(
-          message: error.toString().replaceFirst('Exception: ', ''),
-        );
-      },
-    );
+  void _applySharedInteraction(String postId) {
+    final current = _findPost(postId);
+    if (current == null) {
+      return;
+    }
+    _replacePost(PostInteractionStore.ensure().presentHome(current));
   }
 
   Future<void> sharePost(String postId, {required String shareChannel}) async {
@@ -391,9 +346,17 @@ class ProfilePostsFeedController extends GetxController {
 
     _isFetchingMore = true;
     isLoadingMore.value = true;
+    final observedAt = PostInteractionStore.ensure().observedClock;
     try {
       final overview = await _fetchOverviewPage(_currentPage + 1);
-      final incoming = _postsFromOverview(overview);
+      final incoming = _postsFromOverview(overview)
+          .map(
+            (post) => PostInteractionStore.ensure().ingestHome(
+              post,
+              observedAt: observedAt,
+            ),
+          )
+          .toList(growable: false);
       final existingIds = posts.map((post) => post.id).toSet();
       final additions = incoming
           .where((post) => !existingIds.contains(post.id))
@@ -444,11 +407,14 @@ class ProfilePostsFeedController extends GetxController {
     if (_isPendingPost(postId)) {
       return;
     }
+    final observedAt = PostInteractionStore.ensure().observedClock;
     final updated = await PostDetailOpenHelper.fetchPost(postId);
     if (updated == null) {
       return;
     }
-    final merged = _replacePost(updated);
+    final merged = _replacePost(
+      PostInteractionStore.ensure().ingestHome(updated, observedAt: observedAt),
+    );
     if (Get.isRegistered<HomeController>()) {
       Get.find<HomeController>().upsertPost(merged);
     }
@@ -578,35 +544,5 @@ class ProfilePostsFeedController extends GetxController {
     selectedRatings[merged.id] = merged.defaultSelectedRate;
     posts.refresh();
     return merged;
-  }
-
-  int _parseCount(String value) {
-    final normalized = value.trim().toLowerCase().replaceAll(',', '');
-    if (normalized.isEmpty) {
-      return 0;
-    }
-    final multiplier = normalized.endsWith('k')
-        ? 1000
-        : normalized.endsWith('m')
-        ? 1000000
-        : 1;
-    final raw = multiplier == 1
-        ? normalized
-        : normalized.substring(0, normalized.length - 1);
-    final parsed = double.tryParse(raw);
-    if (parsed == null) {
-      return 0;
-    }
-    return (parsed * multiplier).round();
-  }
-
-  String _formatCount(int value) {
-    if (value >= 1000000) {
-      return '${(value / 1000000).toStringAsFixed(value % 1000000 == 0 ? 0 : 1)}m';
-    }
-    if (value >= 1000) {
-      return '${(value / 1000).toStringAsFixed(value % 1000 == 0 ? 0 : 1)}k';
-    }
-    return value.toString();
   }
 }

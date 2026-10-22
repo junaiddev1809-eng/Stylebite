@@ -75,7 +75,7 @@ class _FoodCard extends StatelessWidget {
             AspectRatio(
               aspectRatio: 4 / 3,
               child: AppCachedImage(
-                imageUrl: item.primaryImageUrl,
+                imageUrl: item.gridImageUrl,
                 borderRadius: BorderRadius.circular(12),
                 fit: BoxFit.cover,
               ),

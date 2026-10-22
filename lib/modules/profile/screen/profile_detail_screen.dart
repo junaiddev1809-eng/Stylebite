@@ -151,6 +151,9 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     switch (_controller.activeTab.value) {
       case ProfileContentTab.outfits:
         if (_controller.outfitPosts.isEmpty) {
+          if (_controller.isLoadingMoreOutfits.value) {
+            return const _ProfileTabLoading();
+          }
           return const _ProfileTabEmptyState(
             title: 'No outfit posts yet',
             subtitle: 'Your outfit posts will appear here.',
@@ -163,14 +166,14 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         // out of sync, so tapping tile N could open the wrong post once any
         // earlier post had no displayable image.
         final visibleOutfitPosts = _controller.outfitPosts
-            .where((post) => post.primaryImageUrl.trim().isNotEmpty)
+            .where((post) => post.gridImageUrl.trim().isNotEmpty)
             .where(
               (post) =>
                   !StoryMarker.isStory(tags: post.tags, caption: post.caption),
             )
             .toList(growable: false);
         final images = visibleOutfitPosts
-            .map((post) => post.primaryImageUrl)
+            .map((post) => post.gridImageUrl)
             .toList(growable: false);
         final carousel = visibleOutfitPosts
             .map((post) => post.isCarousel)
@@ -192,6 +195,9 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         );
       case ProfileContentTab.food:
         if (_controller.foodPosts.isEmpty) {
+          if (_controller.isLoadingMoreFood.value) {
+            return const _ProfileTabLoading();
+          }
           return const _ProfileTabEmptyState(
             title: 'No food posts yet',
             subtitle: 'Your food reviews and snapshots will show up here.',
@@ -213,6 +219,9 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
         );
       case ProfileContentTab.saved:
         if (_controller.savedPosts.isEmpty) {
+          if (_controller.isLoadingMoreSaved.value) {
+            return const _ProfileTabLoading();
+          }
           return const _ProfileTabEmptyState(
             title: 'No saved looks yet',
             subtitle:
@@ -378,7 +387,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     switch (_controller.activeTab.value) {
       case ProfileContentTab.outfits:
         return _controller.outfitPosts
-            .where((item) => item.primaryImageUrl.trim().isNotEmpty)
+            .where((item) => item.gridImageUrl.trim().isNotEmpty)
             .toList(growable: false);
       case ProfileContentTab.food:
         return _controller.foodPosts.toList(growable: false);
@@ -1344,6 +1353,18 @@ class _PaginationFooter extends StatelessWidget {
       );
     }
     return const SizedBox(height: 8);
+  }
+}
+
+class _ProfileTabLoading extends StatelessWidget {
+  const _ProfileTabLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 48),
+      child: Center(child: CircularProgressIndicator()),
+    );
   }
 }
 

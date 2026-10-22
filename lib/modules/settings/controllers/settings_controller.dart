@@ -11,6 +11,7 @@ import 'package:stylebite/modules/messages/services/chat_socket_service.dart';
 
 import '../../../app/routes/app_routes.dart';
 import '../../profile/controllers/profile_controller.dart';
+import '../../post/services/post_interaction_store.dart';
 
 class SettingsController extends GetxController {
   late final ProfileController profileController;
@@ -138,6 +139,7 @@ class SettingsController extends GetxController {
     await ChatPresenceService.instance.markOffline();
     await ChatSocketService.instance.disconnect();
     await _revokeSession();
+    PostInteractionStore.ensure().clear();
     await LocalStorage.removeAccessKey();
     await LocalStorage.removeUsername();
     await LocalStorage.removeUserId();

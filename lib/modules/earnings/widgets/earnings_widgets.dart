@@ -211,14 +211,18 @@ class EarningsBreakdownTile extends StatelessWidget {
               ),
               Text(
                 _humanize(
-                  item.amountDirection.isEmpty
-                      ? item.status
-                      : item.amountDirection,
+                  item.status.trim().toLowerCase() == 'pending'
+                      ? 'pending_approval'
+                      : (item.amountDirection.isEmpty
+                          ? item.status
+                          : item.amountDirection),
                 ),
                 style: AppFonts.beVietnam(
                   size: 9,
                   weight: FontWeight.w600,
-                  color: AppColors.hintText,
+                  color: item.status.trim().toLowerCase() == 'pending'
+                      ? AppColors.primary
+                      : AppColors.hintText,
                   letterSpacing: 0.8,
                 ),
               ),

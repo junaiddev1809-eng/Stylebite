@@ -100,6 +100,7 @@ class MyEarningsScreen extends StatelessWidget {
                           const SizedBox(height: 14),
                           _BalanceHero(
                             balanceLabel: _controller.availableBalanceDisplay,
+                            pendingLabel: _controller.pendingBalanceDisplay,
                             onWithdraw: () =>
                                 Get.to<void>(() => WithdrawRequestScreen()),
                           ),
@@ -514,9 +515,14 @@ class _EligibilityShimmer extends StatelessWidget {
 }
 
 class _BalanceHero extends StatelessWidget {
-  const _BalanceHero({required this.balanceLabel, required this.onWithdraw});
+  const _BalanceHero({
+    required this.balanceLabel,
+    required this.pendingLabel,
+    required this.onWithdraw,
+  });
 
   final String balanceLabel;
+  final String pendingLabel;
   final VoidCallback onWithdraw;
 
   @override
@@ -557,6 +563,15 @@ class _BalanceHero extends StatelessWidget {
                 weight: FontWeight.w800,
                 color: AppColors.text,
               ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Pending Earnings: $pendingLabel',
+            style: AppFonts.beVietnam(
+              size: 13,
+              weight: FontWeight.w600,
+              color: AppColors.hintText,
             ),
           ),
           const SizedBox(height: 18),

@@ -35,7 +35,9 @@ class _ProfileSwipeScreenState extends State<ProfileSwipeScreen> {
   void _openDetails() {
     if (_opened) return;
     _opened = true;
-    Navigator.of(context)
+    // Use the root navigator so ProfileDetail covers Landing (including the
+    // bottom bar). A nested push would leave LandingBottomNav visible.
+    Navigator.of(context, rootNavigator: true)
         .push<void>(ProfilePageTransition.to(const ProfileDetailScreen()))
         .whenComplete(() {
       FocusManager.instance.primaryFocus?.unfocus();

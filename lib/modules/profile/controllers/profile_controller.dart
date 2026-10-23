@@ -70,6 +70,10 @@ class ProfileController extends GetxController {
     _localPosts.remove(localId);
     outfitPosts.removeWhere((post) => post.id == localId);
     foodPosts.removeWhere((post) => post.id == localId);
+    _evictLocalsMatching(serverPost);
+    // Avoid leaving a refreshed server copy and the confirmed pin as two rows.
+    outfitPosts.removeWhere((post) => post.id == serverPost.id);
+    foodPosts.removeWhere((post) => post.id == serverPost.id);
     _confirmedPosts[serverPost.id] = serverPost;
     _placeLocalPost(serverPost);
   }
@@ -80,6 +84,27 @@ class ProfileController extends GetxController {
     foodPosts.removeWhere((post) => post.id == localId);
   }
 
+  String _optimisticFingerprint(ProfilePostModel post) {
+    return [
+      post.postType.trim().toLowerCase(),
+      post.mediaKind.trim().toLowerCase(),
+      post.caption.trim().toLowerCase(),
+    ].join('|');
+  }
+
+  void _evictLocalsMatching(ProfilePostModel confirmed) {
+    final fingerprint = _optimisticFingerprint(confirmed);
+    final staleIds = _localPosts.entries
+        .where((entry) => _optimisticFingerprint(entry.value) == fingerprint)
+        .map((entry) => entry.key)
+        .toList(growable: false);
+    for (final id in staleIds) {
+      _localPosts.remove(id);
+      outfitPosts.removeWhere((post) => post.id == id);
+      foodPosts.removeWhere((post) => post.id == id);
+    }
+  }
+
   void _placeLocalPost(ProfilePostModel post) {
     final list = post.postType == 'food' ? foodPosts : outfitPosts;
     list.removeWhere((item) => item.id == post.id);
@@ -87,7 +112,23 @@ class ProfileController extends GetxController {
   }
 
   void _restoreLocalPosts() {
-    for (final post in _localPosts.values) {
+    // Drop optimistic rows when the overview already includes the real post.
+    for (final post in [...outfitPosts, ...foodPosts]) {
+      if (post.id >= 0) {
+        _evictLocalsMatching(post);
+      }
+    }
+    for (final post in _localPosts.values.toList(growable: false)) {
+      final list = post.postType == 'food' ? foodPosts : outfitPosts;
+      final fingerprint = _optimisticFingerprint(post);
+      final alreadyConfirmed = list.any(
+        (item) =>
+            item.id >= 0 && _optimisticFingerprint(item) == fingerprint,
+      );
+      if (alreadyConfirmed) {
+        _localPosts.remove(post.id);
+        continue;
+      }
       _placeLocalPost(post);
     }
     final confirmed = _confirmedPosts.values.toList(growable: false);

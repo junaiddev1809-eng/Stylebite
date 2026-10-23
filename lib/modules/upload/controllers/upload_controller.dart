@@ -423,6 +423,10 @@ class UploadController extends GetxController {
 
       final created = payload['post'];
       if (created is! Map) {
+        // Keep a single card: drop the optimistic row if the API did not
+        // return a post payload we can swap in.
+        _removeLocalPost(localId, profileLocalId, showOnFeed: showOnFeed);
+        successSnackBar(message: 'Post uploaded');
         return;
       }
       final map = Map<String, dynamic>.from(created);
@@ -452,6 +456,7 @@ class UploadController extends GetxController {
           sourcePaths: paths,
         );
       }
+      successSnackBar(message: 'Post uploaded');
     } catch (error) {
       _removeLocalPost(localId, profileLocalId, showOnFeed: showOnFeed);
       errorSnackBar(message: error.toString().replaceFirst('Exception: ', ''));

@@ -59,13 +59,18 @@ class ReelOpenHelper {
     required bool hasMore,
   }) {
     final seed = fromPost(selected);
+    // Keep profile grid order, including the tapped reel, so scroll up/down
+    // walks neighboring reels instead of forcing the selected item to index 0.
     final seeds = <ReelItemModel>[];
-    final seen = <String>{seed.id};
+    final seen = <String>{};
     for (final post in authorPosts) {
       if (!isReel(post) || !seen.add(post.id)) {
         continue;
       }
       seeds.add(fromPost(post));
+    }
+    if (!seen.contains(seed.id)) {
+      seeds.insert(0, seed);
     }
     openViewer(
       seed: seed,
@@ -99,7 +104,12 @@ class ReelOpenHelper {
       tag: tag,
     );
     Get.to<void>(
-      () => ReelScreen(controllerTag: tag, viewerMode: true),
+      () => ReelScreen(
+        controllerTag: tag,
+        viewerMode: true,
+        // Profile-originated viewers should not show the landing bottom bar.
+        showBottomNav: authorScope == null,
+      ),
     );
   }
 

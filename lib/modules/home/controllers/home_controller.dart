@@ -90,7 +90,15 @@ class HomeController extends GetxController {
   void replaceLocalPost(String localId, HomePostModel serverPost) {
     _localPosts.remove(localId);
     _dropPostId(localId);
+    // Drop any copy that already arrived via refresh so we never pin + keep
+    // the same server id as two rows.
+    _dropPostId(serverPost.id);
+    _pinnedPosts.removeWhere(
+      (id, post) =>
+          id == serverPost.id || _optimisticFingerprint(post) == _optimisticFingerprint(serverPost),
+    );
     _pinnedPosts[serverPost.id] = serverPost;
+    _evictLocalsMatching(serverPost);
     if (serverPost.feedType != selectedFeedType.value) {
       return;
     }
@@ -101,6 +109,30 @@ class HomeController extends GetxController {
     _localPosts.remove(localId);
     _dropPostId(localId);
     _publishVisiblePosts(List<HomePostModel>.from(visiblePosts));
+  }
+
+  String _optimisticFingerprint(HomePostModel post) {
+    final user = post.profileUsername.trim().isNotEmpty
+        ? post.profileUsername.trim().toLowerCase()
+        : post.username.trim().toLowerCase();
+    return [
+      post.feedType.name,
+      post.mediaType.name,
+      post.caption.trim().toLowerCase(),
+      user,
+    ].join('|');
+  }
+
+  void _evictLocalsMatching(HomePostModel confirmed) {
+    final fingerprint = _optimisticFingerprint(confirmed);
+    final staleIds = _localPosts.entries
+        .where((entry) => _optimisticFingerprint(entry.value) == fingerprint)
+        .map((entry) => entry.key)
+        .toList(growable: false);
+    for (final id in staleIds) {
+      _localPosts.remove(id);
+      _dropPostId(id);
+    }
   }
 
   void _dropPostId(String postId) {
@@ -999,7 +1031,15 @@ class HomeController extends GetxController {
   }
 
   void _publishVisiblePosts(List<HomePostModel> posts) {
-    final incomingIds = posts.map((post) => post.id).toSet();
+    final confirmed = posts
+        .where((post) => !_isPendingPost(post.id))
+        .toList(growable: false);
+    // When the API already returned the real post, drop the optimistic twin.
+    for (final post in confirmed) {
+      _evictLocalsMatching(post);
+    }
+
+    final incomingIds = confirmed.map((post) => post.id).toSet();
     _pinnedPosts.removeWhere((id, post) => incomingIds.contains(id));
     final locals = _localPosts.values
         .where((post) => post.feedType == selectedFeedType.value)
@@ -1014,8 +1054,10 @@ class HomeController extends GetxController {
     final merged = <HomePostModel>[
       ...locals,
       ...pinned,
-      ...posts.where((post) => !_localPosts.containsKey(post.id)),
+      ...confirmed.where((post) => !_localPosts.containsKey(post.id)),
     ];
+    final seenIds = <String>{};
+    merged.retainWhere((post) => seenIds.add(post.id));
     final store = PostInteractionStore.ensure();
     _publishedPosts = merged.map(store.presentHome).toList(growable: false);
     for (final post in _publishedPosts) {

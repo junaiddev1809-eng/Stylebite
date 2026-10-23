@@ -8,6 +8,7 @@ import 'package:video_player/video_player.dart';
 import '../media/shared_video_mute.dart';
 import '../media/video_cache_service.dart';
 import 'app_cached_image.dart';
+import 'app_video_seek_bar.dart';
 
 enum AppVideoControlsPosition { topLeft, topRight }
 
@@ -39,6 +40,7 @@ class AppCachedVideoPlayer extends StatefulWidget {
     this.borderRadius,
     this.deferInitUntilActive = false,
     this.showLoadingIndicator = true,
+    this.fit = BoxFit.cover,
   });
 
   final String videoUrl;
@@ -55,6 +57,9 @@ class AppCachedVideoPlayer extends StatefulWidget {
   final bool showPausedOverlayOnly;
   final bool showProgressBar;
   final AppVideoControlsPosition controlsPosition;
+  /// How the decoded video fills its parent. Feed cards keep [BoxFit.cover];
+  /// fullscreen reels use [BoxFit.contain] so the native ratio is not cropped.
+  final BoxFit fit;
   final bool? isMuted;
 
   /// When true, this player follows [SharedVideoMute] instead of its own
@@ -388,11 +393,11 @@ class _AppCachedVideoPlayerState extends State<AppCachedVideoPlayer>
   Widget _coverThumbnail() {
     final thumbnailUrl = widget.thumbnailUrl?.trim() ?? '';
     if (thumbnailUrl.isEmpty) {
-      return const ColoredBox(color: Color(0xFF1B1B1F));
+      return ColoredBox(color: const Color(0xFF1B1B1F));
     }
     return AppCachedImage(
       imageUrl: thumbnailUrl,
-      fit: BoxFit.cover,
+      fit: widget.fit,
       memCacheWidth: 1080,
     );
   }
@@ -405,10 +410,12 @@ class _AppCachedVideoPlayerState extends State<AppCachedVideoPlayer>
     Widget child = Stack(
       fit: StackFit.expand,
       children: [
+        // Letterbox / pillarbox stays dark when fit is contain.
+        const ColoredBox(color: Color(0xFF0E0E11)),
         _coverThumbnail(),
         if (showVideo)
           FittedBox(
-            fit: BoxFit.cover,
+            fit: widget.fit,
             clipBehavior: Clip.hardEdge,
             child: SizedBox(
               width: controller.value.size.width,
@@ -485,18 +492,9 @@ class _AppCachedVideoPlayerState extends State<AppCachedVideoPlayer>
           if (widget.showProgressBar)
             Positioned(
               bottom: 132,
-              left: 20,
-              right: 20,
-              child: VideoProgressIndicator(
-                controller,
-                allowScrubbing: true,
-                padding: EdgeInsets.zero,
-                colors: VideoProgressColors(
-                  playedColor: Colors.white.withValues(alpha: 0.75),
-                  bufferedColor: Colors.white.withValues(alpha: 0.2),
-                  backgroundColor: Colors.white.withValues(alpha: 0.1),
-                ),
-              ),
+              left: 12,
+              right: 12,
+              child: AppVideoSeekBar(controller: controller),
             ),
           if (widget.showControls &&
               (widget.showPlayPauseButton || widget.showMuteButton))

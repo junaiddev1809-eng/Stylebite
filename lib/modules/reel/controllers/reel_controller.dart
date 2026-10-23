@@ -75,7 +75,7 @@ class ReelController extends GetxController {
 
   Future<void> prepareOpeningVideos() async {
     await firstPageReady;
-    _warmVisibleVideoAt(0);
+    _warmVisibleVideoAt(currentIndex.value);
   }
 
   static ReelController ensureTabController() {
@@ -1278,34 +1278,44 @@ class ReelController extends GetxController {
     _clearInterstitialState();
 
     final session = _session;
-    session.reels
-      ..clear()
-      ..add(seed);
+    session.reels.clear();
     session.currentPage = authorScope?.currentPage ?? 0;
     session.hasMore = authorScope?.hasMore ?? true;
 
+    var startIndex = 0;
     if (isAuthorViewer) {
-      for (final reel in authorScope!.seeds) {
-        if (reel.id != seed.id) {
-          session.reels.add(reel);
+      // Preserve profile grid order so swipe up/down reaches neighbors.
+      final seeds = authorScope!.seeds;
+      if (seeds.isEmpty) {
+        session.reels.add(seed);
+      } else {
+        session.reels.addAll(seeds);
+        if (!session.reels.any((reel) => reel.id == seed.id)) {
+          session.reels.insert(0, seed);
         }
       }
-    } else if (Get.isRegistered<ReelController>()) {
-      final tab = Get.find<ReelController>();
-      if (!identical(tab, this)) {
-        for (final reel in tab.cachedReelsFor(selectedFeedType.value)) {
-          if (reel.id != seed.id) {
-            session.reels.add(reel);
+      final found = session.reels.indexWhere((reel) => reel.id == seed.id);
+      startIndex = found < 0 ? 0 : found;
+    } else {
+      session.reels.add(seed);
+      if (Get.isRegistered<ReelController>()) {
+        final tab = Get.find<ReelController>();
+        if (!identical(tab, this)) {
+          for (final reel in tab.cachedReelsFor(selectedFeedType.value)) {
+            if (reel.id != seed.id) {
+              session.reels.add(reel);
+            }
           }
         }
       }
     }
 
+    currentIndex.value = startIndex;
     _applyVisibleReels();
     isInitialLoading.value = false;
     _markFirstPageReady();
-    _jumpToFirstPage();
-    _warmVisibleVideoAt(0);
+    _jumpToPage(startIndex);
+    _warmVisibleVideoAt(startIndex);
 
     try {
       if (isAuthorViewer) {
@@ -1450,12 +1460,17 @@ class ReelController extends GetxController {
     return byId.values.toList();
   }
 
-  void _jumpToFirstPage() {
+  void _jumpToFirstPage() => _jumpToPage(0);
+
+  void _jumpToPage(int index) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!pageController.hasClients) {
         return;
       }
-      pageController.jumpToPage(0);
+      final last = visibleReels.isEmpty ? 0 : visibleReels.length - 1;
+      final safeIndex = index.clamp(0, last);
+      pageController.jumpToPage(safeIndex);
+      currentIndex.value = safeIndex;
     });
   }
 

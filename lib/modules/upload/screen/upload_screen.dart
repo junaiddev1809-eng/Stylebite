@@ -122,30 +122,6 @@ class _UploadScreenState extends State<UploadScreen> {
                       const SizedBox(height: 14),
                       if (_controller.selectedType.value == UploadPostType.food)
                         _foodFields(),
-                      if (_controller.isUploading.value)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 14),
-                          child: LinearProgressIndicator(
-                            value: _controller.uploadProgress.value,
-                            minHeight: 8,
-                            borderRadius: BorderRadius.circular(999),
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      if (_controller.uploadMessage.value.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 10),
-                          child: Text(
-                            _controller.uploadMessage.value,
-                            style: AppFonts.beVietnam(
-                              size: 12,
-                              weight: FontWeight.w700,
-                              color: _controller.uploadFailed.value
-                                  ? Colors.redAccent
-                                  : Colors.green,
-                            ),
-                          ),
-                        ),
                       const SizedBox(height: 20),
                       SizedBox(
                         width: double.infinity,
@@ -161,9 +137,7 @@ class _UploadScreenState extends State<UploadScreen> {
                             ),
                           ),
                           child: ElevatedButton.icon(
-                            onPressed: _controller.isUploading.value
-                                ? null
-                                : _controller.submitPost,
+                            onPressed: _controller.submitPost,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.transparent,
                               shadowColor: Colors.transparent,
@@ -171,9 +145,7 @@ class _UploadScreenState extends State<UploadScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 16),
                             ),
                             icon: Text(
-                              _controller.isUploading.value
-                                  ? 'Uploading...'
-                                  : _controller.shareButtonLabel,
+                              _controller.shareButtonLabel,
                               style: AppFonts.beVietnam(
                                 size: 16,
                                 weight: FontWeight.w700,

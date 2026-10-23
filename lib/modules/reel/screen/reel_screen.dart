@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:heroicons/heroicons.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../../app/routes/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_cached_image.dart';
 import '../../../core/widgets/app_cached_video_player.dart';
+import '../../../core/widgets/app_video_seek_bar.dart';
 import '../../../core/widgets/like_heart_burst.dart';
 import '../../../core/widgets/app_admob_native.dart';
 import '../../../core/widgets/app_hero_icon.dart';
@@ -36,10 +38,13 @@ class ReelScreen extends StatefulWidget {
     super.key,
     this.controllerTag,
     this.viewerMode = false,
+    this.showBottomNav = true,
   });
 
   final String? controllerTag;
   final bool viewerMode;
+  /// When false (profile reel viewer), skip the landing-style bottom bar.
+  final bool showBottomNav;
 
   @override
   State<ReelScreen> createState() => _ReelScreenState();
@@ -239,6 +244,13 @@ class _ReelScreenState extends State<ReelScreen> with RouteAware {
 
     if (!widget.viewerMode) {
       return body;
+    }
+
+    if (!widget.showBottomNav) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF0E0E11),
+        body: body,
+      );
     }
 
     return _ReelViewerShell(body: body);
@@ -581,6 +593,8 @@ class _ReelSlideState extends State<_ReelSlide>
     with AutomaticKeepAliveClientMixin<_ReelSlide> {
   Worker? _keepAliveWorker;
   int _likeBurst = 0;
+  VideoPlayerController? _videoController;
+  bool _isScrubbing = false;
 
   void _onDoubleTapLike() {
     setState(() => _likeBurst++);
@@ -670,20 +684,31 @@ class _ReelSlideState extends State<_ReelSlide>
                 deferInitUntilActive: true,
                 isMuted: controller.isMuted.value,
                 shareMute: true,
-                isPaused: controller.isReelPaused(item.id),
+                isPaused: controller.isReelPaused(item.id) || _isScrubbing,
                 onMutedChanged: controller.setMuted,
                 onPlayPauseChanged: (isPaused) =>
                     controller.setCurrentVideoPaused(item.id, isPaused),
                 onProgressChanged: (progress) =>
                     controller.handleVideoProgress(item.id, progress),
+                onControllerReady: (video) {
+                  if (!mounted) {
+                    return;
+                  }
+                  setState(() => _videoController = video);
+                },
                 showControls: false,
                 showPlayPauseButton: false,
                 showMuteButton: true,
                 showCenterPlayPauseButton: true,
                 enableTapToTogglePlayback: true,
                 showPausedOverlayOnly: true,
-                showProgressBar: true,
+                // Built-in bar sits under caption UI and is not reliably
+                // scrubbable — seek bar is drawn above overlays instead.
+                showProgressBar: false,
                 showLoadingIndicator: false,
+                // Match feed cards: keep the video's native ratio instead of
+                // cover-cropping it to the phone screen.
+                fit: BoxFit.contain,
                 onDoubleTap: _onDoubleTapLike,
               );
             }),
@@ -738,6 +763,21 @@ class _ReelSlideState extends State<_ReelSlide>
               const SizedBox(width: 10),
               _ReelActions(controller: controller, reel: item),
             ],
+          ),
+        ),
+        // Above captions so taps/drags reach the seek bar (forward + back).
+        Positioned(
+          left: 12,
+          right: 12,
+          bottom: 96,
+          child: AppVideoSeekBar(
+            controller: _videoController,
+            onScrubbingChanged: (scrubbing) {
+              if (!mounted) {
+                return;
+              }
+              setState(() => _isScrubbing = scrubbing);
+            },
           ),
         ),
       ],

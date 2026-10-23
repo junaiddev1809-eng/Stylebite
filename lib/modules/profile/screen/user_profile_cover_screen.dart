@@ -81,7 +81,7 @@ class _UserProfileCoverScreenState extends State<UserProfileCoverScreen> {
       return;
     }
     _opened = true;
-    Navigator.of(context)
+    Navigator.of(context, rootNavigator: true)
         .push<void>(
           ProfilePageTransition.to(
             UserProfileScreen(

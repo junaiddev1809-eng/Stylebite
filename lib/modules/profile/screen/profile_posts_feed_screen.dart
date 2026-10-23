@@ -102,6 +102,9 @@ class _ProfilePostsFeedScreenState extends State<ProfilePostsFeedScreen> {
 
         final previousPosts = _controller.previousPosts;
         final remainingPosts = _controller.remainingPosts;
+        // CustomScrollView lays out children before [center] in reverse, so
+        // index 0 must be the item immediately above the selected post.
+        final previousAbove = previousPosts.reversed.toList(growable: false);
 
         return CustomScrollView(
           controller: _controller.scrollController,
@@ -111,8 +114,8 @@ class _ProfilePostsFeedScreenState extends State<ProfilePostsFeedScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
-                  (context, index) => _buildPostCard(previousPosts[index]),
-                  childCount: previousPosts.length,
+                  (context, index) => _buildPostCard(previousAbove[index]),
+                  childCount: previousAbove.length,
                 ),
               ),
             ),

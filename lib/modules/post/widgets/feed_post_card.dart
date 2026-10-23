@@ -415,7 +415,10 @@ class _FeedPostCardState extends State<FeedPostCard> {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (post.ratingEnabled)
+                                  // Contest pictures keep the average visible even
+                                  // when voting is closed; ordinary posts still
+                                  // require ratingEnabled.
+                                  if (post.ratingEnabled || post.isInContest)
                                     Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 10,
@@ -452,7 +455,7 @@ class _FeedPostCardState extends State<FeedPostCard> {
                                     ),
                                   // Trophy marks contest-enrolled posts.
                                   if (post.isInContest) ...[
-                                    if (post.ratingEnabled)
+                                    if (post.ratingEnabled || post.isInContest)
                                       const SizedBox(width: 6),
                                     const ContestTrophyBadge(),
                                   ],

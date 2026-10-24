@@ -25,11 +25,9 @@ class AppTimeFormatter {
     }
 
     final isoLike = normalized.replaceFirst(' ', 'T');
-    // Not every endpoint stamps its timestamps with a timezone marker —
-    // some send a bare "yyyy-MM-dd HH:mm:ss" that's actually UTC. Without
-    // 'Z'/an offset, DateTime.tryParse treats it as already-local and
-    // toLocal() becomes a no-op, so the raw UTC clock value leaks through
-    // unconverted. Assume UTC whenever no marker is present.
+    // Prefer API timestamps with an offset (ISO-8601). Honor that offset,
+    // then convert to the device's local timezone so times match where the
+    // user lives. Bare "yyyy-MM-dd HH:mm:ss" (legacy) is treated as UTC.
     final withZone = _hasTimezoneMarker.hasMatch(isoLike)
         ? isoLike
         : '${isoLike}Z';

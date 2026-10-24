@@ -28,7 +28,6 @@ import '../../reports/widgets/report_reason_sheet.dart';
 import '../api/contest_api.dart';
 import '../controllers/contest_controller.dart';
 import '../models/contest_detail_model.dart';
-import '../utils/contest_date_parser.dart';
 import '../models/contest_prize.dart';
 import '../models/contest_submission_model.dart';
 import 'contest_ranking_screen.dart';
@@ -1597,11 +1596,8 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
     if (value == null) {
       return 'TBA';
     }
-    final pakistan = contestPakistanClock(value);
-    if (pakistan == null) {
-      return 'TBA';
-    }
-    return '${AppTimeFormatter.formatFullDateTimeValue(pakistan)} PKT';
+    // Already device-local from parseContestDate / AppTimeFormatter.
+    return AppTimeFormatter.formatFullDateTimeValue(value);
   }
 }
 

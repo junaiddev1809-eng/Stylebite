@@ -404,6 +404,8 @@ class _FeedPostCardState extends State<FeedPostCard> {
                       // — when it's false the backend rejects votes with a
                       // 403, so the rating badge/selector must not render
                       // at all rather than surface a vote that always fails.
+                      // Star rating is contest-only. Trophy/name still mark
+                      // enrollment even when voting is closed.
                       if (!widget.hideRatingBadge &&
                           (post.ratingEnabled || post.isInContest))
                         Positioned(
@@ -415,9 +417,8 @@ class _FeedPostCardState extends State<FeedPostCard> {
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  // Contest pictures keep the average visible even
-                                  // when voting is closed; ordinary posts still
-                                  // require ratingEnabled.
+                                  // Contest posts keep the score badge in feed /
+                                  // explore / profile — never on normal posts.
                                   if (post.ratingEnabled || post.isInContest)
                                     Container(
                                       padding: const EdgeInsets.symmetric(
@@ -453,7 +454,6 @@ class _FeedPostCardState extends State<FeedPostCard> {
                                         ],
                                       ),
                                     ),
-                                  // Trophy marks contest-enrolled posts.
                                   if (post.isInContest) ...[
                                     if (post.ratingEnabled || post.isInContest)
                                       const SizedBox(width: 6),

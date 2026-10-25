@@ -509,9 +509,9 @@ class HomePostModel {
       viewCount: _asInt(json['view_count'] ?? engagement.viewCount),
       allowComments: _asBool(json['allow_comments'], fallback: true),
       allowShares: _asBool(json['allow_shares'], fallback: true),
+      // Contest voting only — never trust legacy rating_enabled on normal posts.
       ratingEnabled: _asBool(json['in_contest'], fallback: false) ||
-          storedEnrollment != null ||
-          contestId > 0,
+          storedEnrollment != null,
       dishName: (json['dish_name'] ??
               json['dish'] ??
               foodJson?['dish_name'] ??

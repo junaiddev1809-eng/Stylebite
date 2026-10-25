@@ -1124,9 +1124,8 @@ class _ReelMeta extends StatelessWidget {
       final restaurant = live.restaurant.trim();
       final dish = live.dishName.trim();
       final pin = live.pinLocation.trim();
-      final score = isBite && live.foodOverall > 0
-          ? live.foodOverall.toStringAsFixed(1)
-          : live.rating;
+      // Contest voting score only — never show star rating on normal reels.
+      final contestScore = live.rating;
 
       return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1165,7 +1164,7 @@ class _ReelMeta extends StatelessWidget {
                 ),
               ),
             ],
-            if (!isBite || live.foodOverall > 0 || live.ratingEnabled) ...[
+            if (live.ratingEnabled) ...[
               const SizedBox(width: 10),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1187,7 +1186,7 @@ class _ReelMeta extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      score,
+                      contestScore,
                       style: AppFonts.beVietnam(
                         size: 14,
                         weight: FontWeight.w700,

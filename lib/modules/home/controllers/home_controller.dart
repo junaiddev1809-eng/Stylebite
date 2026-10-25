@@ -20,6 +20,8 @@ import '../../post/services/post_interaction_store.dart';
 import '../../post/utils/like_toggle.dart';
 import '../../reel/controllers/reel_controller.dart';
 import '../../reel/models/reel_item_model.dart';
+import '../../flashes/controllers/flash_controller.dart';
+import '../../flashes/flash_marker.dart';
 import '../../story/controllers/story_controller.dart';
 import '../../story/story_marker.dart';
 import '../models/home_battle_model.dart';
@@ -319,6 +321,7 @@ class HomeController extends GetxController {
       }
       if (selectedFeedType.value == HomeFeedType.style) {
         unawaited(StoryController.ensure().load());
+        unawaited(FlashController.ensure().load());
       }
     } catch (error) {
       // If we don't have any data yet, we show the Error State UI
@@ -450,6 +453,10 @@ class HomeController extends GetxController {
     final previousRating = selectedRatings[postId];
     final previousPost = _findPost(postId);
     if (previousPost == null) {
+      return;
+    }
+    // Ratings only work on contest-enrolled posts (feed / explore / anywhere).
+    if (!previousPost.ratingEnabled) {
       return;
     }
     if (previousRating == rating ||
@@ -852,6 +859,9 @@ class HomeController extends GetxController {
     if (StoryMarker.isStory(tags: post.tags, caption: post.caption)) {
       return false;
     }
+    if (FlashMarker.isFlash(tags: post.tags, caption: post.caption)) {
+      return false;
+    }
     if (selectedFeedType.value == HomeFeedType.style) {
       return post.feedType == HomeFeedType.style;
     }
@@ -1165,6 +1175,9 @@ class HomeController extends GetxController {
         return;
       }
       if (StoryMarker.isStory(tags: post.tags, caption: post.caption)) {
+        return;
+      }
+      if (FlashMarker.isFlash(tags: post.tags, caption: post.caption)) {
         return;
       }
       collected.add(post.copyWith(feedType: feedType));

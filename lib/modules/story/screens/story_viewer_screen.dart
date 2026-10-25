@@ -32,10 +32,12 @@ class StoryViewerScreen extends StatefulWidget {
 
 class _StoryViewerScreenState extends State<StoryViewerScreen> {
   static const _imageHold = Duration(seconds: 5);
+  static const _mediaFailHold = Duration(seconds: 8);
   static const _reactions = ['❤️', '🔥', '😍', '😂', '😮', '👏'];
 
   late int _index;
   Timer? _timer;
+  Timer? _failSafe;
   var _progress = 0.0;
   var _elapsedMs = 0;
   var _holdPaused = false;
@@ -64,6 +66,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _failSafe?.cancel();
     _replyFocus.removeListener(_onReplyFocus);
     _replyFocus.dispose();
     _replyController.dispose();
@@ -96,16 +99,38 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
 
   void _startHold() {
     _timer?.cancel();
+    _failSafe?.cancel();
     _progress = 0;
     _elapsedMs = 0;
     _holdPaused = false;
     _advancing = false;
     _conversationId = null;
     unawaited(StoryController.ensure().markSeen(_current.id));
-    if (_current.isVideo || _paused) {
+    // Videos only advance via playback progress; if init/network hangs they
+    // used to sit forever. Fail-safe moves on after a few seconds.
+    if (_current.isVideo) {
+      _failSafe = Timer(_mediaFailHold, () {
+        if (!mounted || _paused || _advancing) {
+          return;
+        }
+        if (_progress < 0.05) {
+          _next();
+        }
+      });
+      return;
+    }
+    if (_paused) {
       return;
     }
     _resumeImageTimer();
+  }
+
+  void _onVideoInitFailed() {
+    if (!mounted || _advancing) {
+      return;
+    }
+    _failSafe?.cancel();
+    _next();
   }
 
   void _resumeImageTimer() {
@@ -295,11 +320,13 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
               isActive: !_paused,
               isMuted: false,
               showControls: false,
-              showLoadingIndicator: false,
+              showLoadingIndicator: true,
+              onInitFailed: _onVideoInitFailed,
               onProgressChanged: (value) {
                 if (_paused) {
                   return;
                 }
+                _failSafe?.cancel();
                 setState(() => _progress = value);
                 if (value >= 0.98) {
                   _next();
@@ -307,7 +334,11 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
               },
             )
           else if (_isLocalFile(item))
-            Image.file(File(item.mediaPath), fit: BoxFit.cover)
+            Image.file(
+              File(item.mediaPath),
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const ColoredBox(color: Colors.black),
+            )
           else
             AppCachedImage(
               imageUrl: _mediaUrl(item),

@@ -105,6 +105,8 @@ class _AddMemoryScreenState extends State<AddMemoryScreen> {
         ),
       );
 
+      // Keep memory location names in English even if the phone is Urdu.
+      await setLocaleIdentifier('en_US');
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,

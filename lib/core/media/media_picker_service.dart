@@ -22,6 +22,19 @@ class MediaPickerService {
 
   static Future<PickedMedia?> pickFromGallery() => _pickFromGallery();
 
+  /// Camera photo only — no gallery, no editor (Instants / Flashes).
+  static Future<PickedMedia?> pickInstantPhoto() async {
+    final image = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 92,
+      preferredCameraDevice: CameraDevice.rear,
+    );
+    if (image == null) {
+      return null;
+    }
+    return PickedMedia(file: File(image.path), type: AppMediaType.image);
+  }
+
   /// Gallery pick for a post. One photo still opens the editor. Several
   /// photos become one carousel, capped at [carouselPhotoLimit].
   static Future<PostGalleryPick> pickPostGallery() async {

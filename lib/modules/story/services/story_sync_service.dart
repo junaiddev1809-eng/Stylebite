@@ -380,13 +380,24 @@ class StorySyncService {
     final media = post['media'];
     if (media is List) {
       for (final item in media.whereType<Map>()) {
-        final url = (item['file_url'] ?? item['url'] ?? '').toString().trim();
+        final url = (item['optimized_url'] ??
+                item['file_url'] ??
+                item['url'] ??
+                '')
+            .toString()
+            .trim();
         if (url.isNotEmpty) {
           return url;
         }
       }
     }
-    for (final key in <String>['file_url', 'media_url', 'url', 'image_url']) {
+    for (final key in <String>[
+      'file_url',
+      'media_url',
+      'optimized_url',
+      'url',
+      'image_url',
+    ]) {
       final url = (post[key] ?? '').toString().trim();
       if (url.isNotEmpty) {
         return url;

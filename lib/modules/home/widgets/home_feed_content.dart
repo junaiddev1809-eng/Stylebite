@@ -19,6 +19,9 @@ import '../../notifications/screen/notifications_screen.dart';
 import '../../post/screens/edit_post_screen.dart';
 import '../../post/widgets/feed_post_card.dart';
 import '../../search/screen/search_screen.dart';
+import '../../flashes/controllers/flash_controller.dart';
+import '../../flashes/models/flash_model.dart';
+import '../../flashes/widgets/flash_tray.dart';
 import '../../story/controllers/story_controller.dart';
 import '../../story/models/story_model.dart';
 import '../../story/widgets/style_story_tray.dart';
@@ -45,6 +48,7 @@ class _HomeFeedContentState extends State<HomeFeedContent>
     super.initState();
     _controller = HomeController.ensureController();
     StoryController.ensure();
+    FlashController.ensure();
   }
 
   @override
@@ -85,17 +89,28 @@ class _HomeFeedContentState extends State<HomeFeedContent>
                         child: _DiscoverToggle(controller: _controller),
                       ),
                     ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 18),
-                        child: StyleStoryTray(
-                          kind: _controller.selectedFeedType.value ==
-                                  HomeFeedType.bite
-                              ? StoryKind.food
-                              : StoryKind.outfit,
+                    Obx(() {
+                      final isBite =
+                          _controller.selectedFeedType.value == HomeFeedType.bite;
+                      final storyKind =
+                          isBite ? StoryKind.food : StoryKind.outfit;
+                      final flashKind =
+                          isBite ? FlashKind.food : FlashKind.outfit;
+                      return SliverToBoxAdapter(
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: StyleStoryTray(kind: storyKind),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 18),
+                              child: FlashTray(kind: flashKind),
+                            ),
+                          ],
                         ),
-                      ),
-                    ),
+                      );
+                    }),
 
                     // Conditional Content
                     if (_controller.hasError.value)
@@ -186,6 +201,12 @@ class _HomeFeedContentState extends State<HomeFeedContent>
           kind: _controller.selectedFeedType.value == HomeFeedType.bite
               ? StoryKind.food
               : StoryKind.outfit,
+        ),
+        const SizedBox(height: 8),
+        FlashTray(
+          kind: _controller.selectedFeedType.value == HomeFeedType.bite
+              ? FlashKind.food
+              : FlashKind.outfit,
         ),
         const SizedBox(height: 8),
         const SizedBox(height: 16),

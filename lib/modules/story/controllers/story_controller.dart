@@ -263,25 +263,9 @@ class StoryController extends GetxController {
       return const [];
     }
     try {
-      final peers = await StorySyncService.fetchFollowingPeers(me);
-      final results = await Future.wait([
-        StorySyncService.fetchStories(),
-        StorySyncService.fetchUserStories(username: me, avatarUrl: _avatar),
-        StorySyncService.fetchPeerStories(peers),
-      ]);
-      // /stories already decides who may see each story. Do not drop those
-      // rings just because the follow list is short or failed to load.
-      final official = results[0];
-      final allowed = <String>{
-        me.toLowerCase(),
-        for (final peer in peers) peer.username.toLowerCase(),
-        for (final item in official) item.username.toLowerCase(),
-      };
-      return [
-        for (final list in results)
-          for (final item in list)
-            if (allowed.contains(item.username.toLowerCase())) item,
-      ];
+      // GET /stories is the source of truth. Profile overview scrapes exclude
+      // is_story posts and used to stall load() for a long time after posting.
+      return await StorySyncService.fetchStories();
     } catch (_) {
       return const [];
     }

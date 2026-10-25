@@ -39,6 +39,8 @@ class MapFunctions{
 
   Future<String> getAddressFromLatLng(LatLng position) async {
     try {
+      // Phone locale can be Urdu; keep map labels in English.
+      await setLocaleIdentifier('en_US');
       List<Placemark> placeMarks =
       await placemarkFromCoordinates(position.latitude, position.longitude);
       if (placeMarks.isNotEmpty) {
@@ -63,6 +65,7 @@ class MapFunctions{
 
   Future<String?> getPostalCodeFromLatLng(LatLng position) async {
     try {
+      await setLocaleIdentifier('en_US');
       List<Placemark> placeMarks =
       await placemarkFromCoordinates(position.latitude, position.longitude);
       if (placeMarks.isNotEmpty) {

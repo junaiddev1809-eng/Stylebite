@@ -35,6 +35,7 @@ class AppCachedVideoPlayer extends StatefulWidget {
     this.isPaused,
     this.onPlayPauseChanged,
     this.onProgressChanged,
+    this.onInitFailed,
     this.initialProgress,
     this.onControllerReady,
     this.borderRadius,
@@ -69,6 +70,8 @@ class AppCachedVideoPlayer extends StatefulWidget {
   final bool? isPaused;
   final ValueChanged<bool>? onPlayPauseChanged;
   final ValueChanged<double>? onProgressChanged;
+  /// Fired when the video URL cannot be opened or initialized.
+  final VoidCallback? onInitFailed;
   // Fraction (0..1) of the video's duration to seek to right after it
   // initializes — used to resume from wherever a different instance of the
   // same video (e.g. the feed card) had already played to.
@@ -178,24 +181,41 @@ class _AppCachedVideoPlayerState extends State<AppCachedVideoPlayer>
         setState(() {
           _isLoading = false;
         });
+        widget.onInitFailed?.call();
       }
       return;
     }
 
     VideoPlayerController? controller;
+    final rawUrl = widget.videoUrl.trim();
     try {
-      File? localFile = await VideoCacheService.getCachedFile(widget.videoUrl);
-      if (localFile == null && VideoCacheService.isInFlight(widget.videoUrl)) {
-        localFile = await VideoCacheService.getFile(widget.videoUrl).timeout(
-          const Duration(milliseconds: 900),
-          onTimeout: () => null,
-        );
-      }
-      if (localFile != null && await localFile.exists()) {
-        controller = VideoPlayerController.file(File(localFile.path));
+      if (_looksLikeLocalVideoPath(rawUrl)) {
+        final local = File(rawUrl.startsWith('file:')
+            ? Uri.parse(rawUrl).toFilePath()
+            : rawUrl);
+        if (await local.exists()) {
+          controller = VideoPlayerController.file(local);
+        }
       }
     } catch (_) {
       controller = null;
+    }
+
+    if (controller == null) {
+      try {
+        File? localFile = await VideoCacheService.getCachedFile(rawUrl);
+        if (localFile == null && VideoCacheService.isInFlight(rawUrl)) {
+          localFile = await VideoCacheService.getFile(rawUrl).timeout(
+            const Duration(milliseconds: 900),
+            onTimeout: () => null,
+          );
+        }
+        if (localFile != null && await localFile.exists()) {
+          controller = VideoPlayerController.file(File(localFile.path));
+        }
+      } catch (_) {
+        controller = null;
+      }
     }
 
     if (generation != _initGeneration) {
@@ -204,13 +224,24 @@ class _AppCachedVideoPlayerState extends State<AppCachedVideoPlayer>
     }
 
     if (controller == null) {
-      if (widget.videoUrl.startsWith('/')) {
-        controller = VideoPlayerController.file(File(widget.videoUrl));
+      if (_looksLikeLocalVideoPath(rawUrl)) {
+        try {
+          final local = File(rawUrl.startsWith('file:')
+              ? Uri.parse(rawUrl).toFilePath()
+              : rawUrl);
+          controller = VideoPlayerController.file(local);
+        } catch (_) {
+          if (mounted && generation == _initGeneration) {
+            setState(() {
+              _isLoading = false;
+            });
+            widget.onInitFailed?.call();
+          }
+          return;
+        }
       } else {
-        controller = VideoPlayerController.networkUrl(
-          Uri.parse(widget.videoUrl),
-        );
-        VideoCacheService.prefetch(widget.videoUrl);
+        controller = VideoPlayerController.networkUrl(Uri.parse(rawUrl));
+        VideoCacheService.prefetch(rawUrl);
       }
     }
 
@@ -234,6 +265,7 @@ class _AppCachedVideoPlayerState extends State<AppCachedVideoPlayer>
         setState(() {
           _isLoading = false;
         });
+        widget.onInitFailed?.call();
       }
       return;
     }
@@ -595,5 +627,22 @@ class _AppCachedVideoPlayerState extends State<AppCachedVideoPlayer>
         child: AppHeroIconData(icon, size: iconSize, color: Colors.white),
       ),
     );
+  }
+
+  /// Local device path (POSIX, Windows drive letter, or file://) — not http(s).
+  bool _looksLikeLocalVideoPath(String url) {
+    final value = url.trim();
+    if (value.isEmpty) {
+      return false;
+    }
+    final lower = value.toLowerCase();
+    if (lower.startsWith('http://') || lower.startsWith('https://')) {
+      return false;
+    }
+    if (value.startsWith('/') || lower.startsWith('file:')) {
+      return true;
+    }
+    // Windows: C:\… or C:/…
+    return RegExp(r'^[a-zA-Z]:[\\/]').hasMatch(value);
   }
 }

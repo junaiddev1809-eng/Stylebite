@@ -25,6 +25,7 @@ import '../../post/services/post_interaction_store.dart';
 import '../../post/utils/rating_math.dart';
 import '../../post/utils/post_detail_open_helper.dart';
 import '../../profile/models/profile_model.dart';
+import '../../flashes/flash_marker.dart';
 import '../../story/story_marker.dart';
 import '../models/reel_item_model.dart';
 import '../utils/reel_open_helper.dart';
@@ -884,6 +885,10 @@ class ReelController extends GetxController {
     if (currentReel == null) {
       return;
     }
+    // Star votes are contest-only.
+    if (!currentReel.ratingEnabled) {
+      return;
+    }
 
     final previousReel = currentReel;
     final previousScore = double.tryParse(currentReel.rating) ?? 0;
@@ -1157,7 +1162,11 @@ class ReelController extends GetxController {
       return;
     }
 
-    unawaited(ContestEnrollmentStore.instance.ensureLoaded());
+    unawaited(
+      ContestEnrollmentStore.instance.ensureLoaded().then((_) {
+        _applyContestEnrollment();
+      }),
+    );
     final observedAt = PostInteractionStore.ensure().observedClock;
     final response = await ApiHelper.fetchDataWithAuthorization(
       _buildEndpoint(page),
@@ -1202,6 +1211,34 @@ class ReelController extends GetxController {
     session.currentPage = parsed.pagination.currentPage;
     session.hasMore = parsed.pagination.hasMorePages;
 
+    _applyContestEnrollment();
+    _applyVisibleReels();
+  }
+
+  /// Keep contest star ratings on enrolled reels even when the reels API
+  /// omits `in_contest` (same idea as the home feed).
+  void _applyContestEnrollment() {
+    final session = _session;
+    if (session.reels.isEmpty) {
+      return;
+    }
+    var changed = false;
+    final next = <ReelItemModel>[];
+    for (final reel in session.reels) {
+      final info = ContestEnrollmentStore.instance.infoFor(reel.id);
+      if (reel.ratingEnabled || info == null) {
+        next.add(reel);
+        continue;
+      }
+      changed = true;
+      next.add(reel.copyWith(ratingEnabled: true));
+    }
+    if (!changed) {
+      return;
+    }
+    session.reels
+      ..clear()
+      ..addAll(next);
     _applyVisibleReels();
   }
 
@@ -1210,7 +1247,9 @@ class ReelController extends GetxController {
     final filtered = _session.reels
         .where((item) => item.matchesCity(selectedCity.value))
         .where(
-          (item) => !StoryMarker.isStory(tags: item.tags, caption: item.caption),
+          (item) =>
+              !StoryMarker.isStory(tags: item.tags, caption: item.caption) &&
+              !FlashMarker.isFlash(tags: item.tags, caption: item.caption),
         )
         .map(store.presentReel)
         .toList();
@@ -1341,7 +1380,11 @@ class ReelController extends GetxController {
       return;
     }
 
-    unawaited(ContestEnrollmentStore.instance.ensureLoaded());
+    unawaited(
+      ContestEnrollmentStore.instance.ensureLoaded().then((_) {
+        _applyContestEnrollment();
+      }),
+    );
     final params = <String, String>{'per_page': '10'};
     switch (scope.tab) {
       case ProfileContentTab.outfits:
@@ -1418,6 +1461,7 @@ class ReelController extends GetxController {
       ..addAll(merged);
     session.currentPage = pagination.currentPage;
     session.hasMore = pagination.hasMorePages;
+    _applyContestEnrollment();
     _applyVisibleReels();
   }
 

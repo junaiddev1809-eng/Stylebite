@@ -80,7 +80,28 @@ class GooglePlacesService {
   GooglePlacesService._();
 
   static const _timeout = Duration(seconds: 8);
+  static const _englishLocale = 'en_US';
+  static const _osmEnglishHeaders = {
+    'User-Agent': 'StyleBite/1.0 (location-field)',
+    'Accept': 'application/json',
+    'Accept-Language': 'en',
+  };
   static bool _googleRestDenied = false;
+  static bool _englishLocaleReady = false;
+
+  /// Device placemarks follow the phone language (e.g. Urdu). Force English
+  /// so locations always show as English in the app.
+  static Future<void> _ensureEnglishGeocodingLocale() async {
+    if (_englishLocaleReady) {
+      return;
+    }
+    try {
+      await geo.setLocaleIdentifier(_englishLocale);
+      _englishLocaleReady = true;
+    } catch (error) {
+      log('setLocaleIdentifier failed: $error', name: 'Places');
+    }
+  }
 
   /// Nearby places when [query] is empty, otherwise every related match.
   /// A search like "kfc multan" keeps the Multan branches first, then the
@@ -254,6 +275,7 @@ class GooglePlacesService {
         'format': 'json',
         'limit': '$limit',
         'addressdetails': '1',
+        'accept-language': 'en',
       };
       if (countryCodes != null && countryCodes.trim().isNotEmpty) {
         params['countrycodes'] = countryCodes.trim();
@@ -266,10 +288,7 @@ class GooglePlacesService {
       final response = await http
           .get(
             Uri.https('nominatim.openstreetmap.org', '/search', params),
-            headers: const {
-              'User-Agent': 'StyleBite/1.0 (location-field)',
-              'Accept': 'application/json',
-            },
+            headers: _osmEnglishHeaders,
           )
           .timeout(_timeout);
       if (response.statusCode != 200) {
@@ -488,6 +507,7 @@ class GooglePlacesService {
           'place_id': placeId,
           'fields': 'geometry,name,formatted_address',
           'key': googleMapsApiKey,
+          'language': 'en',
         },
       );
       final response = await http.get(uri).timeout(_timeout);
@@ -541,6 +561,7 @@ class GooglePlacesService {
         {
           'latlng': '$latitude,$longitude',
           'key': googleMapsApiKey,
+          'language': 'en',
         },
       );
       final response = await http.get(uri).timeout(_timeout);
@@ -618,6 +639,7 @@ class GooglePlacesService {
 
   static Future<String> _reverseDevice(double latitude, double longitude) async {
     try {
+      await _ensureEnglishGeocodingLocale();
       final placemarks = await geo.placemarkFromCoordinates(
         latitude,
         longitude,
@@ -653,14 +675,11 @@ class GooglePlacesService {
         'format': 'json',
         'zoom': '18',
         'addressdetails': '1',
+        'accept-language': 'en',
       });
-      final response = await http.get(
-        uri,
-        headers: const {
-          'User-Agent': 'StyleBite/1.0 (location-field)',
-          'Accept': 'application/json',
-        },
-      ).timeout(_timeout);
+      final response = await http
+          .get(uri, headers: _osmEnglishHeaders)
+          .timeout(_timeout);
       if (response.statusCode != 200) {
         return null;
       }
@@ -741,6 +760,7 @@ class GooglePlacesService {
           'address': trimmed,
           'key': googleMapsApiKey,
           'region': 'pk',
+          'language': 'en',
         },
       );
       final response = await http.get(uri).timeout(_timeout);
@@ -781,6 +801,7 @@ class GooglePlacesService {
           'query': trimmed,
           'key': googleMapsApiKey,
           'region': 'pk',
+          'language': 'en',
         },
       );
       final response = await http.get(uri).timeout(_timeout);
@@ -823,6 +844,7 @@ class GooglePlacesService {
           'fields': 'geometry,name,formatted_address',
           'key': googleMapsApiKey,
           'region': 'pk',
+          'language': 'en',
         },
       );
       final response = await http.get(uri).timeout(_timeout);
@@ -915,6 +937,7 @@ class GooglePlacesService {
       return null;
     }
     try {
+      await _ensureEnglishGeocodingLocale();
       final results = await geo.locationFromAddress(trimmed);
       if (results.isEmpty) {
         return null;
@@ -947,12 +970,14 @@ class GooglePlacesService {
         'format': 'json',
         'limit': '1',
         'addressdetails': '0',
+        'accept-language': 'en',
       });
       final response = await http.get(
         uri,
         headers: const {
           'User-Agent': 'StyleBite/1.0 (restaurant-map)',
           'Accept': 'application/json',
+          'Accept-Language': 'en',
         },
       ).timeout(_timeout);
       if (response.statusCode != 200) {

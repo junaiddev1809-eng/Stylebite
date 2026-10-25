@@ -91,7 +91,7 @@ class ChatApiService {
     final payload = _decodeResponse(response);
     final raw = payload['message_data'] ?? payload['message'] ?? payload['data'];
     if (raw is! Map) {
-      throw ChatApiException('Could not update reaction.');
+      throw const ChatApiException(message: 'Could not update reaction.');
     }
     return ChatMessageModel.fromJson(
       raw.map((key, value) => MapEntry(key.toString(), value)),

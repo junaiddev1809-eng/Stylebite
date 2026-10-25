@@ -79,6 +79,26 @@ class ChatApiService {
     );
   }
 
+  Future<ChatMessageModel> toggleReaction({
+    required int conversationId,
+    required int messageId,
+    required String emoji,
+  }) async {
+    final response = await ApiHelper.postRequestWithAuthorization(
+      'chats/$conversationId/messages/$messageId/reactions',
+      body: <String, dynamic>{'emoji': emoji},
+    );
+    final payload = _decodeResponse(response);
+    final raw = payload['message_data'] ?? payload['message'] ?? payload['data'];
+    if (raw is! Map) {
+      throw ChatApiException('Could not update reaction.');
+    }
+    return ChatMessageModel.fromJson(
+      raw.map((key, value) => MapEntry(key.toString(), value)),
+      currentUsername: LocalStorage.getUsername() ?? '',
+    );
+  }
+
   Future<void> markRead(int conversationId, {int? upToMessageId}) async {
     final response = await ApiHelper.postRequestWithAuthorization(
       'chats/$conversationId/read',

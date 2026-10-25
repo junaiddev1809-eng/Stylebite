@@ -126,6 +126,24 @@ class FlashSyncService {
     );
   }
 
+  static Future<bool> deleteRemote(String remoteId) async {
+    final id = remoteId.trim();
+    if (id.isEmpty) {
+      return false;
+    }
+    try {
+      final response = await ApiHelper.deleteRequestWithAuthorization(
+        'posts/$id',
+      );
+      if (response == null) {
+        return false;
+      }
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static FlashItem? _fromPayload(
     Map<String, dynamic> raw, {
     required String username,

@@ -35,6 +35,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   late final NotificationsController _controller;
   final ScrollController _scrollController = ScrollController();
   final Map<int, String> _vibeResultById = <int, String>{};
+  String? _openSwipeKey;
 
   @override
   void initState() {
@@ -222,27 +223,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildNotificationListItem(NotificationItemModel item) {
+    final swipeKey =
+        'notification-${item.remoteId.isNotEmpty ? item.remoteId : item.id}-${item.createdAt}-${item.username}-${item.entityId}';
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Dismissible(
-        key: ValueKey<String>(
-          'notification-${item.remoteId.isNotEmpty ? item.remoteId : item.id}-${item.createdAt}-${item.username}-${item.entityId}',
-        ),
-        direction: DismissDirection.endToStart,
-        confirmDismiss: (_) => _deleteNotification(item),
-        background: Container(
-          alignment: Alignment.centerRight,
-          padding: const EdgeInsets.symmetric(horizontal: 22),
-          decoration: BoxDecoration(
-            color: const Color(0xFFE5484D),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: const AppHeroIconData(
-            Icons.delete_rounded,
-            color: Colors.white,
-            size: 22,
-          ),
-        ),
+      child: _SwipeRevealDelete(
+        key: ValueKey<String>(swipeKey),
+        isOpen: _openSwipeKey == swipeKey,
+        onOpenChanged: (open) {
+          setState(() {
+            _openSwipeKey = open ? swipeKey : null;
+          });
+        },
+        onDelete: () => _deleteNotification(item),
         child: item.kind == NotificationKind.contest
             ? _ContestCard(item: item, onTap: () => _handleActionTap(item))
             : _NotificationCard(
@@ -391,14 +384,58 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  Future<bool> _deleteNotification(NotificationItemModel item) async {
-    final deleted = await _controller.deleteNotification(item.id);
-    if (deleted && mounted) {
-      setState(() {
-        _vibeResultById.remove(item.id);
-      });
+  Future<void> _deleteNotification(NotificationItemModel item) async {
+    final removedAt = _controller.softRemoveNotification(item);
+    if (removedAt < 0 || !mounted) {
+      return;
     }
-    return deleted;
+
+    setState(() {
+      _vibeResultById.remove(item.id);
+      _openSwipeKey = null;
+    });
+
+    var undone = false;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    final controller = messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          'Notification deleted',
+          style: AppFonts.beVietnam(
+            size: 14,
+            weight: FontWeight.w600,
+            color: Colors.white,
+          ),
+        ),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 88),
+        backgroundColor: const Color(0xFF1F1F22),
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'Undo',
+          textColor: AppColors.primary,
+          onPressed: () {
+            undone = true;
+            _controller.restoreNotification(item, removedAt);
+            if (mounted) {
+              setState(() {});
+            }
+          },
+        ),
+      ),
+    );
+
+    await controller.closed;
+    if (undone) {
+      return;
+    }
+
+    final committed = await _controller.commitDeleteNotification(item);
+    if (!committed && mounted) {
+      _controller.restoreNotification(item, removedAt);
+      setState(() {});
+    }
   }
 
   void _onScroll() {
@@ -414,6 +451,103 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   void _openLandingTab(int tabIndex) {
     Get.offAll<void>(() => LandingScreen(initialIndex: tabIndex));
+  }
+}
+
+/// Short end-to-start swipe reveals a trash button; delete only runs on tap.
+class _SwipeRevealDelete extends StatefulWidget {
+  const _SwipeRevealDelete({
+    super.key,
+    required this.child,
+    required this.onDelete,
+    required this.isOpen,
+    required this.onOpenChanged,
+    this.revealWidth = 76,
+  });
+
+  final Widget child;
+  final VoidCallback onDelete;
+  final bool isOpen;
+  final ValueChanged<bool> onOpenChanged;
+  final double revealWidth;
+
+  @override
+  State<_SwipeRevealDelete> createState() => _SwipeRevealDeleteState();
+}
+
+class _SwipeRevealDeleteState extends State<_SwipeRevealDelete> {
+  double _offset = 0;
+
+  @override
+  void didUpdateWidget(covariant _SwipeRevealDelete oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isOpen != oldWidget.isOpen) {
+      _offset = widget.isOpen ? widget.revealWidth : 0;
+    }
+  }
+
+  void _snapOpen(bool open) {
+    setState(() {
+      _offset = open ? widget.revealWidth : 0;
+    });
+    if (widget.isOpen != open) {
+      widget.onOpenChanged(open);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox(
+                width: widget.revealWidth,
+                child: Material(
+                  color: const Color(0xFFE5484D),
+                  child: InkWell(
+                    onTap: widget.onDelete,
+                    child: const Center(
+                      child: AppHeroIconData(
+                        Icons.delete_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          GestureDetector(
+            onHorizontalDragUpdate: (details) {
+              final next = (_offset - details.delta.dx).clamp(
+                0.0,
+                widget.revealWidth,
+              );
+              if (next == _offset) {
+                return;
+              }
+              setState(() => _offset = next);
+            },
+            onHorizontalDragEnd: (_) {
+              _snapOpen(_offset >= widget.revealWidth * 0.35);
+            },
+            onHorizontalDragCancel: () {
+              _snapOpen(_offset >= widget.revealWidth * 0.35);
+            },
+            onTap: _offset > 0 ? () => _snapOpen(false) : null,
+            child: Transform.translate(
+              offset: Offset(-_offset, 0),
+              child: widget.child,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

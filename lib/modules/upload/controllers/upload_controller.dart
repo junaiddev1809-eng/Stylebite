@@ -120,8 +120,13 @@ class UploadController extends GetxController {
       return location;
     }
 
-    return 'Location optional';
+    return isOutfitPost ? 'Location optional' : 'Location required';
   }
+
+  bool get hasPinnedLocation =>
+      locationController.text.trim().isNotEmpty &&
+      _latitude != null &&
+      _longitude != null;
 
   double get overallFoodRating {
     _normalizeFoodRatings();
@@ -276,6 +281,16 @@ class UploadController extends GetxController {
 
     if (selectedMediaItems.isEmpty) {
       mediaError.value = 'Add photo or video before posting.';
+      return;
+    }
+
+    // Bite requires a real pinned place (search pick, map pin, or live GPS).
+    // Style / reels can post with no location.
+    if (!isOutfitPost && !hasPinnedLocation) {
+      errorSnackBar(
+        message:
+            'Add a location for Bite — search and pick a place, pin the map, or use live GPS.',
+      );
       return;
     }
 
@@ -585,15 +600,24 @@ class UploadController extends GetxController {
         );
       }
 
-      final lastKnown = await Geolocator.getLastKnownPosition();
-      final position =
-          lastKnown ??
-          await Geolocator.getCurrentPosition(
-            locationSettings: const LocationSettings(
-              accuracy: LocationAccuracy.high,
-              timeLimit: Duration(seconds: 12),
-            ),
-          );
+      // Always prefer a fresh GPS fix for exact live location (not last-known).
+      Position? position;
+      try {
+        position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.best,
+            distanceFilter: 0,
+            timeLimit: Duration(seconds: 20),
+          ),
+        );
+      } catch (_) {
+        position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 12),
+          ),
+        );
+      }
 
       _latitude = position.latitude;
       _longitude = position.longitude;
@@ -604,8 +628,14 @@ class UploadController extends GetxController {
       );
       if (resolvedLocation.isNotEmpty) {
         setLocation(resolvedLocation, position.latitude, position.longitude);
-      } else if (!silent) {
-        throw Exception('Unable to fetch current address. Please try again.');
+      } else {
+        // Still pin exact coords even if reverse geocode is slow/empty.
+        setLocation(
+          '${position.latitude.toStringAsFixed(5)}, '
+          '${position.longitude.toStringAsFixed(5)}',
+          position.latitude,
+          position.longitude,
+        );
       }
     } catch (error) {
       if (!silent) {
@@ -681,15 +711,20 @@ class UploadController extends GetxController {
           permission == LocationPermission.deniedForever) {
         return null;
       }
-      final lastKnown = await Geolocator.getLastKnownPosition();
-      final position =
-          lastKnown ??
-          await Geolocator.getCurrentPosition(
-            locationSettings: const LocationSettings(
-              accuracy: LocationAccuracy.medium,
-              timeLimit: Duration(seconds: 5),
-            ),
-          );
+      Position? position;
+      try {
+        position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 8),
+          ),
+        );
+      } catch (_) {
+        position = await Geolocator.getLastKnownPosition();
+      }
+      if (position == null) {
+        return null;
+      }
       _originLat = position.latitude;
       _originLng = position.longitude;
       return (lat: position.latitude, lng: position.longitude);

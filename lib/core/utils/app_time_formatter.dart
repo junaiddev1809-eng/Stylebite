@@ -36,14 +36,32 @@ class AppTimeFormatter {
   }
 
   static String formatPostTime(String? raw) {
-    final parsed = parse(raw);
+    final trimmed = raw?.trim() ?? '';
+    if (trimmed.isEmpty) {
+      return 'Just now';
+    }
+    // Already a UI label (local post / previous format) — don't re-parse.
+    if (!_looksLikeTimestamp(trimmed)) {
+      return trimmed;
+    }
+
+    final parsed = parse(trimmed);
     if (parsed == null) {
       return 'Just now';
     }
+    return formatPostTimeValue(parsed);
+  }
 
+  /// [value] must already be in the device's local timezone.
+  static String formatPostTimeValue(DateTime value) {
     final now = DateTime.now();
-    final diff = now.difference(parsed);
-    final clock = _formatClock(parsed);
+    final diff = now.difference(value);
+    final clock = _formatClock(value);
+
+    // Future / clock skew → still show device-local clock, never raw ISO.
+    if (diff.isNegative || diff.inMinutes < 1) {
+      return clock;
+    }
 
     if (diff.inHours < 12) {
       return clock;
@@ -66,6 +84,13 @@ class AppTimeFormatter {
     final years = (diff.inDays / 365).floor();
     final safeYears = years <= 0 ? 1 : years;
     return '$safeYears year ago';
+  }
+
+  static bool _looksLikeTimestamp(String value) {
+    if (value.contains('T') || RegExp(r'^\d{4}-\d{2}-\d{2}').hasMatch(value)) {
+      return true;
+    }
+    return DateTime.tryParse(value.replaceFirst(' ', 'T')) != null;
   }
 
   static String formatCommentTime(String? raw) {

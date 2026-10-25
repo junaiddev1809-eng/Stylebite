@@ -320,6 +320,31 @@ class ChatInitializeResponseModel {
   }
 }
 
+class ChatMessageReactionGroup {
+  const ChatMessageReactionGroup({
+    required this.emoji,
+    required this.count,
+    this.userIds = const <int>[],
+  });
+
+  final String emoji;
+  final int count;
+  final List<int> userIds;
+
+  factory ChatMessageReactionGroup.fromJson(Map<String, dynamic> json) {
+    final rawIds = json['user_ids'];
+    return ChatMessageReactionGroup(
+      emoji: (json['emoji'] ?? '').toString(),
+      count: _asInt(json['count']),
+      userIds: rawIds is List
+          ? [
+              for (final id in rawIds) _asInt(id),
+            ]
+          : const <int>[],
+    );
+  }
+}
+
 class ChatMessageModel {
   const ChatMessageModel({
     required this.id,
@@ -330,6 +355,8 @@ class ChatMessageModel {
     required this.timeLabel,
     required this.status,
     required this.isSeen,
+    this.myReaction = '',
+    this.reactions = const <ChatMessageReactionGroup>[],
   });
 
   final int id;
@@ -340,8 +367,16 @@ class ChatMessageModel {
   final String timeLabel;
   final String status;
   final bool isSeen;
+  final String myReaction;
+  final List<ChatMessageReactionGroup> reactions;
 
-  ChatMessageModel copyWith({String? status, bool? isSeen, bool? isMine}) {
+  ChatMessageModel copyWith({
+    String? status,
+    bool? isSeen,
+    bool? isMine,
+    String? myReaction,
+    List<ChatMessageReactionGroup>? reactions,
+  }) {
     return ChatMessageModel(
       id: id,
       body: body,
@@ -351,6 +386,8 @@ class ChatMessageModel {
       timeLabel: timeLabel,
       status: status ?? this.status,
       isSeen: isSeen ?? this.isSeen,
+      myReaction: myReaction ?? this.myReaction,
+      reactions: reactions ?? this.reactions,
     );
   }
 
@@ -372,6 +409,7 @@ class ChatMessageModel {
       json['sent_at'],
       json['time'],
     );
+    final rawReactions = json['reactions'];
 
     return ChatMessageModel(
       id: _asInt(json['id']),
@@ -386,6 +424,15 @@ class ChatMessageModel {
       timeLabel: _messageTimeLabel(createdAt),
       status: _firstText(json['status'], json['delivery_status']),
       isSeen: _asBool(json['is_seen'] ?? json['seen']),
+      myReaction: (json['my_reaction'] ?? '').toString(),
+      reactions: rawReactions is List
+          ? [
+              for (final item in rawReactions.whereType<Map>())
+                ChatMessageReactionGroup.fromJson(
+                  item.map((key, value) => MapEntry(key.toString(), value)),
+                ),
+            ]
+          : const <ChatMessageReactionGroup>[],
     );
   }
 }

@@ -3,11 +3,10 @@ import 'package:get/get.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
-import '../../../core/widgets/app_cached_image.dart';
-import '../../../core/widgets/app_hero_icon.dart';
 import '../controllers/flash_controller.dart';
 import '../models/flash_model.dart';
 
+/// Instants-style entry: "+ Flashes" for others; separate "Yours" for mine.
 class FlashTray extends StatelessWidget {
   const FlashTray({super.key, this.kind = FlashKind.outfit});
 
@@ -19,186 +18,198 @@ class FlashTray extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = FlashController.ensure();
     return Obx(() {
-      final buckets = controller.bucketsFor(kind);
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-            child: Row(
-              children: [
-                Icon(
-                  _isFood ? Icons.restaurant_rounded : Icons.bolt_rounded,
-                  size: 16,
-                  color: _isFood ? const Color(0xFF1F8A4C) : AppColors.primary,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  flashPluralLabel(kind),
-                  style: AppFonts.plusJakarta(
-                    size: 15,
-                    weight: FontWeight.w800,
-                    color: AppColors.text,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'once · 24h',
-                  style: AppFonts.beVietnam(
-                    size: 11,
-                    weight: FontWeight.w600,
-                    color: AppColors.hintText,
-                  ),
-                ),
-              ],
+      final hasPeers = controller.hasUnseenPeers(kind);
+      final mineCount = controller.mineCount(kind);
+      final title = flashPluralLabel(kind);
+      final accent = _isFood ? const Color(0xFF1F8A4C) : AppColors.primary;
+
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+        child: Row(
+          children: [
+            _GlowEntry(
+              label: title,
+              accent: accent,
+              glowing: hasPeers,
+              onTap: () => controller.openCombined(kind: kind),
+              onLongPress: () => controller.openMineArchive(kind: kind),
             ),
-          ),
-          SizedBox(
-            height: 108,
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              scrollDirection: Axis.horizontal,
-              itemCount: buckets.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 14),
-              itemBuilder: (context, index) {
-                final bucket = buckets[index];
-                return _FlashRing(
-                  bucket: bucket,
-                  isFood: _isFood,
-                  onTap: () => controller.openBucket(bucket),
-                  onAdd: bucket.isMine
-                      ? () => controller.startCreate(kind: kind)
-                      : null,
-                );
-              },
+            const SizedBox(width: 10),
+            _YoursButton(
+              count: mineCount,
+              accent: accent,
+              onView: () => controller.openMineViewer(kind: kind),
+              onManage: () => controller.openMineArchive(kind: kind),
             ),
-          ),
-        ],
+            const Spacer(),
+            if (hasPeers)
+              Text(
+                'New',
+                style: AppFonts.beVietnam(
+                  size: 11,
+                  weight: FontWeight.w800,
+                  color: accent,
+                ),
+              ),
+          ],
+        ),
       );
     });
   }
 }
 
-class _FlashRing extends StatelessWidget {
-  const _FlashRing({
-    required this.bucket,
-    required this.isFood,
-    required this.onTap,
-    this.onAdd,
+class _YoursButton extends StatelessWidget {
+  const _YoursButton({
+    required this.count,
+    required this.accent,
+    required this.onView,
+    required this.onManage,
   });
 
-  final FlashBucket bucket;
-  final bool isFood;
-  final VoidCallback onTap;
-  final VoidCallback? onAdd;
+  final int count;
+  final Color accent;
+  final VoidCallback onView;
+  final VoidCallback onManage;
 
   @override
   Widget build(BuildContext context) {
-    final hasFlash = bucket.items.isNotEmpty;
-    final unseen = bucket.hasUnseen;
-    final label = bucket.isMine
-        ? (isFood ? 'Your Bite' : 'Your Flash')
-        : '@${bucket.username}';
-    final accent = isFood ? const Color(0xFF1F8A4C) : AppColors.primary;
-
-    return SizedBox(
-      width: 74,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Column(
-          children: [
-            SizedBox(
-              width: 68,
-              height: 68,
-              child: Stack(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(2.4),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: !hasFlash || !unseen
-                            ? const [Color(0xFFD8CFCC), Color(0xFFC9C1BE)]
-                            : isFood
-                                ? const [
-                                    Color(0xFF1F8A4C),
-                                    Color(0xFF5ED18A),
-                                    Color(0xFF0E5C32),
-                                  ]
-                                : const [
-                                    AppColors.primary,
-                                    Color(0xFFFF8A5B),
-                                    AppColors.accent,
-                                  ],
-                      ),
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.all(1.6),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: ClipOval(
-                        child: bucket.avatarUrl.trim().isNotEmpty
-                            ? AppCachedImage(
-                                imageUrl: bucket.avatarUrl,
-                                width: 58,
-                                height: 58,
-                                fit: BoxFit.cover,
-                                memCacheWidth: 160,
-                              )
-                            : const ColoredBox(
-                                color: Color(0xFFE9E3E1),
-                                child: Center(
-                                  child: AppHeroIconData(
-                                    Icons.person_rounded,
-                                    size: 26,
-                                    color: AppColors.hintText,
-                                  ),
-                                ),
-                              ),
-                      ),
-                    ),
-                  ),
-                  if (bucket.isMine)
-                    Positioned(
-                      right: 0,
-                      bottom: 0,
-                      child: GestureDetector(
-                        onTap: onAdd,
-                        child: Container(
-                          width: 22,
-                          height: 22,
-                          decoration: BoxDecoration(
-                            color: accent,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppColors.background,
-                              width: 2,
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.photo_camera_rounded,
-                            size: 12,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: count > 0 ? onView : onManage,
+        onLongPress: onManage,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            color: Colors.white,
+            border: Border.all(
+              color: accent.withValues(alpha: count > 0 ? 0.55 : 0.25),
             ),
-            const SizedBox(height: 6),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.person_outline_rounded,
+                size: 16,
+                color: accent,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                count > 0 ? 'Yours ($count)' : 'Yours',
+                style: AppFonts.beVietnam(
+                  size: 13,
+                  weight: FontWeight.w800,
+                  color: AppColors.text,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GlowEntry extends StatefulWidget {
+  const _GlowEntry({
+    required this.label,
+    required this.accent,
+    required this.glowing,
+    required this.onTap,
+    required this.onLongPress,
+  });
+
+  final String label;
+  final Color accent;
+  final bool glowing;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  @override
+  State<_GlowEntry> createState() => _GlowEntryState();
+}
+
+class _GlowEntryState extends State<_GlowEntry>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.glowing) {
+      _pulse.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _GlowEntry oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.glowing && !_pulse.isAnimating) {
+      _pulse.repeat(reverse: true);
+    } else if (!widget.glowing && _pulse.isAnimating) {
+      _pulse.stop();
+      _pulse.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      onLongPress: widget.onLongPress,
+      child: AnimatedBuilder(
+        animation: _pulse,
+        builder: (context, child) {
+          final t = widget.glowing ? _pulse.value : 0.0;
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              color: Colors.white,
+              border: Border.all(
+                color: Color.lerp(
+                      widget.accent.withValues(alpha: 0.4),
+                      widget.accent,
+                      t,
+                    ) ??
+                    widget.accent,
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.accent.withValues(
+                    alpha: widget.glowing ? (0.22 + t * 0.35) : 0.1,
+                  ),
+                  blurRadius: widget.glowing ? (12 + t * 14) : 6,
+                  spreadRadius: widget.glowing ? t * 2 : 0,
+                ),
+              ],
+            ),
+            child: child,
+          );
+        },
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.add_rounded, size: 18, color: widget.accent),
+            const SizedBox(width: 4),
             Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: AppFonts.beVietnam(
-                size: 11,
-                weight: FontWeight.w600,
+              widget.label,
+              style: AppFonts.plusJakarta(
+                size: 15,
+                weight: FontWeight.w800,
                 color: AppColors.text,
               ),
             ),

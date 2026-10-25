@@ -190,10 +190,10 @@ class GooglePlacesService {
       );
       return aDistance.compareTo(bDistance);
     });
-    if (merged.length <= 15) {
+    if (merged.length <= 25) {
       return merged;
     }
-    return merged.sublist(0, 15);
+    return merged.sublist(0, 25);
   }
 
   static String _brandToken(String query) {

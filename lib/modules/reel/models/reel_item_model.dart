@@ -523,6 +523,13 @@ class ReelItemModel {
       latitude: latitude,
       longitude: longitude,
       publishedAt: publishedAt,
+      postedAt: () {
+        final published = publishedAt;
+        if (published == null) {
+          return 'Just now';
+        }
+        return AppTimeFormatter.formatPostTimeValue(published);
+      }(),
     );
   }
 }

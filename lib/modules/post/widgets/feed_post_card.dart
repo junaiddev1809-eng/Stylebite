@@ -18,7 +18,6 @@ import '../../../core/widgets/app_cached_video_player.dart';
 import '../../../core/widgets/app_verified_badge.dart';
 import '../../home/models/home_post_model.dart';
 import '../../profile/utils/profile_open_helper.dart';
-import '../../profile/widgets/follow_user_button.dart';
 import '../controllers/post_detail_controller.dart';
 import '../controllers/restaurant_review_store.dart';
 import '../screens/comments_screen.dart';
@@ -35,7 +34,6 @@ import '../widgets/post_hashtag_chips.dart';
 import '../widgets/restaurant_review_sheet.dart';
 import 'post_options_sheet.dart';
 import '../../reports/widgets/report_reason_sheet.dart';
-import '../../messages/utils/chat_start_helper.dart';
 import '../../SelectLocationScreen/restaurant_map_screen.dart';
 
 class FeedPostCard extends StatefulWidget {
@@ -291,35 +289,6 @@ class _FeedPostCardState extends State<FeedPostCard> {
                     ],
                   ),
                 ),
-                if (!_isOwnPost(post))
-                  FollowUserButton(
-                    username: post.profileUsername,
-                    initialIsFollowing: post.isFollowingAuthor,
-                    compact: true,
-                  ),
-                if (!_isOwnPost(post)) ...[
-                  const SizedBox(width: 6),
-                  IconButton(
-                    onPressed: () => ChatStartHelper.startChat(
-                      post.profileUsername.trim().isNotEmpty
-                          ? post.profileUsername
-                          : post.username,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 36,
-                      height: 36,
-                    ),
-                    style: IconButton.styleFrom(
-                      backgroundColor: const Color(0xFFF2EFEE),
-                    ),
-                    icon: const AppHeroIconData(
-                      Icons.chat_bubble_outline_rounded,
-                      size: 18,
-                      color: AppColors.text,
-                    ),
-                  ),
-                ],
                 IconButton(
                   onPressed: _openOptions,
                   icon: AppHeroIconData(HeroIcons.ellipsisVertical),

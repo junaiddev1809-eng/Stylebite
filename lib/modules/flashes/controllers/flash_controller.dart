@@ -2,17 +2,18 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../../../core/media/media_picker_service.dart';
 import '../../../core/media/picked_media.dart';
 import '../../../core/utils/app_helper.dart';
 import '../../../core/utils/local_storage.dart';
 import '../models/flash_model.dart';
-import '../screens/create_flash_screen.dart';
+import '../screens/flash_camera_screen.dart';
 import '../screens/flash_viewer_screen.dart';
 import '../services/flash_sync_service.dart';
+import '../widgets/flash_archive_sheet.dart';
 
 class FlashController extends GetxController {
   static const _storageKey = 'styleFlashes';
@@ -56,8 +57,7 @@ class FlashController extends GetxController {
     }
   }
 
-  /// Peers only appear while they still have unseen flashes (Instants once-view).
-  /// Your own ring stays so you can add more.
+  /// Peers only while they still have unseen flashes (Instants once-view).
   List<FlashBucket> bucketsFor(FlashKind kind) {
     final result = <FlashBucket>[];
     var hasMine = false;
@@ -72,16 +72,17 @@ class FlashController extends GetxController {
           FlashBucket(
             username: bucket.username,
             avatarUrl: bucket.avatarUrl,
-            items: items,
+            items: [
+              for (final item in bucket.items)
+                if (item.kind == kind) item,
+            ],
             isMine: true,
             kind: kind,
           ),
         );
         continue;
       }
-      if (items.isEmpty) {
-        continue;
-      }
+      if (items.isEmpty) continue;
       result.add(
         FlashBucket(
           username: bucket.username,
@@ -107,15 +108,17 @@ class FlashController extends GetxController {
     return result;
   }
 
-  Future<void> addFlash({
+  /// Returns local id. When [quiet], skips success snackbars (camera undo flow).
+  Future<String?> addFlash({
     required PickedMedia media,
     String caption = '',
     FlashKind kind = FlashKind.outfit,
+    bool quiet = false,
   }) async {
     final username = _me;
     if (username.isEmpty) {
       errorSnackBar(message: 'Please sign in to share a flash.');
-      return;
+      return null;
     }
 
     final stored = await _persistMedia(media);
@@ -153,17 +156,48 @@ class FlashController extends GetxController {
         ];
         buckets.assignAll(_group(synced));
         await _persist(synced);
-        successSnackBar(message: '$label shared.');
-        return;
+        if (!quiet) successSnackBar(message: '$label shared.');
+        return next.id;
       }
-      successSnackBar(
-        message: '$label saved. Friends will see it once it finishes sharing.',
-      );
+      if (!quiet) {
+        successSnackBar(
+          message: '$label saved. Friends will see it once it finishes sharing.',
+        );
+      }
+      return next.id;
     } catch (_) {
-      successSnackBar(
-        message: '$label saved. Friends will see it once it finishes sharing.',
-      );
+      if (!quiet) {
+        successSnackBar(
+          message: '$label saved. Friends will see it once it finishes sharing.',
+        );
+      }
+      return next.id;
     }
+  }
+
+  Future<void> deleteFlash(String flashId) async {
+    FlashItem? target;
+    for (final bucket in buckets) {
+      for (final item in bucket.items) {
+        if (item.id == flashId || item.remoteId == flashId) {
+          target = item;
+          break;
+        }
+      }
+    }
+    if (target == null) return;
+
+    if (target.remoteId.trim().isNotEmpty) {
+      await FlashSyncService.deleteRemote(target.remoteId);
+    }
+
+    final next = [
+      for (final bucket in buckets)
+        for (final item in bucket.items)
+          if (item.id != target.id && item.remoteId != target.id) item,
+    ];
+    buckets.assignAll(_group(next));
+    await _persist(next);
   }
 
   Future<void> markSeen(String flashId) async {
@@ -179,56 +213,134 @@ class FlashController extends GetxController {
   }
 
   Future<void> startCreate({FlashKind kind = FlashKind.outfit}) async {
-    final media = await MediaPickerService.pickInstantPhoto();
-    if (media == null) {
-      return;
-    }
-
-    final published = await Get.to<bool>(
-      () => CreateFlashScreen(media: media, kind: kind),
-    );
-    if (published == true) {
-      await load();
-    }
+    await Get.to<void>(() => FlashCameraScreen(kind: kind));
+    await load();
   }
 
-  void openBucket(FlashBucket bucket, {int startIndex = 0}) {
-    if (bucket.items.isEmpty) {
-      startCreate(kind: bucket.kind);
+  void openMineArchive({FlashKind kind = FlashKind.outfit}) {
+    Get.bottomSheet(
+      FlashArchiveSheet(kind: kind),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+    );
+  }
+
+  bool hasUnseenPeers(FlashKind kind) {
+    final me = _me.toLowerCase();
+    for (final bucket in buckets) {
+      if (bucket.username.toLowerCase() == me) continue;
+      for (final item in bucket.items) {
+        if (item.kind == kind && !item.seen) return true;
+      }
+    }
+    return false;
+  }
+
+  int mineCount(FlashKind kind) {
+    for (final bucket in buckets) {
+      if (!bucket.isMine) continue;
+      return bucket.items.where((item) => item.kind == kind).length;
+    }
+    return 0;
+  }
+
+  /// Others only (Instants stack). Your flashes stay in Yours / archive.
+  /// If nobody has unseen flashes → opens camera.
+  Future<void> openCombined({FlashKind kind = FlashKind.outfit}) async {
+    final playlist = peersPlaylist(kind);
+    if (playlist.isEmpty) {
+      await startCreate(kind: kind);
       return;
     }
-    Get.to<void>(
+    await Get.to<void>(
       () => FlashViewerScreen(
-        bucket: bucket,
-        startIndex: startIndex,
+        items: playlist,
+        kind: kind,
+        openCameraWhenDone: true,
       ),
     );
+    await load();
+  }
+
+  /// Your flashes only — same mid-screen viewer, with delete.
+  Future<void> openMineViewer({FlashKind kind = FlashKind.outfit}) async {
+    final playlist = minePlaylist(kind);
+    if (playlist.isEmpty) {
+      openMineArchive(kind: kind);
+      return;
+    }
+    await Get.to<void>(
+      () => FlashViewerScreen(
+        items: playlist,
+        kind: kind,
+        openCameraWhenDone: false,
+      ),
+    );
+    await load();
+  }
+
+  List<FlashItem> peersPlaylist(FlashKind kind) {
+    final me = _me.toLowerCase();
+    final peerGroups = <String, List<FlashItem>>{};
+    final peerFirstAt = <String, DateTime>{};
+
+    for (final bucket in buckets) {
+      final isMine =
+          bucket.isMine || bucket.username.toLowerCase() == me;
+      if (isMine) continue;
+      for (final item in bucket.items) {
+        if (item.kind != kind || item.seen) continue;
+        final key = item.username.toLowerCase();
+        peerGroups.putIfAbsent(key, () => []).add(item);
+        final first = peerFirstAt[key];
+        if (first == null || item.createdAt.isBefore(first)) {
+          peerFirstAt[key] = item.createdAt;
+        }
+      }
+    }
+
+    for (final list in peerGroups.values) {
+      list.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    }
+
+    final orderedPeers = peerGroups.keys.toList()
+      ..sort((a, b) {
+        final aAt = peerFirstAt[a] ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bAt = peerFirstAt[b] ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return aAt.compareTo(bAt);
+      });
+
+    return [for (final key in orderedPeers) ...peerGroups[key]!];
+  }
+
+  List<FlashItem> minePlaylist(FlashKind kind) {
+    final mine = <FlashItem>[];
+    for (final bucket in buckets) {
+      if (!bucket.isMine) continue;
+      for (final item in bucket.items) {
+        if (item.kind == kind) mine.add(item);
+      }
+    }
+    mine.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    return mine;
   }
 
   List<FlashItem> _readLocal() {
     final raw = LocalStorage.prefs.getString(_storageKey);
-    if (raw == null || raw.trim().isEmpty) {
-      return const [];
-    }
+    if (raw == null || raw.trim().isEmpty) return const [];
     try {
       final decoded = jsonDecode(raw);
-      if (decoded is! List) {
-        return const [];
-      }
+      if (decoded is! List) return const [];
       final items = <FlashItem>[];
       for (final entry in decoded.whereType<Map>()) {
         final item = FlashItem.fromJson(
           entry.map((key, value) => MapEntry(key.toString(), value)),
         );
-        if (item.isExpired) {
-          continue;
-        }
+        if (item.isExpired) continue;
         final hasLocal =
             item.mediaPath.isNotEmpty && File(item.mediaPath).existsSync();
         final hasRemote = item.mediaUrl.trim().isNotEmpty || item.isPublished;
-        if (hasLocal || hasRemote) {
-          items.add(item);
-        }
+        if (hasLocal || hasRemote) items.add(item);
       }
       return items;
     } catch (_) {
@@ -247,9 +359,7 @@ class FlashController extends GetxController {
     };
     final byKey = <String, FlashItem>{};
     void put(FlashItem item) {
-      if (item.isExpired) {
-        return;
-      }
+      if (item.isExpired) return;
       final key = item.mergeKey;
       final existing = byKey[key];
       final seen = item.seen ||
@@ -289,23 +399,17 @@ class FlashController extends GetxController {
   Future<void> _republishUnsynced(List<FlashItem> items) async {
     final me = _me.toLowerCase();
     for (final item in items) {
-      if (item.username.toLowerCase() != me || item.isPublished) {
-        continue;
-      }
+      if (item.username.toLowerCase() != me || item.isPublished) continue;
       if (item.mediaPath.isEmpty || !File(item.mediaPath).existsSync()) {
         continue;
       }
-      if (!_publishing.add(item.id)) {
-        continue;
-      }
+      if (!_publishing.add(item.id)) continue;
       try {
         final published = await FlashSyncService.republishFile(
           local: item,
           filePath: item.mediaPath,
         );
-        if (published == null) {
-          continue;
-        }
+        if (published == null) continue;
         final next = [
           for (final current in [
             for (final bucket in buckets) ...bucket.items,
@@ -320,7 +424,6 @@ class FlashController extends GetxController {
         buckets.assignAll(_group(next));
         await _persist(next);
       } catch (_) {
-        // Keep local; next refresh retries.
       } finally {
         _publishing.remove(item.id);
       }
@@ -331,9 +434,7 @@ class FlashController extends GetxController {
     final mineName = _me.toLowerCase();
     final byUser = <String, List<FlashItem>>{};
     for (final item in items) {
-      if (item.isExpired) {
-        continue;
-      }
+      if (item.isExpired) continue;
       byUser.putIfAbsent(item.username.toLowerCase(), () => []).add(item);
     }
     for (final list in byUser.values) {
@@ -355,9 +456,7 @@ class FlashController extends GetxController {
       ..sort((a, b) {
         final aUnseen = a.value.any((item) => !item.seen);
         final bUnseen = b.value.any((item) => !item.seen);
-        if (aUnseen != bUnseen) {
-          return aUnseen ? -1 : 1;
-        }
+        if (aUnseen != bUnseen) return aUnseen ? -1 : 1;
         return b.value.last.createdAt.compareTo(a.value.last.createdAt);
       });
     for (final entry in others) {

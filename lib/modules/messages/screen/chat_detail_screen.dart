@@ -19,6 +19,7 @@ import '../controllers/chat_detail_controller.dart';
 import '../models/chat_models.dart';
 import '../widgets/chat_conversation_options_sheet.dart';
 import '../widgets/chat_message_options_sheet.dart';
+import '../widgets/chat_reaction_picker_sheet.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   const ChatDetailScreen({
@@ -320,7 +321,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       widgets.add(
         _ChatMessageBubble(
           message: message,
-          onReport: () => _reportMessage(message),
+          onLongPress: () => _onMessageLongPress(message),
+          onReactionTap: (emoji) => _controller.reactToMessage(message, emoji),
         ),
       );
 
@@ -335,23 +337,45 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     return widgets;
   }
 
-  Future<void> _reportMessage(ChatMessageModel message) async {
-    final action = await showChatMessageOptionsSheet(context);
-    if (!mounted || action != ChatMessageOptionAction.report) {
-      return;
-    }
-    final result = await showReportReasonSheet(
+  Future<void> _onMessageLongPress(ChatMessageModel message) async {
+    final choice = await showChatMessageOptionsSheet(
       context,
-      title: 'Report message',
+      canReport: !message.isMine,
+      currentReaction: message.myReaction,
     );
-    if (result == null) {
+    if (!mounted || choice == null) {
       return;
     }
-    await _controller.reportMessage(
-      message.id,
-      result.reasonCode,
-      result.details,
-    );
+
+    switch (choice.action) {
+      case ChatMessageOptionAction.react:
+        await _controller.reactToMessage(message, choice.emoji);
+        return;
+      case ChatMessageOptionAction.moreEmojis:
+        final emoji = await showChatReactionPickerSheet(
+          context,
+          currentReaction: message.myReaction,
+        );
+        if (!mounted || emoji == null || emoji.trim().isEmpty) {
+          return;
+        }
+        await _controller.reactToMessage(message, emoji);
+        return;
+      case ChatMessageOptionAction.report:
+        final result = await showReportReasonSheet(
+          context,
+          title: 'Report message',
+        );
+        if (result == null) {
+          return;
+        }
+        await _controller.reportMessage(
+          message.id,
+          result.reasonCode,
+          result.details,
+        );
+        return;
+    }
   }
 }
 
@@ -831,10 +855,15 @@ class _DateBanner extends StatelessWidget {
 }
 
 class _ChatMessageBubble extends StatelessWidget {
-  const _ChatMessageBubble({required this.message, this.onReport});
+  const _ChatMessageBubble({
+    required this.message,
+    this.onLongPress,
+    this.onReactionTap,
+  });
 
   final ChatMessageModel message;
-  final VoidCallback? onReport;
+  final VoidCallback? onLongPress;
+  final ValueChanged<String>? onReactionTap;
 
   Widget _messageBody(BuildContext context, bool isMine) {
     final share = InAppSharePayload.tryParse(message.body);
@@ -852,6 +881,49 @@ class _ChatMessageBubble extends StatelessWidget {
     return _SharedPostCard(share: share, isMine: isMine);
   }
 
+  Widget _reactionChips(bool isMine) {
+    if (message.reactions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Wrap(
+        spacing: 4,
+        runSpacing: 4,
+        alignment: isMine ? WrapAlignment.end : WrapAlignment.start,
+        children: [
+          for (final reaction in message.reactions)
+            InkWell(
+              onTap: onReactionTap == null
+                  ? null
+                  : () => onReactionTap!(reaction.emoji),
+              borderRadius: BorderRadius.circular(999),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: message.myReaction == reaction.emoji
+                      ? AppColors.primary.withValues(alpha: 0.14)
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: message.myReaction == reaction.emoji
+                        ? AppColors.primary
+                        : const Color(0xFFE7E2E0),
+                  ),
+                ),
+                child: Text(
+                  reaction.count > 1
+                      ? '${reaction.emoji} ${reaction.count}'
+                      : reaction.emoji,
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isMine = message.isMine;
@@ -867,7 +939,7 @@ class _ChatMessageBubble extends StatelessWidget {
                 : CrossAxisAlignment.start,
             children: [
               GestureDetector(
-                onLongPress: isMine ? null : onReport,
+                onLongPress: onLongPress,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
@@ -906,6 +978,7 @@ class _ChatMessageBubble extends StatelessWidget {
                   child: _messageBody(context, isMine),
                 ),
               ),
+              _reactionChips(isMine),
               const SizedBox(height: 4),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

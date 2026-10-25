@@ -428,7 +428,7 @@ class ProfilePostModel {
       comments: commentCount.toString(),
       defaultSelectedRate: 0,
       caption: caption,
-      postedAt: createdAt,
+      postedAt: AppTimeFormatter.formatPostTime(createdAt),
       mediaUrl: resolvedMediaType == HomeMediaType.video
           ? (primaryMedia?.fileUrl ?? primaryImageUrl)
           : '',

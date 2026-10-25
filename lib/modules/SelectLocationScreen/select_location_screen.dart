@@ -138,12 +138,23 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
       try {
         position = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 10),
+            accuracy: LocationAccuracy.best,
+            distanceFilter: 0,
+            timeLimit: Duration(seconds: 20),
           ),
         );
       } catch (e) {
         debugPrint('Error getting current position: $e');
+        try {
+          position = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              timeLimit: Duration(seconds: 12),
+            ),
+          );
+        } catch (retryError) {
+          debugPrint('Retry current position failed: $retryError');
+        }
       }
     }
 
@@ -187,12 +198,23 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
     try {
       position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 10),
+          accuracy: LocationAccuracy.best,
+          distanceFilter: 0,
+          timeLimit: Duration(seconds: 20),
         ),
       );
     } catch (e) {
       debugPrint('Error getting current position: $e');
+      try {
+        position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 12),
+          ),
+        );
+      } catch (retryError) {
+        debugPrint('Retry my-location failed: $retryError');
+      }
     }
     if (position == null || !mounted || token != _cameraToken) {
       return;

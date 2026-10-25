@@ -72,43 +72,55 @@ class _UploadScreenState extends State<UploadScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      _FieldLabel('Location'),
+                      Obx(
+                        () => _FieldLabel(
+                          _controller.selectedType.value == UploadPostType.food
+                              ? 'Location (required)'
+                              : 'Location (optional)',
+                        ),
+                      ),
                       const SizedBox(height: 8),
-                      UploadLocationField(
-                        controller: _controller,
-                        inputDecoration: _inputDecoration,
-                        onOpenMap: () {
-                          final lat = _controller.latitude;
-                          final lng = _controller.longitude;
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => SelectLocationScreen(
-                                addressLocation:
-                                    lat != null && lng != null
-                                    ? LatLng(lat, lng)
-                                    : null,
-                                initialQuery: _controller
-                                    .locationController
-                                    .text
-                                    .trim(),
-                                onConfirmLocation: (value, location) {
-                                  final label = value.trim();
-                                  if (label.isEmpty ||
-                                      label.toLowerCase() ==
-                                          'unknown location') {
-                                    return;
-                                  }
-                                  _controller.setLocation(
-                                    label,
-                                    location.latitude,
-                                    location.longitude,
-                                  );
-                                },
+                      Obx(
+                        () => UploadLocationField(
+                          controller: _controller,
+                          inputDecoration: _inputDecoration,
+                          required: _controller.selectedType.value ==
+                              UploadPostType.food,
+                          onOpenMap: () {
+                            final lat = _controller.latitude;
+                            final lng = _controller.longitude;
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => SelectLocationScreen(
+                                  addressLocation:
+                                      lat != null && lng != null
+                                      ? LatLng(lat, lng)
+                                      : null,
+                                  initialQuery: _controller
+                                      .locationController
+                                      .text
+                                      .trim(),
+                                  onConfirmLocation: (value, location) {
+                                    var label = value.trim();
+                                    if (label.isEmpty ||
+                                        label.toLowerCase() ==
+                                            'unknown location') {
+                                      label =
+                                          '${location.latitude.toStringAsFixed(5)}, '
+                                          '${location.longitude.toStringAsFixed(5)}';
+                                    }
+                                    _controller.setLocation(
+                                      label,
+                                      location.latitude,
+                                      location.longitude,
+                                    );
+                                  },
+                                ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
                       const SizedBox(height: 14),
                       _FieldLabel('Visibility'),

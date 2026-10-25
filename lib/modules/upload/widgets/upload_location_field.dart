@@ -12,6 +12,7 @@ class UploadLocationField extends StatelessWidget {
     required this.controller,
     required this.inputDecoration,
     this.onOpenMap,
+    this.required = false,
   });
 
   final UploadController controller;
@@ -23,6 +24,7 @@ class UploadLocationField extends StatelessWidget {
   })
   inputDecoration;
   final VoidCallback? onOpenMap;
+  final bool required;
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +33,7 @@ class UploadLocationField extends StatelessWidget {
       final suggestions = controller.locationSuggestions;
       final fetching = controller.isFetchingLocation.value;
       final searching = controller.isSearchingLocations.value;
+      final pinned = controller.hasPinnedLocation;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -47,7 +50,9 @@ class UploadLocationField extends StatelessWidget {
             scrollPhysics: const NeverScrollableScrollPhysics(),
             style: AppFonts.beVietnam(weight: FontWeight.w600),
             decoration: inputDecoration(
-              'Search a restaurant or a place',
+              required
+                  ? 'Search place (required for Bite)'
+                  : 'Search a restaurant or a place (optional)',
               icon: Icons.location_on_rounded,
               radius: 16,
               suffix: SizedBox(
@@ -67,7 +72,7 @@ class UploadLocationField extends StatelessWidget {
                       ),
                     ),
                   IconButton(
-                    tooltip: 'Use current location',
+                    tooltip: 'Use live GPS',
                     onPressed: fetching
                         ? null
                         : controller.fetchCurrentLocation,
@@ -85,7 +90,7 @@ class UploadLocationField extends StatelessWidget {
                   ),
                   if (onOpenMap != null)
                     IconButton(
-                      tooltip: 'Pick on map',
+                      tooltip: 'Pin on map',
                       onPressed: onOpenMap,
                       icon: const AppHeroIconData(
                         Icons.map_rounded,
@@ -103,12 +108,20 @@ class UploadLocationField extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Text(
               searching && suggestions.isEmpty
-                  ? 'Looking up nearby restaurants and places...'
-                  : 'Type a restaurant name for nearby matches, or any place.',
+                  ? 'Looking up map places…'
+                  : pinned
+                      ? 'Exact location pinned. Clear to change.'
+                      : required
+                          ? 'Pick a suggestion, pin the map, or use live GPS (required).'
+                          : 'Type to see map places, pin the map, or use live GPS — optional for Style.',
               style: AppFonts.beVietnam(
                 size: 11,
                 weight: FontWeight.w500,
-                color: AppColors.hintText,
+                color: pinned
+                    ? AppColors.primary
+                    : required
+                        ? AppColors.error.withValues(alpha: 0.85)
+                        : AppColors.hintText,
               ),
             ),
           ),
@@ -121,7 +134,7 @@ class UploadLocationField extends StatelessWidget {
                 border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
               ),
               child: SizedBox(
-                height: (suggestions.length * 68.0).clamp(68, 320),
+                height: (suggestions.length * 68.0).clamp(68, 420),
                 child: ListView.separated(
                 physics: const ClampingScrollPhysics(),
                 itemCount: suggestions.length,

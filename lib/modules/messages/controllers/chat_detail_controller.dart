@@ -567,6 +567,26 @@ class ChatDetailController extends GetxController {
     }
   }
 
+  Future<void> reactToMessage(ChatMessageModel message, String emoji) async {
+    final trimmed = emoji.trim();
+    if (trimmed.isEmpty || conversationId <= 0 || message.id <= 0) {
+      return;
+    }
+    try {
+      final updated = await _apiService.toggleReaction(
+        conversationId: conversationId,
+        messageId: message.id,
+        emoji: trimmed,
+      );
+      _insertOrReconcile(updated);
+      messages.refresh();
+    } on ChatApiException catch (error) {
+      errorSnackBar(message: error.message);
+    } catch (_) {
+      errorSnackBar(message: 'Could not update reaction.');
+    }
+  }
+
   Future<void> sendCurrentMessage() async {
     final text = messageController.text.trim();
     if (text.isEmpty || isSending.value || isComposerDisabled) {

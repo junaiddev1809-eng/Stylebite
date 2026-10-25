@@ -6,6 +6,7 @@ import 'package:heroicons/heroicons.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../app/routes/app_routes.dart';
+import '../../../core/constants/bottom_nav_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_cached_image.dart';
 import '../../../core/widgets/app_cached_video_player.dart';
@@ -186,6 +187,8 @@ class _ReelScreenState extends State<ReelScreen> with RouteAware {
                       controller: _controller,
                       pageIndex: index,
                       onTapProfile: _openAuthorProfile,
+                      reserveBottomNav:
+                          !widget.viewerMode || widget.showBottomNav,
                     );
                   },
                 );
@@ -536,11 +539,13 @@ class _ReelPage extends StatelessWidget {
     required this.controller,
     required this.pageIndex,
     required this.onTapProfile,
+    this.reserveBottomNav = true,
   });
 
   final ReelController controller;
   final int pageIndex;
   final Function(ReelItemModel) onTapProfile;
+  final bool reserveBottomNav;
 
   @override
   Widget build(BuildContext context) {
@@ -567,6 +572,7 @@ class _ReelPage extends StatelessWidget {
       index: reelIndex,
       item: item,
       onTapProfile: onTapProfile,
+      reserveBottomNav: reserveBottomNav,
     );
   }
 }
@@ -578,12 +584,14 @@ class _ReelSlide extends StatefulWidget {
     required this.index,
     required this.item,
     required this.onTapProfile,
+    this.reserveBottomNav = true,
   });
 
   final ReelController controller;
   final int index;
   final ReelItemModel item;
   final Function(ReelItemModel) onTapProfile;
+  final bool reserveBottomNav;
 
   @override
   State<_ReelSlide> createState() => _ReelSlideState();
@@ -659,6 +667,8 @@ class _ReelSlideState extends State<_ReelSlide>
     final index = widget.index;
     final item = widget.item;
     final onTapProfile = widget.onTapProfile;
+    final seekBottom = _seekBarBottom(context);
+    final metaBottom = seekBottom + 34;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -747,7 +757,7 @@ class _ReelSlideState extends State<_ReelSlide>
         Positioned(
           left: 18,
           right: 14,
-          bottom: 130,
+          bottom: metaBottom,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -766,10 +776,12 @@ class _ReelSlideState extends State<_ReelSlide>
           ),
         ),
         // Above captions so taps/drags reach the seek bar (forward + back).
+        // Kept clear of the floating LandingBottomNav so scrubbing and tab
+        // taps do not fight each other.
         Positioned(
           left: 12,
           right: 12,
-          bottom: 96,
+          bottom: seekBottom,
           child: AppVideoSeekBar(
             controller: _videoController,
             onScrubbingChanged: (scrubbing) {
@@ -782,6 +794,19 @@ class _ReelSlideState extends State<_ReelSlide>
         ),
       ],
     );
+  }
+
+  /// Space from screen bottom to the seek bar — clears the floating nav pill
+  /// plus a gap so progress scrubbing cannot land on tab icons.
+  double _seekBarBottom(BuildContext context) {
+    final safeBottom = MediaQuery.paddingOf(context).bottom;
+    if (!widget.reserveBottomNav) {
+      return safeBottom + 12;
+    }
+    return safeBottom +
+        kBottomNavHeight +
+        kBottomNavVerticalMargin +
+        20; // gap between seek bar and nav pill
   }
 }
 

@@ -212,31 +212,47 @@ class NotificationsController extends GetxController {
     }
   }
 
-  // Returns whether the notification was actually removed — the caller
-  // (a swipe-to-dismiss gesture) needs this to know whether to let the tile
-  // stay gone or snap back into view after a failed delete.
-  Future<bool> deleteNotification(int id) async {
+  /// Soft-removes a row for undoable delete. Returns the original index, or
+  /// `-1` if the item was not found / already being deleted.
+  int softRemoveNotification(NotificationItemModel item) {
+    final id = item.id;
     if (deletingNotificationIds.contains(id)) {
-      return false;
+      return -1;
     }
-
-    final index = notifications.indexWhere((item) => item.id == id);
+    final index = notifications.indexWhere((entry) => entry.id == id);
     if (index == -1) {
-      return false;
+      return -1;
     }
-
-    final item = notifications[index];
     deletingNotificationIds.add(id);
+    notifications.removeAt(index);
+    if (item.unread && unreadCount.value > 0) {
+      unreadCount.value -= 1;
+    }
+    if (notifications.isEmpty) {
+      hasMore.value = false;
+    }
+    return index;
+  }
+
+  void restoreNotification(NotificationItemModel item, int index) {
+    final insertAt = index.clamp(0, notifications.length);
+    if (notifications.any((entry) => entry.id == item.id)) {
+      deletingNotificationIds.remove(item.id);
+      return;
+    }
+    notifications.insert(insertAt, item);
+    if (item.unread) {
+      unreadCount.value += 1;
+    }
+    hasMore.value = true;
+    deletingNotificationIds.remove(item.id);
+  }
+
+  /// Commits a soft-removed notification to the API / local store.
+  Future<bool> commitDeleteNotification(NotificationItemModel item) async {
     try {
       if (_isLocalItem(item)) {
-        notifications.removeAt(index);
         LikeNotificationStore.remove(item);
-        if (item.unread && unreadCount.value > 0) {
-          unreadCount.value -= 1;
-        }
-        if (notifications.isEmpty) {
-          hasMore.value = false;
-        }
         return true;
       }
 
@@ -256,21 +272,33 @@ class NotificationsController extends GetxController {
         );
       }
 
-      notifications.removeAt(index);
       LikeNotificationStore.remove(item);
-      if (item.unread && unreadCount.value > 0) {
-        unreadCount.value -= 1;
-      }
-      if (notifications.isEmpty) {
-        hasMore.value = false;
-      }
       return true;
     } catch (error) {
       errorSnackBar(message: error.toString().replaceFirst('Exception: ', ''));
       return false;
     } finally {
-      deletingNotificationIds.remove(id);
+      deletingNotificationIds.remove(item.id);
     }
+  }
+
+  // Returns whether the notification was actually removed — kept for any
+  // callers that still want an immediate hard delete.
+  Future<bool> deleteNotification(int id) async {
+    final index = notifications.indexWhere((item) => item.id == id);
+    if (index == -1) {
+      return false;
+    }
+    final item = notifications[index];
+    final removedAt = softRemoveNotification(item);
+    if (removedAt < 0) {
+      return false;
+    }
+    final committed = await commitDeleteNotification(item);
+    if (!committed) {
+      restoreNotification(item, removedAt);
+    }
+    return committed;
   }
 
   Future<void> onVibeAction(int id, String actionLabel) async {

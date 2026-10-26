@@ -292,6 +292,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           _openLandingTab(0);
         }
         break;
+      case NotificationKind.follow:
+        if (_openFromActionUrl(item.actionUrl)) {
+          break;
+        }
+        _openActorProfile(item);
+        break;
       case NotificationKind.contest:
         if (item.entityId > 0) {
           Get.toNamed(
@@ -768,6 +774,15 @@ class _NotificationCard extends StatelessWidget {
                               Icons.favorite_rounded,
                               size: 14,
                               color: Color(0xFFFF4D6D),
+                            ),
+                          ),
+                        ] else if (item.kind == NotificationKind.follow) ...[
+                          const Padding(
+                            padding: EdgeInsets.only(top: 2, right: 6),
+                            child: Icon(
+                              Icons.person_add_alt_1_rounded,
+                              size: 14,
+                              color: AppColors.primary,
                             ),
                           ),
                         ],

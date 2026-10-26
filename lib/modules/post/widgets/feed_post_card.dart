@@ -29,6 +29,7 @@ import '../widgets/contest_post_badge.dart';
 import '../widgets/winner_sparkle_overlay.dart';
 import '../widgets/food_post_details.dart';
 import '../widgets/post_action_bar.dart';
+import '../widgets/post_likers_sheet.dart';
 import '../widgets/post_media_carousel.dart';
 import '../widgets/post_hashtag_chips.dart';
 import '../widgets/restaurant_review_sheet.dart';
@@ -579,6 +580,11 @@ class _FeedPostCardState extends State<FeedPostCard> {
               isSaveLoading: widget.isSaveLoading,
               isShareLoading: widget.isShareLoading,
               onLike: widget.onLike,
+              onLikesTap: () => showPostLikersSheet(
+                context,
+                postId: post.id,
+                likeCountLabel: post.likes,
+              ),
               onSave: widget.onSave,
               onComment: () {
                 if (!widget.showCommentAction) {

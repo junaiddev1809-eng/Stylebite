@@ -183,7 +183,8 @@ class EditProfileController extends GetxController {
       }
 
       successSnackBar(
-        message: (payload['message'] ?? 'Verification badge granted.')
+        message: (payload['message'] ??
+                'Verification request submitted for admin review.')
             .toString(),
       );
       await profileController.fetchProfileOverview(forceRefresh: true);

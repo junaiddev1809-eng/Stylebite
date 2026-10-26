@@ -100,6 +100,7 @@ class ProfileUserModel {
     required this.visibility,
     required this.isPrivate,
     required this.isVerifiedBadge,
+    required this.verificationStatus,
     required this.isSelf,
     required this.isFollowing,
     required this.followsYou,
@@ -143,6 +144,7 @@ class ProfileUserModel {
   final String visibility;
   final bool isPrivate;
   final bool isVerifiedBadge;
+  final String verificationStatus;
   final bool isSelf;
   final bool isFollowing;
   final bool followsYou;
@@ -194,6 +196,9 @@ class ProfileUserModel {
         map['username'],
         parseVerifiedFlag(map, relationship),
       ),
+      verificationStatus: _asString(
+        map['verification_status'],
+      ).trim().toLowerCase(),
       isSelf: _asBool(map['is_self']),
       isFollowing: _asBool(relationship['is_following'] ?? map['is_following']),
       followsYou: _asBool(relationship['follows_you'] ?? map['follows_you']),
@@ -221,9 +226,18 @@ class ProfileUserModel {
   }
 
   bool get canRequestVerification {
+    if (isVerifiedBadge || verificationStatus == 'approved') {
+      return false;
+    }
+    if (verificationStatus == 'pending') {
+      return false;
+    }
     return emailVerifiedAt.trim().isNotEmpty ||
         phoneVerifiedAt.trim().isNotEmpty;
   }
+
+  bool get isVerificationPending =>
+      !isVerifiedBadge && verificationStatus == 'pending';
 
   String get websiteUrlOrEmpty => websiteUrl;
   String get genderOrEmpty => gender;

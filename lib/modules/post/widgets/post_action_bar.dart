@@ -12,6 +12,7 @@ class PostActionBar extends StatelessWidget {
     required this.isSaved,
     required this.isLiked,
     required this.onLike,
+    this.onLikesTap,
     required this.onComment,
     required this.onShare,
     required this.onSave,
@@ -36,6 +37,8 @@ class PostActionBar extends StatelessWidget {
   final bool isSaved;
   final bool isLiked;
   final VoidCallback onLike;
+  /// Opens the list of people who liked this post. Heart still toggles like.
+  final VoidCallback? onLikesTap;
   final VoidCallback onComment;
   final Future<void> Function() onShare;
   final VoidCallback onSave;
@@ -65,6 +68,7 @@ class PostActionBar extends StatelessWidget {
             label: likes,
             color: isLiked ? AppColors.primary : AppColors.text,
             onTap: onLike,
+            onLabelTap: onLikesTap,
             isLoading: isLikeLoading,
           ),
           const SizedBox(width: 14),
@@ -142,16 +146,17 @@ class PostActionBar extends StatelessWidget {
     String? label,
     Color color = AppColors.text,
     required VoidCallback onTap,
+    VoidCallback? onLabelTap,
     bool isLoading = false,
   }) {
-    return InkWell(
-      onTap: isLoading ? null : onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-        child: Row(
-          children: [
-            SizedBox(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      child: Row(
+        children: [
+          InkWell(
+            onTap: isLoading ? null : onTap,
+            borderRadius: BorderRadius.circular(10),
+            child: SizedBox(
               width: 20,
               height: 20,
               child: Stack(
@@ -172,19 +177,26 @@ class PostActionBar extends StatelessWidget {
                 ],
               ),
             ),
-            if (label != null) ...[
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: AppFonts.beVietnam(
-                  size: 12,
-                  weight: FontWeight.w700,
-                  color: AppColors.text,
+          ),
+          if (label != null) ...[
+            const SizedBox(width: 4),
+            InkWell(
+              onTap: isLoading ? null : (onLabelTap ?? onTap),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                child: Text(
+                  label,
+                  style: AppFonts.beVietnam(
+                    size: 12,
+                    weight: FontWeight.w700,
+                    color: AppColors.text,
+                  ),
                 ),
               ),
-            ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

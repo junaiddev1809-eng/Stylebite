@@ -58,8 +58,8 @@ class AppCachedVideoPlayer extends StatefulWidget {
   final bool showPausedOverlayOnly;
   final bool showProgressBar;
   final AppVideoControlsPosition controlsPosition;
-  /// How the decoded video fills its parent. Feed cards keep [BoxFit.cover];
-  /// fullscreen reels use [BoxFit.contain] so the native ratio is not cropped.
+  /// How the decoded video fills its parent. Reels/feed use [BoxFit.cover]
+  /// so every phone viewport is filled (TikTok/IG style).
   final BoxFit fit;
   final bool? isMuted;
 

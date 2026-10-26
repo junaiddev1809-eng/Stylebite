@@ -24,7 +24,12 @@ class LandingBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Safe-area only + a thin dock gap — never stack a large artificial
+    // margin on top of the home-indicator inset (that floated the bar too high).
     final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final bottomPad = bottomInset > 0
+        ? bottomInset + kBottomNavVerticalMargin
+        : kBottomNavVerticalMargin + 8;
 
     return RepaintBoundary(
       child: Padding(
@@ -32,7 +37,7 @@ class LandingBottomNav extends StatelessWidget {
         kBottomNavHorizontalMargin,
         0,
         kBottomNavHorizontalMargin,
-        kBottomNavVerticalMargin + bottomInset,
+        bottomPad,
       ),
       child: AnimatedScale(
         duration: const Duration(milliseconds: 280),

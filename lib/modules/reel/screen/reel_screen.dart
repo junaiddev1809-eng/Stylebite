@@ -27,6 +27,7 @@ import '../../post/widgets/in_app_share_sheet.dart';
 import '../../post/utils/hashtag_open_helper.dart';
 import '../../post/widgets/comments_caption_header.dart';
 import '../../post/widgets/post_hashtag_chips.dart';
+import '../../post/widgets/post_likers_sheet.dart';
 import '../../post/widgets/post_options_sheet.dart';
 import '../controllers/reel_controller.dart';
 import '../models/reel_item_model.dart';
@@ -668,7 +669,8 @@ class _ReelSlideState extends State<_ReelSlide>
     final item = widget.item;
     final onTapProfile = widget.onTapProfile;
     final seekBottom = _seekBarBottom(context);
-    final metaBottom = seekBottom + 34;
+    // Captions + right actions sit just above the seek line (IG/TikTok rail).
+    final metaBottom = seekBottom + 32;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -716,9 +718,8 @@ class _ReelSlideState extends State<_ReelSlide>
                 // scrubbable — seek bar is drawn above overlays instead.
                 showProgressBar: false,
                 showLoadingIndicator: false,
-                // Match feed cards: keep the video's native ratio instead of
-                // cover-cropping it to the phone screen.
-                fit: BoxFit.contain,
+                // TikTok/IG Reels: fill every phone viewport; crop edges as needed.
+                fit: BoxFit.cover,
                 onDoubleTap: _onDoubleTapLike,
               );
             }),
@@ -796,17 +797,15 @@ class _ReelSlideState extends State<_ReelSlide>
     );
   }
 
-  /// Space from screen bottom to the seek bar — clears the floating nav pill
-  /// plus a gap so progress scrubbing cannot land on tab icons.
+  /// Seek line sits tight above the docked nav pill (small clearance only).
   double _seekBarBottom(BuildContext context) {
     final safeBottom = MediaQuery.paddingOf(context).bottom;
+    final navBottomPad =
+        safeBottom > 0 ? safeBottom + kBottomNavVerticalMargin : kBottomNavVerticalMargin + 8;
     if (!widget.reserveBottomNav) {
-      return safeBottom + 12;
+      return safeBottom + 8;
     }
-    return safeBottom +
-        kBottomNavHeight +
-        kBottomNavVerticalMargin +
-        20; // gap between seek bar and nav pill
+    return navBottomPad + kBottomNavHeight + 4;
   }
 }
 
@@ -1600,6 +1599,12 @@ class _ReelActions extends StatelessWidget {
             color: live.isLiked ? Colors.redAccent : Colors.white,
             label: live.likes,
             onTap: () => controller.toggleLike(live.id),
+            onLabelTap: () => showPostLikersSheet(
+              context,
+              postId: live.id,
+              isReel: true,
+              likeCountLabel: live.likes,
+            ),
           ),
           if (reel.ratingEnabled) ...[
             const SizedBox(height: 12),
@@ -2191,6 +2196,7 @@ class _ActionItem extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    this.onLabelTap,
     this.isLoading = false,
     this.style,
     this.color,
@@ -2199,6 +2205,7 @@ class _ActionItem extends StatelessWidget {
   final dynamic icon;
   final String label;
   final VoidCallback onTap;
+  final VoidCallback? onLabelTap;
   final bool isLoading;
   final HeroIconStyle? style;
   final Color? color;
@@ -2239,12 +2246,15 @@ class _ActionItem extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 5),
-        Text(
-          label,
-          style: AppFonts.beVietnam(
-            size: 11,
-            weight: FontWeight.w700,
-            color: Colors.white.withValues(alpha: 0.88),
+        GestureDetector(
+          onTap: isLoading ? null : (onLabelTap ?? onTap),
+          child: Text(
+            label,
+            style: AppFonts.beVietnam(
+              size: 11,
+              weight: FontWeight.w700,
+              color: Colors.white.withValues(alpha: 0.88),
+            ),
           ),
         ),
       ],

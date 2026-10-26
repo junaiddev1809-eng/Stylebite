@@ -45,6 +45,8 @@ class FollowerListResponseModel {
       for (final key in <String>[
         'followers',
         'following',
+        'likes',
+        'likers',
         'users',
         'items',
         'data',

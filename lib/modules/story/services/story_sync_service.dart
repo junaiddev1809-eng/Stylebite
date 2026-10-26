@@ -209,7 +209,8 @@ class StorySyncService {
       'post_type': local.isFood ? 'food' : 'outfit',
       'caption': caption,
       'tags': StoryMarker.encodeTags(local.caption).join(','),
-      'visibility': 'public',
+      // Followers-only — same audience model as Snapchat Friends / WhatsApp Status.
+      'visibility': 'followers_only',
       'rating_enabled': '0',
     };
 

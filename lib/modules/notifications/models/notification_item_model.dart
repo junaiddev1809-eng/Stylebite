@@ -7,6 +7,7 @@ import '../../post/utils/in_app_share.dart';
 
 enum NotificationKind {
   vibeRequest,
+  follow,
   like,
   contest,
   comment,
@@ -92,6 +93,8 @@ class NotificationItemModel {
     switch (kind) {
       case NotificationKind.like:
         return actionUrl.trim().isNotEmpty || entityId > 0;
+      case NotificationKind.follow:
+        return profileHandle.isNotEmpty || actionUrl.trim().isNotEmpty;
       case NotificationKind.comment:
         return actionUrl.trim().isNotEmpty ||
             (entityType == 'post' && entityId > 0);
@@ -266,6 +269,12 @@ class NotificationItemModel {
     if (isLikeType(normalized)) {
       return NotificationKind.like;
     }
+    if (normalized == 'follow' ||
+        normalized == 'followed' ||
+        normalized == 'follower' ||
+        normalized.contains('follow')) {
+      return NotificationKind.follow;
+    }
     if (normalized.contains('vibe')) {
       return NotificationKind.vibeRequest;
     }
@@ -314,6 +323,11 @@ class NotificationItemModel {
     if (storedKind == 'like' || storedKind == 'liked') {
       return NotificationKind.like;
     }
+    if (storedKind == 'follow' ||
+        storedKind == 'followed' ||
+        storedKind == 'follower') {
+      return NotificationKind.follow;
+    }
     final fromType = _kindFromType(type);
     if (fromType != NotificationKind.other) {
       return fromType;
@@ -336,6 +350,12 @@ class NotificationItemModel {
         blob.contains('likes your') ||
         blob.contains('loved your')) {
       return NotificationKind.like;
+    }
+    if (blob.contains('started following') ||
+        blob.contains('following you') ||
+        blob.contains('followed you') ||
+        blob.contains('new follower')) {
+      return NotificationKind.follow;
     }
     if (blob.contains('comment') || blob.contains('replied')) {
       return NotificationKind.comment;
@@ -389,6 +409,9 @@ class NotificationItemModel {
     if (kind == NotificationKind.like) {
       return title.isNotEmpty ? title : 'liked your post';
     }
+    if (kind == NotificationKind.follow) {
+      return title.isNotEmpty ? title : 'started following you';
+    }
     return title;
   }
 
@@ -432,6 +455,8 @@ class NotificationItemModel {
       case NotificationKind.comment:
       case NotificationKind.like:
         return 'View Post';
+      case NotificationKind.follow:
+        return 'View Profile';
       case NotificationKind.contest:
         return 'View Contest';
       case NotificationKind.message:

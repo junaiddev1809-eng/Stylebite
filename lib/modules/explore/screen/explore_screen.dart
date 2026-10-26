@@ -10,6 +10,7 @@ import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/app_back_navigation.dart';
 import '../../../core/utils/app_helper.dart';
 import '../../../core/widgets/app_hero_icon.dart';
+import '../../landing/controllers/landing_controller.dart';
 import '../../landing/models/landing_tab_model.dart';
 import '../../landing/screen/landing_screen.dart';
 import '../../landing/widgets/landing_bottom_nav.dart';
@@ -23,6 +24,7 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   final TextEditingController _searchController = TextEditingController();
+  late final LandingController _landing;
 
   final List<String> _tabs = const ['outfits', 'food', 'battles', 'brands'];
   final List<String> _cities = const [
@@ -115,6 +117,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
   String _city = 'Multan';
   String _activeTag = '';
   bool _forceAll = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _landing = Get.isRegistered<LandingController>()
+        ? Get.find<LandingController>()
+        : Get.put(LandingController());
+    _landing.isBottomNavCompact.value = false;
+  }
 
   @override
   void dispose() {
@@ -351,44 +362,57 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Stack(
-        children: [
-          CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(child: _buildTopBar()),
-              SliverPadding(
-                padding: EdgeInsets.fromLTRB(16, 8, 16, contentBottomPadding),
-                sliver: SliverToBoxAdapter(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildSearchAndCity(),
-                      const SizedBox(height: 10),
-                      _buildTopTabs(),
-                      const SizedBox(height: 20),
-                      if (trending.isNotEmpty) _buildTrending(trending),
-                      if (trending.isNotEmpty) const SizedBox(height: 20),
-                      if (food.isNotEmpty) _buildFoodSection(food),
-                      if (food.isNotEmpty) const SizedBox(height: 18),
-                      if (_hasAnyVisible) _buildTags(),
-                      if (!_hasAnyVisible) _buildEmptyState(),
-                      const SizedBox(height: 14),
-                    ],
+      extendBody: true,
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          _landing.onPrimaryScroll(notification);
+          return false;
+        },
+        child: Stack(
+          children: [
+            CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(child: _buildTopBar()),
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(16, 8, 16, contentBottomPadding),
+                  sliver: SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSearchAndCity(),
+                        const SizedBox(height: 10),
+                        _buildTopTabs(),
+                        const SizedBox(height: 20),
+                        if (trending.isNotEmpty) _buildTrending(trending),
+                        if (trending.isNotEmpty) const SizedBox(height: 20),
+                        if (food.isNotEmpty) _buildFoodSection(food),
+                        if (food.isNotEmpty) const SizedBox(height: 18),
+                        if (_hasAnyVisible) _buildTags(),
+                        if (!_hasAnyVisible) _buildEmptyState(),
+                        const SizedBox(height: 14),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Obx(
+                () => LandingBottomNav(
+                  tabs: _landing.tabs.isNotEmpty
+                      ? _landing.tabs
+                      : LandingTabModel.defaultTabs,
+                  currentIndex: -1,
+                  compact: _landing.isBottomNavCompact.value,
+                  onTap: (index) => Get.offAll<void>(
+                    () => LandingScreen(initialIndex: index),
                   ),
                 ),
               ),
-            ],
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: LandingBottomNav(
-              tabs: LandingTabModel.defaultTabs,
-              currentIndex: -1,
-              onTap: (index) =>
-                  Get.offAll<void>(() => LandingScreen(initialIndex: index)),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

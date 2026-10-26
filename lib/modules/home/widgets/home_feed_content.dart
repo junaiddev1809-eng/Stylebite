@@ -5,13 +5,10 @@ import 'package:heroicons/heroicons.dart';
 import 'package:stylebite/core/widgets/app_hero_icon.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/app_cached_image.dart';
 import '../../../core/widgets/app_sliding_toggle.dart';
 import '../../../core/widgets/states/app_empty_state.dart';
 import '../../../core/widgets/states/app_error_state.dart';
 import '../../../core/widgets/states/app_shimmer_box.dart';
-import '../../../core/utils/local_storage.dart';
-import '../../profile/screen/profile_detail_screen.dart';
 import '../../messages/controllers/chat_unread_controller.dart';
 import '../../messages/screen/messages_screen.dart';
 import '../../notifications/controllers/notifications_controller.dart';
@@ -566,42 +563,6 @@ class _HomeTopBar extends StatelessWidget {
         bottom: false,
         child: Row(
           children: [
-            InkWell(
-              customBorder: const CircleBorder(),
-              onTap: () {
-                Get.to<void>(() => const ProfileDetailScreen());
-              },
-              child: ValueListenableBuilder<String>(
-                valueListenable: LocalStorage.avatarUrlListenable,
-                builder: (context, avatarUrl, _) {
-                  final trimmed = avatarUrl.trim();
-                  return ClipOval(
-                    child: SizedBox(
-                      width: 40,
-                      height: 40,
-                      child: trimmed.isEmpty
-                          ? const ColoredBox(
-                              color: Color(0xFFE7E3E1),
-                              child: Center(
-                                child: AppHeroIconData(
-                                  Icons.person_rounded,
-                                  color: AppColors.hintText,
-                                ),
-                              ),
-                            )
-                          : AppCachedImage(
-                              imageUrl: trimmed,
-                              width: 40,
-                              height: 40,
-                              fit: BoxFit.cover,
-                              memCacheWidth: 120,
-                            ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 10),
             _FeedTypeToggle(controller: controller),
             const Spacer(),
             ...controller.model.quickActions.map(

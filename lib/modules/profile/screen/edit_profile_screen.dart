@@ -320,7 +320,28 @@ class _VerificationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = controller.user.value;
     final isVerified = user?.isVerifiedBadge == true;
+    final isPending = user?.isVerificationPending == true;
     final canRequest = user?.canRequestVerification == true;
+    final wasRejected = user?.verificationStatus == 'rejected';
+
+    final description = isVerified
+        ? 'Your profile is verified. The badge appears next to your name.'
+        : isPending
+            ? 'Your request is with the StyleBite team. You’ll get the badge after admin approval.'
+            : canRequest
+                ? (wasRejected
+                    ? 'Your previous request was not approved. You can submit again for admin review.'
+                    : 'Your email or phone is verified. Submit a request — an admin must approve before you get the badge.')
+                : 'Verify your email or phone first, then come back here to request the badge.';
+
+    final buttonLabel = isVerified
+        ? 'Verified Badge Active'
+        : isPending
+            ? 'Request Pending Review'
+            : 'Request Verification Badge';
+
+    final buttonEnabled =
+        !isVerified && !isPending && canRequest && !controller.isVerifying.value;
 
     return Container(
       width: double.infinity,
@@ -368,11 +389,7 @@ class _VerificationCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            isVerified
-                ? 'Your profile is already verified.'
-                : canRequest
-                ? 'Your email or phone is verified. You can claim your verification badge now.'
-                : 'Verify your email or phone first, then come back here to claim the badge.',
+            description,
             style: AppFonts.beVietnam(
               size: 13,
               weight: FontWeight.w500,
@@ -384,17 +401,25 @@ class _VerificationCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: isVerified || controller.isVerifying.value
-                  ? null
-                  : controller.requestVerificationBadge,
+              onPressed: buttonEnabled
+                  ? controller.requestVerificationBadge
+                  : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: isVerified
                     ? const Color(0xFFE8F7EE)
-                    : AppColors.text,
+                    : isPending
+                        ? const Color(0xFFFFF4E5)
+                        : AppColors.text,
                 disabledBackgroundColor: isVerified
                     ? const Color(0xFFE8F7EE)
-                    : const Color(0xFFCCC7C6),
-                foregroundColor: isVerified ? AppColors.success : Colors.white,
+                    : isPending
+                        ? const Color(0xFFFFF4E5)
+                        : const Color(0xFFCCC7C6),
+                foregroundColor: isVerified
+                    ? AppColors.success
+                    : isPending
+                        ? const Color(0xFFB86E00)
+                        : Colors.white,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: const StadiumBorder(),
@@ -409,13 +434,15 @@ class _VerificationCard extends StatelessWidget {
                       ),
                     )
                   : Text(
-                      isVerified
-                          ? 'Verified Badge Active'
-                          : 'Get Verification Badge',
+                      buttonLabel,
                       style: AppFonts.beVietnam(
                         size: 14,
                         weight: FontWeight.w700,
-                        color: isVerified ? AppColors.success : Colors.white,
+                        color: isVerified
+                            ? AppColors.success
+                            : isPending
+                                ? const Color(0xFFB86E00)
+                                : Colors.white,
                       ),
                     ),
             ),

@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:stylebite/core/utils/app_device_service.dart';
 import 'package:stylebite/core/utils/app_back_navigation.dart';
@@ -21,6 +22,17 @@ import 'core/theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LocalStorage.initStorage();
+  // Warm feed fonts before first paint so text metrics don't reflow later.
+  try {
+    await GoogleFonts.pendingFonts([
+      GoogleFonts.beVietnamPro(),
+      GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600),
+      GoogleFonts.beVietnamPro(fontWeight: FontWeight.w700),
+      GoogleFonts.plusJakartaSans(),
+      GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+      GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800),
+    ]);
+  } catch (_) {}
   runApp(const StyleBiteApp());
   unawaited(SystemChrome.setPreferredOrientations(const [
     DeviceOrientation.portraitUp,

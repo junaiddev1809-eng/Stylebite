@@ -107,8 +107,8 @@ class ReelOpenHelper {
       () => ReelScreen(
         controllerTag: tag,
         viewerMode: true,
-        // Profile-originated viewers should not show the landing bottom bar.
-        showBottomNav: authorScope == null,
+        // Full-bleed reels — no bottom dock (same as the reels tab).
+        showBottomNav: false,
       ),
     );
   }

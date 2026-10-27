@@ -1128,8 +1128,10 @@ class HomeController extends GetxController {
 
   void _rebuildFeedRows() {
     final posts = _publishedPosts;
+    final feedType = selectedFeedType.value;
+    final suggestionsReady = _suggestedReelsByFeed.containsKey(feedType);
     final suggestions =
-        _suggestedReelsByFeed[selectedFeedType.value] ?? const <HomePostModel>[];
+        _suggestedReelsByFeed[feedType] ?? const <HomePostModel>[];
     final rows = <HomeFeedRow>[];
     var slot = 0;
     for (var i = 0; i < posts.length; i++) {
@@ -1137,7 +1139,15 @@ class HomeController extends GetxController {
       final count = i + 1;
       final shouldInsert = count == _suggestAfter ||
           (count > _suggestAfter && (count - _suggestAfter) % _suggestEvery == 0);
-      if (!shouldInsert || suggestions.isEmpty) {
+      if (!shouldInsert) {
+        continue;
+      }
+      // Reserve strip height while suggestions load so the list doesn't jump.
+      if (!suggestionsReady) {
+        rows.add(const HomeFeedRow.suggestionPlaceholder());
+        continue;
+      }
+      if (suggestions.isEmpty) {
         continue;
       }
       final start = (slot * _suggestPerRow) % suggestions.length;
@@ -1236,15 +1246,14 @@ class HomeController extends GetxController {
       }
     }
 
-    if (collected.isEmpty) {
-      return;
-    }
     _suggestedReelsByFeed[feedType] = collected;
     if (selectedFeedType.value == feedType) {
       _rebuildFeedRows();
-      ReelReadyService.prefetch(
-        collected.take(_suggestPerRow).map((post) => post.primaryMediaUrl),
-      );
+      if (collected.isNotEmpty) {
+        ReelReadyService.prefetch(
+          collected.take(_suggestPerRow).map((post) => post.primaryMediaUrl),
+        );
+      }
     }
   }
 }
@@ -1262,6 +1271,9 @@ class HomeFeedRow {
   const HomeFeedRow.suggestions(List<HomePostModel> reels)
       : this._(kind: HomeFeedRowKind.suggestions, reels: reels);
 
+  const HomeFeedRow.suggestionPlaceholder()
+      : this._(kind: HomeFeedRowKind.suggestionPlaceholder);
+
   const HomeFeedRow.spinner() : this._(kind: HomeFeedRowKind.spinner);
 
   final HomeFeedRowKind kind;
@@ -1269,7 +1281,7 @@ class HomeFeedRow {
   final List<HomePostModel> reels;
 }
 
-enum HomeFeedRowKind { post, suggestions, spinner }
+enum HomeFeedRowKind { post, suggestions, suggestionPlaceholder, spinner }
 
 class _FeedSessionState {
   final List<HomePostModel> posts = <HomePostModel>[];

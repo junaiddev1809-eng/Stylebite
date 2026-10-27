@@ -59,13 +59,14 @@ class _HomeFeedContentState extends State<HomeFeedContent>
           Expanded(
             child: Obx(() {
               final _ = _controller.feedRevision.value;
-              if (_controller.isInitialLoading.value) {
-                return _loading();
-              }
-
+              final loading = _controller.isInitialLoading.value;
               final postCount = _controller.publishedCount;
               final rows = _controller.feedRows.toList(growable: false);
+              final isBite =
+                  _controller.selectedFeedType.value == HomeFeedType.bite;
 
+              // One scroll tree always — never swap ListView ↔ CustomScrollView
+              // (that remounts trays/toggles and looks congested then snaps).
               return RefreshIndicator(
                 onRefresh: _controller.refreshFeed,
                 child: CustomScrollView(
@@ -74,43 +75,47 @@ class _HomeFeedContentState extends State<HomeFeedContent>
                     parent: ClampingScrollPhysics(),
                   ),
                   key: const PageStorageKey<String>('home-feed-scroll'),
-                  // Keep the card above and the card below built so scrolling
-                  // back up does not recreate images and jump the layout.
-                  // Video players still wait until a card is actually centered.
                   scrollCacheExtent: const ScrollCacheExtent.pixels(1400),
                   slivers: [
-                    // Tabs - Always Visible with original UI
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.only(top: 14, bottom: 12),
                         child: _DiscoverToggle(controller: _controller),
                       ),
                     ),
-                    Obx(() {
-                      final isBite =
-                          _controller.selectedFeedType.value == HomeFeedType.bite;
-                      final storyKind =
-                          isBite ? StoryKind.food : StoryKind.outfit;
-                      final flashKind =
-                          isBite ? FlashKind.food : FlashKind.outfit;
-                      return SliverToBoxAdapter(
-                        child: Column(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: StyleStoryTray(kind: storyKind),
+                    SliverToBoxAdapter(
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: StyleStoryTray(
+                              kind: isBite ? StoryKind.food : StoryKind.outfit,
                             ),
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 18),
-                              child: FlashTray(kind: flashKind),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 18),
+                            child: FlashTray(
+                              kind: isBite ? FlashKind.food : FlashKind.outfit,
                             ),
-                          ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (loading)
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                        sliver: SliverList(
+                          delegate: SliverChildListDelegate([
+                            _FeedPostCardShimmer(isBiteFeed: isBite),
+                            const SizedBox(height: 18),
+                            _FeedPostCardShimmer(
+                              isBiteFeed: isBite,
+                              compactMedia: true,
+                            ),
+                          ]),
                         ),
-                      );
-                    }),
-
-                    // Conditional Content
-                    if (_controller.hasError.value)
+                      )
+                    else if (_controller.hasError.value)
                       SliverFillRemaining(
                         hasScrollBody: false,
                         child: AppErrorState(
@@ -143,8 +148,7 @@ class _HomeFeedContentState extends State<HomeFeedContent>
                           onAction: _controller.refreshFeed,
                         ),
                       )
-                    else ...[
-                      // Main Feed List
+                    else
                       SliverPadding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         sliver: SliverList(
@@ -154,6 +158,8 @@ class _HomeFeedContentState extends State<HomeFeedContent>
                               switch (row.kind) {
                                 case HomeFeedRowKind.spinner:
                                   return const _LoadMoreSpinner();
+                                case HomeFeedRowKind.suggestionPlaceholder:
+                                  return const SuggestedReelsStripPlaceholder();
                                 case HomeFeedRowKind.suggestions:
                                   return SuggestedReelsStrip(
                                     reels: row.reels,
@@ -174,9 +180,6 @@ class _HomeFeedContentState extends State<HomeFeedContent>
                           ),
                         ),
                       ),
-                    ],
-
-                    // Bottom Spacing
                     const SliverToBoxAdapter(child: SizedBox(height: 120)),
                   ],
                 ),
@@ -185,37 +188,6 @@ class _HomeFeedContentState extends State<HomeFeedContent>
           ),
         ],
       ),
-    );
-  }
-
-  Widget _loading() {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 120),
-      children: [
-        const _DiscoverToggleShimmer(),
-        const SizedBox(height: 8),
-        StyleStoryTray(
-          kind: _controller.selectedFeedType.value == HomeFeedType.bite
-              ? StoryKind.food
-              : StoryKind.outfit,
-        ),
-        const SizedBox(height: 8),
-        FlashTray(
-          kind: _controller.selectedFeedType.value == HomeFeedType.bite
-              ? FlashKind.food
-              : FlashKind.outfit,
-        ),
-        const SizedBox(height: 8),
-        const SizedBox(height: 16),
-        _FeedPostCardShimmer(
-          isBiteFeed: _controller.selectedFeedType.value == HomeFeedType.bite,
-        ),
-        const SizedBox(height: 18),
-        _FeedPostCardShimmer(
-          isBiteFeed: _controller.selectedFeedType.value == HomeFeedType.bite,
-          compactMedia: true,
-        ),
-      ],
     );
   }
 }
@@ -548,8 +520,9 @@ class _HomeTopBar extends StatelessWidget {
         ? Get.find<ChatUnreadController>()
         : Get.put(ChatUnreadController());
 
+    final topInset = MediaQuery.viewPaddingOf(context).top;
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      padding: EdgeInsets.fromLTRB(16, topInset + 10, 16, 10),
       decoration: BoxDecoration(
         color: AppColors.background.withValues(alpha: 0.94),
         border: Border(
@@ -559,58 +532,55 @@ class _HomeTopBar extends StatelessWidget {
           ),
         ),
       ),
-      child: SafeArea(
-        bottom: false,
-        child: Row(
-          children: [
-            _FeedTypeToggle(controller: controller),
-            const Spacer(),
-            ...controller.model.quickActions.map(
-              (action) => Padding(
-                padding: const EdgeInsets.only(left: 2),
-                child: action.icon == HeroIcons.bell
-                    ? Obx(
-                        () => _TopActionIcon(
-                          icon: action.icon,
-                          showDot:
-                              notificationsController.unreadCount.value > 0,
-                          onPressed: () {
-                            Get.to<void>(() => const NotificationsScreen());
-                          },
-                        ),
-                      )
-                    : action.icon == HeroIcons.chatBubbleOvalLeft
-                    ? Obx(
-                        () => _TopActionIcon(
-                          icon: action.icon,
-                          showDot: chatUnreadController.unreadCount.value > 0,
-                          onPressed: () {
-                            Get.to<void>(() => const MessagesScreen());
-                          },
-                        ),
-                      )
-                    : _TopActionIcon(
+      child: Row(
+        children: [
+          _FeedTypeToggle(controller: controller),
+          const Spacer(),
+          ...controller.model.quickActions.map(
+            (action) => Padding(
+              padding: const EdgeInsets.only(left: 2),
+              child: action.icon == HeroIcons.bell
+                  ? Obx(
+                      () => _TopActionIcon(
                         icon: action.icon,
-                        showDot: action.showDot,
+                        showDot:
+                            notificationsController.unreadCount.value > 0,
                         onPressed: () {
-                          if (action.icon == HeroIcons.magnifyingGlass) {
-                            final isBite =
-                                controller.selectedFeedType.value ==
-                                HomeFeedType.bite;
-                            Get.to<void>(
-                              () => SearchScreen(
-                                mode: isBite
-                                    ? SearchMode.restaurants
-                                    : SearchMode.people,
-                              ),
-                            );
-                          }
+                          Get.to<void>(() => const NotificationsScreen());
                         },
                       ),
-              ),
+                    )
+                  : action.icon == HeroIcons.chatBubbleOvalLeft
+                  ? Obx(
+                      () => _TopActionIcon(
+                        icon: action.icon,
+                        showDot: chatUnreadController.unreadCount.value > 0,
+                        onPressed: () {
+                          Get.to<void>(() => const MessagesScreen());
+                        },
+                      ),
+                    )
+                  : _TopActionIcon(
+                      icon: action.icon,
+                      showDot: action.showDot,
+                      onPressed: () {
+                        if (action.icon == HeroIcons.magnifyingGlass) {
+                          final isBite =
+                              controller.selectedFeedType.value ==
+                              HomeFeedType.bite;
+                          Get.to<void>(
+                            () => SearchScreen(
+                              mode: isBite
+                                  ? SearchMode.restaurants
+                                  : SearchMode.people,
+                            ),
+                          );
+                        }
+                      },
+                    ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

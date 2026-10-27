@@ -12,9 +12,7 @@ import '../../../core/widgets/app_verified_badge.dart';
 import '../../../core/widgets/states/app_empty_state.dart';
 import '../../../core/widgets/states/app_error_state.dart';
 import '../../../core/widgets/states/app_shimmer_box.dart';
-import '../../landing/models/landing_tab_model.dart';
 import '../../landing/screen/landing_screen.dart';
-import '../../landing/widgets/landing_bottom_nav.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../../settings/screen/settings_screen.dart';
 import '../../post/utils/in_app_share.dart';
@@ -91,7 +89,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                         16,
                         10,
                         16,
-                        safeBottom + 132,
+                        safeBottom + 24,
                       ),
                       children: [
                         _buildSearch(),
@@ -202,15 +200,6 @@ class _MessagesScreenState extends State<MessagesScreen> {
                 ),
               ),
             ],
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: LandingBottomNav(
-              tabs: LandingTabModel.defaultTabs,
-              currentIndex: -1,
-              onTap: (index) =>
-                  Get.offAll<void>(() => LandingScreen(initialIndex: index)),
-            ),
           ),
         ],
       ),

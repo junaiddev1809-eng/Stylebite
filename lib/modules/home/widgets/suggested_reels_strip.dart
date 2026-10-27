@@ -21,6 +21,8 @@ class SuggestedReelsStrip extends StatelessWidget {
   });
 
   static const int previewCount = 10;
+  /// Title + gap + track + bottom pad — keep in sync with [SuggestedReelsStripPlaceholder].
+  static const double reservedHeight = 18 + 22 + 10 + 196;
   static const double _cardWidth = 124;
   static const double _reelGap = 10;
   static const double _seeMoreGap = 28;
@@ -67,31 +69,79 @@ class SuggestedReelsStrip extends StatelessWidget {
         math.max(0, preview.length - 1) * _reelGap +
         (showSeeMore ? _seeMoreGap + _cardWidth : 0);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Suggested reels',
-            style: AppFonts.plusJakarta(
-              size: 16,
-              weight: FontWeight.w800,
-              color: AppColors.text,
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 196,
-            child: Directionality(
-              textDirection: TextDirection.ltr,
-              child: _SuggestedReelTrack(
-                contentWidth: contentWidth,
-                children: children,
+    return SizedBox(
+      height: reservedHeight,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Suggested reels',
+              style: AppFonts.plusJakarta(
+                size: 16,
+                weight: FontWeight.w800,
+                color: AppColors.text,
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 196,
+              child: Directionality(
+                textDirection: TextDirection.ltr,
+                child: _SuggestedReelTrack(
+                  contentWidth: contentWidth,
+                  children: children,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Same footprint as [SuggestedReelsStrip] so late suggestion inserts don't jump.
+class SuggestedReelsStripPlaceholder extends StatelessWidget {
+  const SuggestedReelsStripPlaceholder({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: SuggestedReelsStrip.reservedHeight,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 132,
+              height: 16,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8E2E0),
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              height: 196,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: 4,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (_, __) => Container(
+                  width: 124,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8E2E0),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

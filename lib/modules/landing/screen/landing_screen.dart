@@ -150,14 +150,18 @@ class _LandingScreenState extends State<LandingScreen> {
             }),
           ),
         ),
-        bottomNavigationBar: Obx(
-          () => LandingBottomNav(
+        // Reels are full-bleed like TikTok/IG — no docked pill on that tab.
+        bottomNavigationBar: Obx(() {
+          if (_controller.currentIndex.value == 1) {
+            return const SizedBox.shrink();
+          }
+          return LandingBottomNav(
             tabs: _controller.tabs,
             currentIndex: _controller.currentIndex.value,
             onTap: _controller.onTabChanged,
             compact: _controller.isBottomNavCompact.value,
-          ),
-        ),
+          );
+        }),
       ),
     );
   }

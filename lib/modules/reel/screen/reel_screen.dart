@@ -188,8 +188,10 @@ class _ReelScreenState extends State<ReelScreen> with RouteAware {
                       controller: _controller,
                       pageIndex: index,
                       onTapProfile: _openAuthorProfile,
+                      // Landing hides the dock on the reels tab; only reserve
+                      // space when a viewer shell actually draws the bar.
                       reserveBottomNav:
-                          !widget.viewerMode || widget.showBottomNav,
+                          widget.viewerMode && widget.showBottomNav,
                     );
                   },
                 );
@@ -797,14 +799,16 @@ class _ReelSlideState extends State<_ReelSlide>
     );
   }
 
-  /// Seek line sits tight above the docked nav pill (small clearance only).
+  /// Seek line: above home indicator when bar is gone; above dock when reserved.
   double _seekBarBottom(BuildContext context) {
     final safeBottom = MediaQuery.paddingOf(context).bottom;
-    final navBottomPad =
-        safeBottom > 0 ? safeBottom + kBottomNavVerticalMargin : kBottomNavVerticalMargin + 8;
     if (!widget.reserveBottomNav) {
-      return safeBottom + 8;
+      // Sit professionally low — just clear the system gesture/home area.
+      return safeBottom + 10;
     }
+    final navBottomPad = safeBottom > 0
+        ? safeBottom + kBottomNavVerticalMargin
+        : kBottomNavVerticalMargin + 8;
     return navBottomPad + kBottomNavHeight + 4;
   }
 }

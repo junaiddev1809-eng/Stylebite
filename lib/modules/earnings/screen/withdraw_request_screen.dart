@@ -117,9 +117,16 @@ class WithdrawRequestScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   _WithdrawField(
-                    label: 'Account Reference',
-                    controller: _controller.accountRefController,
-                    hintText: 'e.g. ****4201',
+                    label: 'Bank Name',
+                    controller: _controller.bankNameController,
+                    hintText: 'e.g. HBL, Meezan Bank',
+                  ),
+                  const SizedBox(height: 14),
+                  _WithdrawField(
+                    label: 'Bank Account Number',
+                    controller: _controller.bankAccountNumberController,
+                    keyboardType: TextInputType.text,
+                    hintText: 'Enter account / IBAN number',
                   ),
                   const SizedBox(height: 22),
                   SizedBox(
@@ -235,6 +242,8 @@ class _WithdrawRequestShimmer extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          const _WithdrawFieldShimmer(),
+          const SizedBox(height: 14),
           const _WithdrawFieldShimmer(),
           const SizedBox(height: 14),
           const _WithdrawFieldShimmer(),

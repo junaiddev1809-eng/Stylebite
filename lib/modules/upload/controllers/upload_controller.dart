@@ -62,6 +62,7 @@ class UploadController extends GetxController {
   double? _longitude;
   double? _originLat;
   double? _originLng;
+  String _pinnedLocationLabel = '';
   Timer? _locationDebounce;
   int _suggestionToken = 0;
   bool _ignoreLocationTextChanges = false;
@@ -164,6 +165,7 @@ class UploadController extends GetxController {
     _ignoreLocationTextChanges = true;
     locationController.text = address;
     locationQuery.value = address;
+    _pinnedLocationLabel = address.trim();
     _latitude = lat;
     _longitude = lng;
     locationSuggestions.clear();
@@ -171,10 +173,20 @@ class UploadController extends GetxController {
     refreshFoodPreview();
   }
 
+  /// Map confirm: keep pin + fill Bite restaurant from the chosen place name.
+  void confirmMapLocation(String address, double lat, double lng) {
+    setLocation(address, lat, lng);
+    final placeName = _placeTitleFromLabel(address);
+    if (placeName.isNotEmpty) {
+      _fillRestaurantName(placeName, overwrite: true);
+    }
+  }
+
   void clearLocation() {
     _ignoreLocationTextChanges = true;
     locationController.clear();
     locationQuery.value = '';
+    _pinnedLocationLabel = '';
     _latitude = null;
     _longitude = null;
     locationSuggestions.clear();
@@ -187,11 +199,15 @@ class UploadController extends GetxController {
       return;
     }
     locationQuery.value = value;
-    _latitude = null;
-    _longitude = null;
+    final trimmed = value.trim();
+    // Keep the pin while the user lightly edits the same place label.
+    if (!_isSamePinnedPlace(trimmed)) {
+      _latitude = null;
+      _longitude = null;
+      _pinnedLocationLabel = '';
+    }
     refreshFoodPreview();
     _locationDebounce?.cancel();
-    final trimmed = value.trim();
     if (trimmed.isEmpty) {
       _locationDebounce = Timer(const Duration(milliseconds: 200), () {
         unawaited(_fetchLocationSuggestions(''));
@@ -201,6 +217,38 @@ class UploadController extends GetxController {
     _locationDebounce = Timer(const Duration(milliseconds: 350), () {
       unawaited(_fetchLocationSuggestions(trimmed));
     });
+  }
+
+  bool _isSamePinnedPlace(String query) {
+    final pinned = _pinnedLocationLabel.trim();
+    if (pinned.isEmpty || query.isEmpty) {
+      return false;
+    }
+    final q = query.toLowerCase();
+    final p = pinned.toLowerCase();
+    if (q == p) {
+      return true;
+    }
+    if (p.startsWith(q) || q.startsWith(p)) {
+      return true;
+    }
+    final pinnedTitle = _placeTitleFromLabel(pinned).toLowerCase();
+    return pinnedTitle.isNotEmpty &&
+        (q == pinnedTitle ||
+            pinnedTitle.startsWith(q) ||
+            q.startsWith(pinnedTitle));
+  }
+
+  String _placeTitleFromLabel(String label) {
+    final cleaned = label.trim();
+    if (cleaned.isEmpty) {
+      return '';
+    }
+    final comma = cleaned.indexOf(',');
+    if (comma <= 0) {
+      return cleaned;
+    }
+    return cleaned.substring(0, comma).trim();
   }
 
   Future<void> selectLocationSuggestion(LocationSuggestion suggestion) async {
@@ -733,12 +781,12 @@ class UploadController extends GetxController {
     }
   }
 
-  void _fillRestaurantName(String name) {
+  void _fillRestaurantName(String name, {bool overwrite = false}) {
     final trimmed = name.trim();
     if (isOutfitPost || trimmed.isEmpty) {
       return;
     }
-    if (restaurantController.text.trim().isNotEmpty) {
+    if (!overwrite && restaurantController.text.trim().isNotEmpty) {
       return;
     }
     restaurantController.text = trimmed;
@@ -761,6 +809,7 @@ class UploadController extends GetxController {
     restaurantController.clear();
     locationController.clear();
     locationQuery.value = '';
+    _pinnedLocationLabel = '';
     locationSuggestions.clear();
     selectedMediaItems.clear();
     mediaError.value = '';

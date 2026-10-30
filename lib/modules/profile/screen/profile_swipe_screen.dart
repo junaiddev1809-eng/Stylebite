@@ -2,9 +2,9 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:heroicons/heroicons.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
+import '../../../core/widgets/app_cached_image.dart';
 import '../../../core/widgets/app_media_source_sheet.dart';
 import '../../../core/widgets/app_hero_icon.dart';
 import '../controllers/profile_controller.dart';
@@ -30,6 +30,11 @@ class _ProfileSwipeScreenState extends State<ProfileSwipeScreen> {
     _controller = Get.isRegistered<ProfileController>()
         ? Get.find<ProfileController>()
         : Get.put(ProfileController());
+    // Cover gate can mount before overview finishes (or after a failed first
+    // fetch). Refresh silently so wallpaper URL is present on this screen.
+    if (_controller.wallpaperImageUrl.value.trim().isEmpty) {
+      _controller.fetchMyImages(silent: true);
+    }
   }
 
   void _openDetails() {
@@ -164,6 +169,18 @@ class _ProfileSwipeScreenState extends State<ProfileSwipeScreen> {
                   scale: 1 + (0.03 * _swipeProgress),
                   child: Obx(() {
                     final coverUrl = _controller.wallpaperImageUrl.value.trim();
+                    final waitingForCover =
+                        coverUrl.isEmpty &&
+                        (_controller.isInitialLoading.value ||
+                            _controller.isUploadingCover.value);
+                    if (waitingForCover) {
+                      return _buildCoverPlaceholder(
+                        child: const CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      );
+                    }
                     if (coverUrl.isEmpty) {
                       return _buildCoverPlaceholder(
                         child: Column(
@@ -172,9 +189,9 @@ class _ProfileSwipeScreenState extends State<ProfileSwipeScreen> {
                             _buildUploadButton(),
                             const SizedBox(height: 12),
                             Text(
-                              _controller.isUploadingCover.value ?
-                                  'Uploading Cover Photo' :
-                              'Upload Cover Photo',
+                              _controller.isUploadingCover.value
+                                  ? 'Uploading Cover Photo'
+                                  : 'Upload Cover Photo',
                               style: AppFonts.beVietnam(
                                 size: 14,
                                 weight: FontWeight.w600,
@@ -186,21 +203,12 @@ class _ProfileSwipeScreenState extends State<ProfileSwipeScreen> {
                       );
                     }
 
-                    return CachedNetworkImage(
-                      imageUrl: coverUrl,
-                      fit: BoxFit.cover,
-                      errorWidget: (context, url, error) =>
-                          _buildCoverPlaceholder(
-                        child: const AppHeroIconData(
-                          HeroIcons.exclamationTriangle,
-                          color: Colors.white70,
-                        ),
-                      ),
-                      placeholder: (context, url) => _buildCoverPlaceholder(
-                        child: const CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
+                    return KeyedSubtree(
+                      key: ValueKey<String>(coverUrl),
+                      child: AppCachedImage(
+                        imageUrl: coverUrl,
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.high,
                       ),
                     );
                   }),

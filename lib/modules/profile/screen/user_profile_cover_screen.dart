@@ -1,12 +1,12 @@
 import 'dart:convert';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:heroicons/heroicons.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/api_helper.dart';
+import '../../../core/widgets/app_cached_image.dart';
 import '../../../core/widgets/app_hero_icon.dart';
 import '../models/profile_model.dart';
 import '../utils/profile_page_transition.dart';
@@ -17,14 +17,10 @@ class UserProfileCoverScreen extends StatefulWidget {
     super.key,
     required this.username,
     this.initialIsFollowing = false,
-    this.initialCoverUrl = '',
-    this.initialAvatarUrl = '',
   });
 
   final String username;
   final bool initialIsFollowing;
-  final String initialCoverUrl;
-  final String initialAvatarUrl;
 
   @override
   State<UserProfileCoverScreen> createState() => _UserProfileCoverScreenState();
@@ -34,14 +30,15 @@ class _UserProfileCoverScreenState extends State<UserProfileCoverScreen> {
   double? _startY;
   bool _opened = false;
   double _swipeProgress = 0;
-  late String _imageUrl;
+
+  /// Never seed wallpaper from avatar — that causes a brief wrong/old flash
+  /// before the overview cover URL arrives.
+  String _coverUrl = '';
+  bool _loadingCover = true;
 
   @override
   void initState() {
     super.initState();
-    _imageUrl = widget.initialCoverUrl.trim().isNotEmpty
-        ? widget.initialCoverUrl.trim()
-        : widget.initialAvatarUrl.trim();
     _loadCover();
   }
 
@@ -54,25 +51,32 @@ class _UserProfileCoverScreenState extends State<UserProfileCoverScreen> {
       final response = await ApiHelper.fetchDataWithAuthorization(
         uri.toString(),
       );
-      if (!mounted || response == null) {
+      if (!mounted) {
+        return;
+      }
+      if (response == null) {
+        setState(() => _loadingCover = false);
         return;
       }
       final payload = jsonDecode(response.body);
       if (payload is! Map<String, dynamic>) {
+        setState(() => _loadingCover = false);
         return;
       }
       if (payload['status_code'] != 1 && payload['status_code'] != '1') {
+        setState(() => _loadingCover = false);
         return;
       }
       final user = ProfileOverviewResponseModel.fromMap(payload).overview.user;
-      final next = user.coverUrl.trim().isNotEmpty
-          ? user.coverUrl.trim()
-          : user.avatarUrl.trim();
-      if (next.isNotEmpty && next != _imageUrl) {
-        setState(() => _imageUrl = next);
-      }
+      final next = user.coverUrl.trim();
+      setState(() {
+        _coverUrl = next;
+        _loadingCover = false;
+      });
     } catch (_) {
-      // Keep the preview image we already have from the feed/search row.
+      if (mounted) {
+        setState(() => _loadingCover = false);
+      }
     }
   }
 
@@ -152,20 +156,7 @@ class _UserProfileCoverScreenState extends State<UserProfileCoverScreen> {
                   offset: Offset(0, -22 * _swipeProgress),
                   child: Transform.scale(
                     scale: 1 + (0.03 * _swipeProgress),
-                    child: _imageUrl.isEmpty
-                        ? _placeholder()
-                        : CachedNetworkImage(
-                            imageUrl: _imageUrl,
-                            fit: BoxFit.cover,
-                            filterQuality: FilterQuality.high,
-                            errorWidget: (context, url, error) => _placeholder(),
-                            placeholder: (context, url) => _placeholder(
-                              child: const CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            ),
-                          ),
+                    child: _buildCoverLayer(),
                   ),
                 ),
               ),
@@ -205,6 +196,28 @@ class _UserProfileCoverScreenState extends State<UserProfileCoverScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCoverLayer() {
+    if (_loadingCover) {
+      return _placeholder(
+        child: const CircularProgressIndicator(
+          color: Colors.white,
+          strokeWidth: 2,
+        ),
+      );
+    }
+    if (_coverUrl.isEmpty) {
+      return _placeholder();
+    }
+    return KeyedSubtree(
+      key: ValueKey<String>(_coverUrl),
+      child: AppCachedImage(
+        imageUrl: _coverUrl,
+        fit: BoxFit.cover,
+        filterQuality: FilterQuality.high,
       ),
     );
   }

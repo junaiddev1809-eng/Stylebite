@@ -659,18 +659,18 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                 ),
                 child: ElevatedButton.icon(
                   onPressed: () async {
-                    // Always describe the pin coordinates, not an older search
-                    // or the phone's GPS point.
+                    // Prefer the place the user actually picked (search /
+                    // suggestion). Reverse-geocode only for a bare map pin.
                     final pinned = currentLocation;
-                    var address = (await GooglePlacesService.reverseLabel(
-                      pinned.latitude,
-                      pinned.longitude,
-                    )).trim();
-                    if (address.isEmpty) {
-                      address = _selectedPlaceLabel.trim();
-                    }
+                    var address = _selectedPlaceLabel.trim();
                     if (address.isEmpty) {
                       address = searchController.text.trim();
+                    }
+                    if (address.isEmpty) {
+                      address = (await GooglePlacesService.reverseLabel(
+                        pinned.latitude,
+                        pinned.longitude,
+                      )).trim();
                     }
                     if (address.isEmpty ||
                         address.toLowerCase() == 'unknown location') {

@@ -229,10 +229,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
       return;
     }
     await Get.to<void>(
-      () => UserProfileCoverScreen(
-        username: name,
-        initialAvatarUrl: widget.bucket.avatarUrl,
-      ),
+      () => UserProfileCoverScreen(username: name),
     );
     if (mounted) {
       _resumeHold();

@@ -159,6 +159,8 @@ class EarningsWithdrawalModel {
     required this.method,
     required this.title,
     required this.accountRef,
+    required this.bankName,
+    required this.bankAccountNumber,
     required this.status,
     required this.requestedAt,
     required this.processedAt,
@@ -172,6 +174,8 @@ class EarningsWithdrawalModel {
   final String method;
   final String title;
   final String accountRef;
+  final String bankName;
+  final String bankAccountNumber;
   final String status;
   final String? requestedAt;
   final String? processedAt;
@@ -186,6 +190,8 @@ class EarningsWithdrawalModel {
       method: (json['method'] ?? '').toString(),
       title: (json['title'] ?? '').toString(),
       accountRef: (json['account_ref'] ?? '').toString(),
+      bankName: (json['bank_name'] ?? '').toString(),
+      bankAccountNumber: (json['bank_account_number'] ?? '').toString(),
       status: (json['status'] ?? '').toString(),
       requestedAt: _asNullableString(json['requested_at']),
       processedAt: _asNullableString(json['processed_at']),

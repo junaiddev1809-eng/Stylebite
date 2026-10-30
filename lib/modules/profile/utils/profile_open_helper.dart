@@ -25,6 +25,8 @@ class ProfileOpenHelper {
     String? avatarUrl,
     bool replaceCurrent = false,
   }) {
+    // coverUrl / avatarUrl intentionally ignored — seeding them on the
+    // cover gate caused a stale/avatar flash before overview cover loaded.
     final cleaned = normalizeUsername(username);
     if (cleaned.isEmpty) {
       return Future<void>.value();
@@ -41,11 +43,11 @@ class ProfileOpenHelper {
       return Future<void>.value();
     }
 
+    // Cover URL / avatar must not be seeded on the gate — stale or avatar
+    // previews flash the wrong wallpaper before overview returns.
     final page = UserProfileCoverScreen(
       username: cleaned,
       initialIsFollowing: initialIsFollowing,
-      initialCoverUrl: coverUrl ?? '',
-      initialAvatarUrl: avatarUrl ?? '',
     );
 
     if (replaceCurrent) {

@@ -129,12 +129,16 @@ class _StyleBiteAppState extends State<StyleBiteApp>
       initialRoute: AppPages.initial,
       getPages: AppPages.routes,
       builder: (context, child) {
+        // Single app-wide back gate. canPop:false stops the engine from also
+        // popping while we handle it — AppBackNavigation locks duplicates
+        // from predictive-back / PopScope double invokes.
         return PopScope(
           canPop: false,
           onPopInvokedWithResult: (didPop, result) {
-            if (!didPop) {
-              AppBackNavigation.handleBack();
+            if (didPop) {
+              return;
             }
+            AppBackNavigation.handleBack();
           },
           child: child ?? const SizedBox.shrink(),
         );

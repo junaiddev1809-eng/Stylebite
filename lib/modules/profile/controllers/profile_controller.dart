@@ -476,6 +476,7 @@ class ProfileController extends GetxController {
       final nextAvatar = _pickFirstString(
         payload['avatar_url'],
         (payload['data'] as Map?)?['avatar_url'],
+        (payload['user'] as Map?)?['avatar_url'],
       );
       if (nextAvatar != null) {
         avatarImageUrl.value = nextAvatar;
@@ -549,6 +550,7 @@ class ProfileController extends GetxController {
       final nextCover = _pickFirstString(
         payload['cover_url'],
         (payload['data'] as Map?)?['cover_url'],
+        (payload['user'] as Map?)?['cover_url'],
       );
       if (nextCover != null) {
         wallpaperImageUrl.value = nextCover;
@@ -736,9 +738,7 @@ class ProfileController extends GetxController {
       avatarImageUrl.value = nextUser.avatarUrl;
       LocalStorage.setAvatarUrl(avatarUrl: nextUser.avatarUrl);
     }
-    if (nextUser.coverUrl.trim().isNotEmpty) {
-      wallpaperImageUrl.value = nextUser.coverUrl;
-    }
+    wallpaperImageUrl.value = nextUser.coverUrl.trim();
 
     final cityValue = nextUser.city.trim();
     if (cityValue.isNotEmpty) {
@@ -796,8 +796,8 @@ class ProfileController extends GetxController {
     return '$value';
   }
 
-  String? _pickFirstString(dynamic first, [dynamic second]) {
-    for (final candidate in <dynamic>[first, second]) {
+  String? _pickFirstString(dynamic first, [dynamic second, dynamic third]) {
+    for (final candidate in <dynamic>[first, second, third]) {
       final value = candidate?.toString().trim();
       if (value != null && value.isNotEmpty && value != 'null') {
         return value;

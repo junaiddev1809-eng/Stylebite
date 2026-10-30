@@ -86,7 +86,11 @@ class GooglePlacesService {
     'Accept': 'application/json',
     'Accept-Language': 'en',
   };
-  static bool _googleRestDenied = false;
+  /// Temporary cooldown after Google REST denial — not forever for the process.
+  static DateTime? _googleRestDeniedUntil;
+  static bool get _googleRestDenied =>
+      _googleRestDeniedUntil != null &&
+      DateTime.now().isBefore(_googleRestDeniedUntil!);
   static bool _englishLocaleReady = false;
 
   /// Device placemarks follow the phone language (e.g. Urdu). Force English
@@ -1017,7 +1021,7 @@ class GooglePlacesService {
     }
     final status = (payload['status'] ?? '').toString();
     if (status == 'REQUEST_DENIED' || status == 'OVER_QUERY_LIMIT') {
-      _googleRestDenied = true;
+      _googleRestDeniedUntil = DateTime.now().add(const Duration(minutes: 15));
       log(
         '$source denied status=$status error=${payload['error_message']}',
         name: 'Places',

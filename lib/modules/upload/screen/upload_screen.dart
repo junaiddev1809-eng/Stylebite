@@ -110,7 +110,7 @@ class _UploadScreenState extends State<UploadScreen> {
                                           '${location.latitude.toStringAsFixed(5)}, '
                                           '${location.longitude.toStringAsFixed(5)}';
                                     }
-                                    _controller.setLocation(
+                                    _controller.confirmMapLocation(
                                       label,
                                       location.latitude,
                                       location.longitude,

@@ -441,11 +441,17 @@ Color _sourceColor(String sourceType) {
 
 String _withdrawalTitle(EarningsWithdrawalModel item) {
   final base = item.title.trim().isEmpty ? 'Withdrawal' : item.title.trim();
-  final ref = item.accountRef.trim();
-  if (ref.isEmpty) {
+  final bank = item.bankName.trim();
+  final number = item.bankAccountNumber.trim().isNotEmpty
+      ? item.bankAccountNumber.trim()
+      : item.accountRef.trim();
+  if (bank.isEmpty && number.isEmpty) {
     return base;
   }
-  return '$base ($ref)';
+  if (bank.isNotEmpty && number.isNotEmpty) {
+    return '$base · $bank ($number)';
+  }
+  return bank.isNotEmpty ? '$base · $bank' : '$base ($number)';
 }
 
 Color _withdrawalStatusColor(String status) {

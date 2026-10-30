@@ -52,7 +52,10 @@ class AppPages {
       page: page,
       transition: Transition.cupertino,
       transitionDuration: _slideDuration,
-      popGesture: true,
+      // Edge swipe + global PopScope(canPop:false) both handling back caused
+      // a single gesture to pop two routes. Keep swipe off; AppBar/system back
+      // go through AppBackNavigation only.
+      popGesture: false,
       preventDuplicates: true,
     );
   }

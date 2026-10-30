@@ -40,7 +40,9 @@ class EarningsController extends GetxController {
   final RxBool hasMoreWithdrawals = true.obs;
 
   final TextEditingController amountController = TextEditingController();
-  final TextEditingController accountRefController = TextEditingController();
+  final TextEditingController bankNameController = TextEditingController();
+  final TextEditingController bankAccountNumberController =
+      TextEditingController();
   final RxString selectedWithdrawalMethod = 'bank_transfer'.obs;
   final RxBool isSubmittingWithdrawal = false.obs;
 
@@ -70,7 +72,8 @@ class EarningsController extends GetxController {
   @override
   void onClose() {
     amountController.dispose();
-    accountRefController.dispose();
+    bankNameController.dispose();
+    bankAccountNumberController.dispose();
     super.onClose();
   }
 
@@ -296,15 +299,20 @@ class EarningsController extends GetxController {
     }
 
     final rawAmount = amountController.text.trim().replaceAll(',', '');
-    final accountRef = accountRefController.text.trim();
+    final bankName = bankNameController.text.trim();
+    final bankAccountNumber = bankAccountNumberController.text.trim();
     final amount = int.tryParse(rawAmount);
 
     if (amount == null || amount <= 0) {
       errorSnackBar(message: 'Please enter a valid withdrawal amount.');
       return false;
     }
-    if (accountRef.isEmpty) {
-      errorSnackBar(message: 'Please enter an account reference.');
+    if (bankName.isEmpty) {
+      errorSnackBar(message: 'Please enter your bank name.');
+      return false;
+    }
+    if (bankAccountNumber.isEmpty) {
+      errorSnackBar(message: 'Please enter your bank account number.');
       return false;
     }
     if (amount > currentSummary.availableBalance) {
@@ -321,7 +329,9 @@ class EarningsController extends GetxController {
         body: <String, dynamic>{
           'amount': amount,
           'method': selectedWithdrawalMethod.value,
-          'account_ref': accountRef,
+          'bank_name': bankName,
+          'bank_account_number': bankAccountNumber,
+          'account_ref': bankAccountNumber,
         },
       );
       if (response == null) {
@@ -365,7 +375,8 @@ class EarningsController extends GetxController {
       }
 
       amountController.clear();
-      accountRefController.clear();
+      bankNameController.clear();
+      bankAccountNumberController.clear();
       selectedWithdrawalMethod.value = 'bank_transfer';
       successSnackBar(message: 'Withdrawal request submitted successfully.');
       await fetchOverview(forceRefresh: true);

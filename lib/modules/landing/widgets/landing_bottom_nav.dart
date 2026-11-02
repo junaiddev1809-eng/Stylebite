@@ -56,19 +56,17 @@ class LandingBottomNav extends StatelessWidget {
                   vertical: kBottomNavVerticalPadding,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: compact ? 0.96 : 0.98),
+                  color: AppColors.navBar,
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
-                    color: Colors.white.withValues(
-                      alpha: compact ? 0.62 : 0.95,
-                    ),
+                    color: AppColors.cardBorder,
                     width: 1.2,
                   ),
-                  boxShadow: const [
+                  boxShadow: [
                     BoxShadow(
-                      color: Color.fromRGBO(47, 47, 46, 0.16),
+                      color: Colors.black.withValues(alpha: 0.22),
                       blurRadius: 26,
-                      offset: Offset(0, 12),
+                      offset: const Offset(0, 12),
                     ),
                   ],
                 ),
@@ -99,10 +97,10 @@ class LandingBottomNav extends StatelessWidget {
                             duration: const Duration(milliseconds: 220),
                             curve: Curves.easeOut,
                             opacity: currentIndex == 2 ? 0 : 1,
-                            child: const DecoratedBox(
+                            child: DecoratedBox(
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Color(0xFFE7E7E7),
+                                color: AppColors.chip,
                               ),
                             ),
                           ),

@@ -29,8 +29,8 @@ class LandingTabModel {
     ),
     LandingTabModel(
       label: 'Contest',
-      icon: HeroIcons.bolt,
-      activeIcon: HeroIcons.bolt,
+      icon: HeroIcons.currencyDollar,
+      activeIcon: HeroIcons.currencyDollar,
     ),
     LandingTabModel(
       label: 'Profile',

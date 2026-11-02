@@ -28,8 +28,8 @@ class FlashArchiveSheet extends StatelessWidget {
           maxHeight: MediaQuery.sizeOf(context).height * 0.72,
         ),
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
+        color: AppColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
@@ -39,7 +39,7 @@ class FlashArchiveSheet extends StatelessWidget {
               width: 48,
               height: 5,
               decoration: BoxDecoration(
-                color: const Color(0xFFE7E2E0),
+                color: AppColors.chip,
                 borderRadius: BorderRadius.circular(999),
               ),
             ),

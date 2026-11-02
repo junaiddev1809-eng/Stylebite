@@ -31,7 +31,7 @@ class SocialLoginButton extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.surface,
         ),
         icon: isLoading
             ? const SizedBox(

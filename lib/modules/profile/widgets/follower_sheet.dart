@@ -33,8 +33,8 @@ class FollowerSheet extends StatelessWidget {
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.75,
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
@@ -194,7 +194,7 @@ class _UserTile extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   decoration: BoxDecoration(
-                    color: isFollowing ? const Color(0xFFF3F0EF) : AppColors.primary,
+                    color: isFollowing ? AppColors.chip : AppColors.primary,
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(

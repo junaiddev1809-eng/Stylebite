@@ -45,7 +45,7 @@ class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
                 color: AppColors.background.withValues(alpha: 0.88),
                 border: Border(
                   bottom: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: AppColors.divider,
                   ),
                 ),
               ),
@@ -202,7 +202,7 @@ class _BlockedUserCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(18),
             boxShadow: const [
               BoxShadow(
@@ -221,9 +221,9 @@ class _BlockedUserCard extends StatelessWidget {
                   height: 56,
                   child: user.avatarUrl.trim().isEmpty
                       ? Container(
-                          color: const Color(0xFFF3F0EF),
+                          color: AppColors.chip,
                           alignment: Alignment.center,
-                          child: const HeroIcon(
+                          child: HeroIcon(
                             HeroIcons.user,
                             color: AppColors.hintText,
                           ),
@@ -327,7 +327,7 @@ class _EmptyBlockedState extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -382,7 +382,7 @@ class _BlockedUsersShimmer extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(18),
           ),
           child: const Row(

@@ -5,6 +5,7 @@ import 'package:heroicons/heroicons.dart';
 import 'package:stylebite/core/widgets/app_hero_icon.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme_rebuild.dart';
 import '../../../core/widgets/app_sliding_toggle.dart';
 import '../../../core/widgets/states/app_empty_state.dart';
 import '../../../core/widgets/states/app_error_state.dart';
@@ -51,8 +52,9 @@ class _HomeFeedContentState extends State<HomeFeedContent>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return DecoratedBox(
-      decoration: const BoxDecoration(color: AppColors.background),
+    return AppThemeRebuild(
+      builder: (context) => DecoratedBox(
+      decoration: BoxDecoration(color: AppColors.backgroundThemed),
       child: Column(
         children: [
           _HomeTopBar(controller: _controller),
@@ -188,6 +190,7 @@ class _HomeFeedContentState extends State<HomeFeedContent>
           ),
         ],
       ),
+    ),
     );
   }
 }
@@ -275,7 +278,7 @@ class _DiscoverToggleShimmer extends StatelessWidget {
         padding: const EdgeInsets.all(5),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(999),
-          color: Colors.white.withValues(alpha: 0.74),
+          color: AppColors.surface.withValues(alpha: 0.92),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
@@ -313,8 +316,9 @@ class _FeedPostCardShimmer extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F0EF),
+        color: AppColors.card,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(
         children: [
@@ -382,7 +386,7 @@ class _FeedPostCardShimmer extends StatelessWidget {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.7),
+                          color: AppColors.surface.withValues(alpha: 0.85),
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: const Row(
@@ -414,10 +418,10 @@ class _FeedPostCardShimmer extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.85),
+                          color: AppColors.surface.withValues(alpha: 0.92),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.5),
+                            color: AppColors.cardBorder,
                             width: 1.5,
                           ),
                         ),
@@ -524,10 +528,10 @@ class _HomeTopBar extends StatelessWidget {
     return Container(
       padding: EdgeInsets.fromLTRB(16, topInset + 10, 16, 10),
       decoration: BoxDecoration(
-        color: AppColors.background.withValues(alpha: 0.94),
+        color: AppColors.surface,
         border: Border(
           bottom: BorderSide(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: AppColors.divider,
             width: 0.5,
           ),
         ),
@@ -598,6 +602,7 @@ class _FeedTypeToggle extends StatelessWidget {
         labels: const ['Style', 'Bite'],
         selectedIndex:
             controller.selectedFeedType.value == HomeFeedType.bite ? 1 : 0,
+        trackColor: AppColors.chip,
         minSegmentWidth: 72,
         onChanged: (index) => controller.setFeedType(
           index == 1 ? HomeFeedType.bite : HomeFeedType.style,
@@ -622,7 +627,7 @@ class _DiscoverToggle extends StatelessWidget {
               controller.selectedDiscoverType.value == HomeDiscoverType.nearby
               ? 1
               : 0,
-          trackColor: Colors.white.withValues(alpha: 0.74),
+          trackColor: AppColors.chip,
           padding: const EdgeInsets.all(5),
           segmentPadding: const EdgeInsets.symmetric(
             horizontal: 18,
@@ -659,7 +664,7 @@ class _TopActionIcon extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           Material(
-            color: Colors.white.withValues(alpha: 0.86),
+            color: AppColors.surface.withValues(alpha: 0.94),
             shape: const CircleBorder(),
             child: InkWell(
               onTap: onPressed,
@@ -687,7 +692,7 @@ class _TopActionIcon extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.primary,
-                  border: Border.all(color: Colors.white, width: 1.5),
+                  border: Border.all(color: AppColors.background, width: 1.5),
                 ),
               ),
             ),

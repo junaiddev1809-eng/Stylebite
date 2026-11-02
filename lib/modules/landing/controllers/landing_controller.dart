@@ -45,20 +45,25 @@ class LandingController extends GetxController {
   }
 
   void onTabChanged(int index) {
+    // Invalidate any in-flight swipe settle first. Otherwise `_settleTo` can
+    // still call animateToPage after this tap and yank the pager back to the
+    // feed while the nav already shows the new tab.
     _gestureSerial++;
     _dragOriginPage = null;
+    _stopPageAnimation();
+
     // Tapping the tab that is already open jumps back to the top.
     if (index == currentIndex.value) {
       isBottomNavCompact.value = false;
       _navScrollBucket = 0;
       _setVerticalDragLock(false);
       _scrollCurrentTabToTop(index);
-      _moveToPage(index);
+      _syncPageToIndex(index);
       return;
     }
 
     _publishIndex(index);
-    _moveToPage(index);
+    _syncPageToIndex(index);
   }
 
   /// The finger is on the tab pager. Stop any settle animation and remember
@@ -143,7 +148,9 @@ class LandingController extends GetxController {
   }
 
   Future<void> _settleTo(int index, int serial, double velocity) async {
-    if (isClosed || !pageController.hasClients) {
+    // Tab taps bump `_gestureSerial` — bail before touching the pager so we
+    // cannot undo `_syncPageToIndex` from `onTabChanged`.
+    if (isClosed || serial != _gestureSerial || !pageController.hasClients) {
       return;
     }
     final width = pageController.position.viewportDimension;
@@ -152,6 +159,9 @@ class LandingController extends GetxController {
         : pageController.position.pixels / width;
     final remaining = (index - page).abs();
     if (remaining >= 0.004) {
+      if (serial != _gestureSerial) {
+        return;
+      }
       final fast = velocity.abs() >= 1200;
       final ms = (remaining * (fast ? 220 : 340))
           .round()
@@ -180,13 +190,12 @@ class LandingController extends GetxController {
     if (index == currentIndex.value) {
       return;
     }
-    final previous = currentIndex.value;
     currentIndex.value = index;
     isBottomNavCompact.value = false;
     _navScrollBucket = 0;
     _setVerticalDragLock(false);
     FocusManager.instance.primaryFocus?.unfocus();
-    _syncReelVisibility(previous: previous, next: index);
+    _syncReelVisibility(next: index);
     if (Get.isRegistered<UploadController>() && index == 2) {
       Get.find<UploadController>().clearStatusMessages();
     }
@@ -279,35 +288,38 @@ class LandingController extends GetxController {
     }
   }
 
-  void _moveToPage(int index) {
+  /// Stops a running pager animation without changing the page index.
+  void _stopPageAnimation() {
     if (!pageController.hasClients) {
       return;
     }
-    final page = pageController.page ?? currentIndex.value.toDouble();
-    if ((page - index).abs() < 0.01) {
+    final position = pageController.position;
+    if (!position.hasPixels) {
       return;
     }
-    // One tab slides. A longer jump would pass through empty pages.
-    if ((page - index).abs() < 1.01) {
-      pageController.animateToPage(
-        index,
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOutCubic,
-      );
+    position.jumpTo(position.pixels);
+  }
+
+  /// Tab selection must be authoritative: jump, never animate. Animating here
+  /// races swipe `_settleTo` and is what left users stuck visually on Feed.
+  void _syncPageToIndex(int index) {
+    if (!pageController.hasClients) {
+      return;
+    }
+    final page = pageController.page;
+    if (page != null && (page - index).abs() < 0.01) {
       return;
     }
     pageController.jumpToPage(index);
   }
 
-  void _syncReelVisibility({required int previous, required int next}) {
+  void _syncReelVisibility({required int next}) {
     if (!Get.isRegistered<ReelController>()) {
       return;
     }
-    final reels = Get.find<ReelController>();
-    if (next == 1) {
-      reels.setFeedVisible(true);
-    } else if (previous == 1) {
-      reels.setFeedVisible(false);
-    }
+    // Always drive visibility from the destination tab. Relying on
+    // `previous == 1` missed cases where currentIndex and the pager drifted,
+    // which left reel audio playing under Home/Profile/etc.
+    Get.find<ReelController>().setFeedVisible(next == 1);
   }
 }

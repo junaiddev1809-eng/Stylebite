@@ -27,7 +27,7 @@ Future<PostOptionAction?> showPostOptionsSheet(
                 width: 48,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE7E2E0),
+                  color: AppColors.chip,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -101,7 +101,7 @@ Future<bool?> showBlockUserConfirmationSheet(
                   width: 48,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE7E2E0),
+                    color: AppColors.chip,
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -203,7 +203,7 @@ Future<bool?> showUnblockUserConfirmationSheet(
                   width: 48,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE7E2E0),
+                    color: AppColors.chip,
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -328,7 +328,7 @@ Future<bool?> _showDeleteConfirmationSheet(
                   width: 48,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE7E2E0),
+                    color: AppColors.chip,
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -410,28 +410,29 @@ Future<bool?> _showDeleteConfirmationSheet(
 Widget _item({
   required HeroIcons icon,
   required String label,
-  Color color = AppColors.text,
+  Color? color,
   required VoidCallback onTap,
 }) {
+  final resolved = color ?? AppColors.text;
   return InkWell(
     onTap: onTap,
     borderRadius: BorderRadius.circular(14),
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF4F1F0),
+        color: AppColors.chip,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
-          HeroIcon(icon, color: color, size: 20),
+          HeroIcon(icon, color: resolved, size: 20),
           const SizedBox(width: 12),
           Text(
             label,
             style: AppFonts.beVietnam(
               size: 14,
               weight: FontWeight.w700,
-              color: color,
+              color: resolved,
             ),
           ),
         ],

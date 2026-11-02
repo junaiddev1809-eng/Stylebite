@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
+import '../../../core/theme/app_theme_controller.dart';
 import '../../../core/utils/app_back_navigation.dart';
 import '../../../core/widgets/app_hero_icon.dart';
 import '../../../core/widgets/app_media_source_sheet.dart';
@@ -43,7 +44,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final profileController = _controller.profileController;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.backgroundThemed,
       body: SafeArea(
         child: Column(
           children: [
@@ -51,11 +52,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               height: 64,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: AppColors.background.withValues(alpha: 0.85),
+                color: AppColors.backgroundThemed.withValues(alpha: 0.85),
                 border: Border(
-                  bottom: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.8),
-                  ),
+                  bottom: BorderSide(color: AppColors.divider),
                 ),
               ),
               child: Row(
@@ -154,11 +153,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             height: 160,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(18),
-                              gradient: const LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [Color(0xFFF6E9DF), Color(0xFFFFF8F3)],
-                              ),
+                              color: AppColors.chip,
+                              border: Border.all(color: AppColors.cardBorder),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withValues(alpha: 0.06),
@@ -174,15 +170,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     borderRadius: BorderRadius.circular(18),
                                     child: coverUrl.isEmpty
                                         ? Container(
-                                            decoration: const BoxDecoration(
-                                              gradient: LinearGradient(
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                                colors: [
-                                                  Color(0xFFF7E6D8),
-                                                  Color(0xFFFFF3EC),
-                                                ],
-                                              ),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.chip,
                                             ),
                                             child: const Center(
                                               child: AppHeroIconData(Icons.wallpaper_outlined,
@@ -195,7 +184,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             imageUrl: coverUrl,
                                             fit: BoxFit.cover,
                                             placeholder: (context, url) => Container(
-                                              color: const Color(0xFFF9F6F5),
+                                              color: AppColors.chip,
                                               child: const Center(
                                                 child: SizedBox(
                                                   width: 24,
@@ -208,12 +197,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                               ),
                                             ),
                                             errorWidget: (context, url, error) => Container(
-                                              color: const Color(0xFFF9F6F5),
-                                              child: const Center(
-                                                child: AppHeroIconData(Icons
-                                                      .image_not_supported_outlined,
-                                                  color:
-                                                      AppColors.hintText,
+                                              color: AppColors.background,
+                                              child: Center(
+                                                child: AppHeroIconData(
+                                                  Icons.image_not_supported_outlined,
+                                                  color: AppColors.hintText,
                                                   size: 38,
                                                 ),
                                               ),
@@ -289,7 +277,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   vertical: 7,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFF3F0EF),
+                                  color: AppColors.chip,
                                   borderRadius: BorderRadius.circular(999),
                                 ),
                                 child: Text(
@@ -393,6 +381,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       );
                     }),
                     const SizedBox(height: 12),
+                    Obx(() {
+                      final theme = Get.find<AppThemeController>();
+                      final selected = theme.themeMode.value;
+                      return SettingsSectionCard(
+                        title: 'App Appearance',
+                        subtitle:
+                            'Light stays the default. Dark uses warm charcoal with the same coral brand.',
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(4, 4, 4, 10),
+                            child: Row(
+                              children: [
+                                for (final mode in const [
+                                  ThemeMode.light,
+                                  ThemeMode.dark,
+                                  ThemeMode.system,
+                                ]) ...[
+                                  if (mode != ThemeMode.light)
+                                    const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _AppearanceChip(
+                                      label: AppThemeController.labelFor(mode),
+                                      selected: selected == mode,
+                                      onTap: () => theme.setThemeMode(mode),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
+                    const SizedBox(height: 12),
                     SettingsSectionCard(
                       title: 'Support',
                       children: [
@@ -463,6 +485,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AppearanceChip extends StatelessWidget {
+  const _AppearanceChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected
+          ? AppColors.primary.withValues(alpha: 0.14)
+          : AppColors.chip,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected
+                  ? AppColors.primary.withValues(alpha: 0.55)
+                  : AppColors.divider,
+            ),
+          ),
+          child: Text(
+            label,
+            style: AppFonts.beVietnam(
+              size: 12,
+              weight: FontWeight.w700,
+              color: selected ? AppColors.primary : AppColors.text,
+            ),
+          ),
         ),
       ),
     );

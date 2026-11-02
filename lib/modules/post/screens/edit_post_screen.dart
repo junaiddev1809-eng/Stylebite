@@ -404,7 +404,7 @@ InputDecoration _inputDecoration(
         ? null
         : AppHeroIconData(icon, color: AppColors.hintText),
     filled: true,
-    fillColor: Colors.white,
+    fillColor: AppColors.inputFill,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     border: OutlineInputBorder(
       borderSide: BorderSide.none,

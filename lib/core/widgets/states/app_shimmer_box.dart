@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/app_colors.dart';
+
 class AppShimmerBox extends StatefulWidget {
   const AppShimmerBox({
     super.key,
@@ -42,10 +44,10 @@ class _AppShimmerBoxState extends State<AppShimmerBox>
             gradient: LinearGradient(
               begin: Alignment(-1 + (2 * _controller.value), -0.3),
               end: Alignment(1 + (2 * _controller.value), 0.3),
-              colors: const [
-                Color(0xFFE8E4E2), // Slightly darker base for better contrast
-                Color(0xFFFDFCFB), // Brighter highlight
-                Color(0xFFE8E4E2),
+              colors: [
+                AppColors.chip,
+                AppColors.surface,
+                AppColors.chip,
               ],
             ),
           ),

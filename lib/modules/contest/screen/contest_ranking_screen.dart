@@ -150,8 +150,7 @@ class _ContestRankingScreenState extends State<ContestRankingScreen> {
                     if (visible.isEmpty)
                       Container(
                         padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
+                        decoration: BoxDecoration(color: AppColors.surface,
                           borderRadius: BorderRadius.circular(24),
                         ),
                         child: Text(
@@ -334,8 +333,7 @@ class _ContestRankingScreenState extends State<ContestRankingScreen> {
     if (target == null) {
       return Container(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(color: AppColors.surface,
           borderRadius: BorderRadius.circular(26),
         ),
         child: Row(
@@ -400,8 +398,7 @@ class _ContestRankingScreenState extends State<ContestRankingScreen> {
 
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(color: AppColors.surface,
         borderRadius: BorderRadius.circular(26),
       ),
       child: Column(
@@ -446,8 +443,7 @@ class _ContestRankingScreenState extends State<ContestRankingScreen> {
   ) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Row(
@@ -470,7 +466,7 @@ class _ContestRankingScreenState extends State<ContestRankingScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F4F1),
+        color: AppColors.chip,
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -524,8 +520,7 @@ class _ContestRankingScreenState extends State<ContestRankingScreen> {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: const Color(0xFFEFE2DD)),
       ),
@@ -539,6 +534,24 @@ class _ContestRankingScreenState extends State<ContestRankingScreen> {
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
+                SizedBox(
+                  width: 28,
+                  child: Text(
+                    rankLabel > 0 ? '$rankLabel' : '—',
+                    textAlign: TextAlign.center,
+                    style: AppFonts.plusJakarta(
+                      size: rankLabel > 0 && rankLabel <= 3 ? 18 : 16,
+                      weight: FontWeight.w800,
+                      color: switch (rankLabel) {
+                        1 => const Color(0xFFD4A017),
+                        2 => const Color(0xFF8A94A6),
+                        3 => const Color(0xFFC67B3E),
+                        _ => AppColors.text,
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => _openParticipantProfile(item, avatarUrl),
@@ -549,46 +562,19 @@ class _ContestRankingScreenState extends State<ContestRankingScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: () =>
-                                  _openParticipantProfile(item, avatarUrl),
-                              child: Text(
-                                username,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppFonts.plusJakarta(
-                                  size: 16,
-                                  weight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () =>
+                            _openParticipantProfile(item, avatarUrl),
+                        child: Text(
+                          username,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppFonts.plusJakarta(
+                            size: 16,
+                            weight: FontWeight.w800,
                           ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              rankLabel > 0
-                                  ? contestPlaceStanding(rankLabel)
-                                  : 'Unranked',
-                              style: AppFonts.beVietnam(
-                                size: 12,
-                                weight: FontWeight.w700,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -693,8 +679,7 @@ class _ContestRankingScreenState extends State<ContestRankingScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(color: AppColors.surface,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: const Color(0xFFEFE2DD)),
       ),

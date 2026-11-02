@@ -29,7 +29,7 @@ class UploadTagInput extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F0EF),
+        color: AppColors.chip,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -46,10 +46,10 @@ class UploadTagInput extends StatelessWidget {
               hintStyle: AppFonts.beVietnam(
                 size: 13,
                 weight: FontWeight.w500,
-                color: const Color(0xFF9A8F8A),
+                color: AppColors.hintText,
               ),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: AppColors.inputFill,
               suffixIcon: IconButton(
                 onPressed: () => onAddTag(controller.text),
                 icon: const AppHeroIconData(Icons.add_rounded,
@@ -70,8 +70,7 @@ class UploadTagInput extends StatelessWidget {
             const SizedBox(height: 8),
             Container(
               constraints: const BoxConstraints(maxHeight: 160),
-              decoration: BoxDecoration(
-                color: Colors.white,
+              decoration: BoxDecoration(color: AppColors.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: AppColors.hintText.withValues(alpha: 0.12),

@@ -56,7 +56,7 @@ class _HashtagFeedScreenState extends State<HashtagFeedScreen> {
             }
             AppBackNavigation.handleBack();
           },
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
             size: 20,
             color: AppColors.text,

@@ -532,7 +532,12 @@ class HomeController extends GetxController {
     final next = <HomePostModel>[];
     for (final post in visiblePosts) {
       final info = ContestEnrollmentStore.instance.infoFor(post.id);
-      if (post.ratingEnabled || info == null) {
+      // Never revive the 1–5 bar when the API already closed voting (ended
+      // contest keeps trophy via contestId/title + status).
+      if (info == null ||
+          post.ratingEnabled ||
+          post.isContestEnded ||
+          (post.isInContest && !post.ratingEnabled)) {
         next.add(post);
         continue;
       }

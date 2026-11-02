@@ -174,11 +174,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   child: Container(
                     padding: EdgeInsets.fromLTRB(16, 10, 16, safeBottom + 10),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: AppColors.surface,
                       border: Border(
-                        top: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.85),
-                        ),
+                        top: BorderSide(color: AppColors.divider),
                       ),
                     ),
                     child: Obx(
@@ -193,7 +191,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                       horizontal: 14,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFF7F0EE),
+                                      color: AppColors.inputFill,
                                       borderRadius: BorderRadius.circular(22),
                                       border: Border.all(
                                         color: AppColors.cardBorder,
@@ -396,7 +394,7 @@ class _ChatHeader extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.background.withValues(alpha: 0.96),
               border: Border(
-                bottom: BorderSide(color: Colors.white.withValues(alpha: 0.8)),
+                bottom: BorderSide(color: AppColors.divider),
               ),
             ),
             child: Obx(() {
@@ -407,10 +405,10 @@ class _ChatHeader extends StatelessWidget {
                   IconButton(
                     onPressed: AppBackNavigation.handleBack,
                     style: IconButton.styleFrom(
-                      backgroundColor: Colors.white.withValues(alpha: 0.72),
+                      backgroundColor: AppColors.surface,
                       shape: const CircleBorder(),
                     ),
-                    icon: const AppHeroIconData(
+                    icon: AppHeroIconData(
                       Icons.arrow_back_rounded,
                       color: AppColors.text,
                     ),
@@ -434,9 +432,9 @@ class _ChatHeader extends StatelessWidget {
                               height: 42,
                             )
                           : Container(
-                              color: const Color(0xFFF1EBE8),
+                              color: AppColors.chip,
                               alignment: Alignment.center,
-                              child: const AppHeroIconData(
+                              child: AppHeroIconData(
                                 Icons.person_rounded,
                                 color: AppColors.hintText,
                               ),
@@ -492,7 +490,7 @@ class _ChatHeader extends StatelessWidget {
                                   : AppColors.hintText,
                               background: user?.isOnline == true
                                   ? const Color(0xFFEAF8EF)
-                                  : const Color(0xFFF1EBE8),
+                                  : AppColors.chip,
                             ),
                             if (_headerStatusLabel(controller, isStopped) !=
                                 null)
@@ -506,7 +504,7 @@ class _ChatHeader extends StatelessWidget {
                                     : AppColors.hintText,
                                 background: isStopped
                                     ? const Color(0xFFFDECEC)
-                                    : const Color(0xFFF4EEEC),
+                                    : AppColors.chip,
                               ),
                           ],
                         ),
@@ -554,7 +552,7 @@ class _ChatHeader extends StatelessWidget {
                           break;
                       }
                     },
-                    icon: const AppHeroIconData(
+                    icon: AppHeroIconData(
                       Icons.more_vert_rounded,
                       color: AppColors.text,
                     ),
@@ -664,7 +662,7 @@ class _StoppedBanner extends StatelessWidget {
             TextButton(
               onPressed: onAction,
               style: TextButton.styleFrom(
-                backgroundColor: Colors.white.withValues(alpha: 0.76),
+                backgroundColor: AppColors.surface,
                 foregroundColor: const Color(0xFFB42318),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -834,7 +832,7 @@ class _DateBanner extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFFF1EBE8),
+          color: AppColors.chip,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: const Color(0xFF8E6F71).withValues(alpha: 0.08),
@@ -903,12 +901,12 @@ class _ChatMessageBubble extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: message.myReaction == reaction.emoji
                       ? AppColors.primary.withValues(alpha: 0.14)
-                      : Colors.white,
+                      : AppColors.chip,
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
                     color: message.myReaction == reaction.emoji
                         ? AppColors.primary
-                        : const Color(0xFFE7E2E0),
+                        : AppColors.cardBorder,
                   ),
                 ),
                 child: Text(
@@ -957,14 +955,12 @@ class _ChatMessageBubble extends StatelessWidget {
                             colors: [AppColors.primary, Color(0xFFFF8A5B)],
                           )
                         : null,
-                    color: isMine ? null : Colors.white,
+                    color: isMine ? null : AppColors.card,
                     border: isMine
                         ? null
                         : Border.all(
-                            color: const Color(
-                              0xFF8E6F71,
-                            ).withValues(alpha: 0.12),
-                            width: 0.6,
+                            color: AppColors.cardBorder,
+                            width: 1,
                           ),
                     boxShadow: const [
                       BoxShadow(
@@ -983,7 +979,7 @@ class _ChatMessageBubble extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.5),
+                  color: AppColors.chip,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Row(
@@ -1098,8 +1094,7 @@ class _TypingBubble extends StatelessWidget {
         alignment: Alignment.centerLeft,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: Colors.white,
+          decoration: BoxDecoration(color: AppColors.surface,
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(24),
               topRight: Radius.circular(24),
@@ -1172,7 +1167,7 @@ class _TypingDotsState extends State<_TypingDots>
                   child: Container(
                     width: 7,
                     height: 7,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: AppColors.hintText,
                       shape: BoxShape.circle,
                     ),
@@ -1230,7 +1225,7 @@ class _ChatBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const DecoratedBox(
+    return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,

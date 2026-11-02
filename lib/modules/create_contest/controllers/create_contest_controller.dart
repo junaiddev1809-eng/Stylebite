@@ -315,9 +315,9 @@ class CreateContestController extends GetxController {
         top: false,
         child: Container(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 22),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,

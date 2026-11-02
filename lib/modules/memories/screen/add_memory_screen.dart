@@ -221,7 +221,7 @@ class _AddMemoryScreenState extends State<AddMemoryScreen> {
     Get.bottomSheet(
       Container(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.background,
           borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
@@ -368,8 +368,7 @@ class _AddMemoryScreenState extends State<AddMemoryScreen> {
                             child: Container(
                               width: 100,
                               margin: const EdgeInsets.only(right: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
+                              decoration: BoxDecoration(color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(24),
                                 border: Border.all(
                                   color: AppColors.primary.withValues(
@@ -488,8 +487,7 @@ class _AddMemoryScreenState extends State<AddMemoryScreen> {
                         if (_locationSuggestions.isNotEmpty)
                           Container(
                             margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
+                            decoration: BoxDecoration(color: AppColors.surface,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: Colors.black.withValues(alpha: 0.05),
@@ -643,7 +641,7 @@ class _AddMemoryScreenState extends State<AddMemoryScreen> {
           prefixIcon: AppHeroIconData(icon, size: 22, color: AppColors.primary),
           filled: true,
           suffixIcon: suffixIcon,
-          fillColor: Colors.white,
+          fillColor: AppColors.inputFill,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 20,
             vertical: 18,
@@ -654,7 +652,7 @@ class _AddMemoryScreenState extends State<AddMemoryScreen> {
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(24),
-            borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.04)),
+            borderSide: BorderSide(color: AppColors.cardBorder),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(24),
@@ -693,8 +691,8 @@ class _AddMemoryScreenState extends State<AddMemoryScreen> {
             onTap: onRemove,
             child: Container(
               padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                color: Colors.white,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
                 shape: BoxShape.circle,
                 boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
               ),

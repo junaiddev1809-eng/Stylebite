@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 
 class SettingsSectionCard extends StatelessWidget {
@@ -20,8 +21,9 @@ class SettingsSectionCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.divider),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
@@ -35,7 +37,11 @@ class SettingsSectionCard extends StatelessWidget {
         children: [
           Text(
             title,
-            style: AppFonts.plusJakarta(size: 20, weight: FontWeight.w700),
+            style: AppFonts.plusJakarta(
+              size: 20,
+              weight: FontWeight.w700,
+              color: AppColors.textThemed,
+            ),
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 6),
@@ -44,7 +50,7 @@ class SettingsSectionCard extends StatelessWidget {
               style: AppFonts.beVietnam(
                 size: 12,
                 weight: FontWeight.w500,
-                color: const Color(0xFF5C5B5B),
+                color: AppColors.hintTextThemed,
               ),
             ),
           ],

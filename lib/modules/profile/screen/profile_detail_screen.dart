@@ -71,7 +71,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF1EFEF),
+      backgroundColor: AppColors.background,
       body: Obx(() {
         if (_controller.isInitialLoading.value &&
             _controller.user.value == null) {
@@ -241,7 +241,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFF3F0EF),
+                color: AppColors.chip,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
@@ -521,7 +521,7 @@ class _ProfileQrSheetState extends State<_ProfileQrSheet> {
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.background,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
@@ -562,8 +562,7 @@ class _ProfileQrSheetState extends State<_ProfileQrSheet> {
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
+                  decoration: BoxDecoration(color: AppColors.surface,
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: const [
                       BoxShadow(
@@ -581,12 +580,12 @@ class _ProfileQrSheetState extends State<_ProfileQrSheet> {
                           data: widget.payload,
                           version: QrVersions.auto,
                           size: size,
-                          backgroundColor: Colors.white,
-                          eyeStyle: const QrEyeStyle(
+                          backgroundColor: AppColors.surface,
+                          eyeStyle: QrEyeStyle(
                             eyeShape: QrEyeShape.square,
                             color: AppColors.text,
                           ),
-                          dataModuleStyle: const QrDataModuleStyle(
+                          dataModuleStyle: QrDataModuleStyle(
                             dataModuleShape: QrDataModuleShape.square,
                             color: AppColors.text,
                           ),
@@ -606,7 +605,7 @@ class _ProfileQrSheetState extends State<_ProfileQrSheet> {
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF3F0EF),
+                    color: AppColors.chip,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
@@ -679,7 +678,7 @@ class _ProfileQrSheetState extends State<_ProfileQrSheet> {
                   onPressed: _copyLink,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.text,
-                    side: const BorderSide(color: Color(0xFFE6E3E3)),
+                    side: BorderSide(color: AppColors.cardBorder),
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(999),
@@ -728,7 +727,7 @@ class _ContestMediaTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F0EF),
+          color: AppColors.chip,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Stack(
@@ -825,7 +824,7 @@ class _TopInlineBar extends StatelessWidget {
         InkWell(
           onTap: onTapScanQr,
           borderRadius: BorderRadius.circular(999),
-          child: const Padding(
+          child: Padding(
             padding: EdgeInsets.all(2),
             child: Icon(
               Icons.qr_code_rounded,
@@ -837,7 +836,7 @@ class _TopInlineBar extends StatelessWidget {
         InkWell(
           onTap: () => Get.to<void>(() => const SettingsScreen()),
           borderRadius: BorderRadius.circular(999),
-          child: const Padding(
+          child: Padding(
             padding: EdgeInsets.all(2),
             child: Icon(
               Icons.settings_outlined,
@@ -950,7 +949,7 @@ class _HeaderSection extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.location_on_outlined,
                     size: 14,
                     color: AppColors.hintText,
@@ -1008,10 +1007,15 @@ class _HeaderSection extends StatelessWidget {
                 width: 30,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE6E3E3),
+                  color: AppColors.chip,
                   borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: AppColors.cardBorder),
                 ),
-                child: const Icon(Icons.qr_code_rounded, size: 16),
+                child: Icon(
+                  Icons.qr_code_rounded,
+                  size: 16,
+                  color: AppColors.text,
+                ),
               ),
             ),
           ],
@@ -1173,8 +1177,9 @@ class _QuickAction extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFFE7E4E4),
+            color: AppColors.chip,
             borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: AppColors.cardBorder),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -1221,7 +1226,7 @@ class _AchievementSection extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFFE8E6E7),
+          color: AppColors.chip,
           borderRadius: BorderRadius.circular(22),
         ),
         child: IntrinsicHeight(
@@ -1306,7 +1311,7 @@ class _AchievementSection extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const AppHeroIconData(
+                        AppHeroIconData(
                           HeroIcons.bolt,
                           color: AppColors.text,
                           size: 13,

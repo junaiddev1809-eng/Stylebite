@@ -101,7 +101,7 @@ class _EarningsWithdrawalsScreenState extends State<EarningsWithdrawalsScreen> {
                           : 8,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF3F0EF),
+                      color: AppColors.chip,
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: EarningsWithdrawalTile(
@@ -140,7 +140,7 @@ class _WithdrawalsShimmer extends StatelessWidget {
       itemBuilder: (context, index) => Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F0EF),
+          color: AppColors.chip,
           borderRadius: BorderRadius.circular(18),
         ),
         child: const Row(

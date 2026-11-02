@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -42,6 +43,7 @@ class AppCachedVideoPlayer extends StatefulWidget {
     this.deferInitUntilActive = false,
     this.showLoadingIndicator = true,
     this.fit = BoxFit.cover,
+    this.backdropColor = const Color(0xFF0E0E11),
   });
 
   final String videoUrl;
@@ -61,6 +63,9 @@ class AppCachedVideoPlayer extends StatefulWidget {
   /// How the decoded video fills its parent. Reels/feed use [BoxFit.cover]
   /// so every phone viewport is filled (TikTok/IG style).
   final BoxFit fit;
+  /// Letterbox / empty thumbnail fill. Feed cards pass the card surface so
+  /// dark theme doesn't flash a pure-black band under the rating pill.
+  final Color backdropColor;
   final bool? isMuted;
 
   /// When true, this player follows [SharedVideoMute] instead of its own
@@ -96,6 +101,7 @@ class _AppCachedVideoPlayerState extends State<AppCachedVideoPlayer>
   bool _isBuffering = false;
   Size? _lastVideoSize;
   int _initGeneration = 0;
+  bool? _lastTickerEnabled;
 
   @override
   void initState() {
@@ -334,13 +340,14 @@ class _AppCachedVideoPlayerState extends State<AppCachedVideoPlayer>
       c.setVolume(volume);
       // Android applies volume only after playback starts, so a reel that
       // should be audible still comes up silent if this is set earlier.
+      final generation = _initGeneration;
       c.play().then((_) {
-        if (!mounted || _controller != c) {
-          return;
-        }
-        if (!_shouldPlayNow()) {
+        if (!mounted ||
+            _controller != c ||
+            generation != _initGeneration ||
+            !_shouldPlayNow()) {
           c.setVolume(0);
-          c.pause();
+          unawaited(c.pause());
           return;
         }
         c.setVolume(_resolvedMuted ? 0 : 1);
@@ -349,7 +356,7 @@ class _AppCachedVideoPlayerState extends State<AppCachedVideoPlayer>
       // A kept-alive player can keep its audio session after pause. Drop the
       // volume as well so sound cannot continue on another tab.
       c.setVolume(0);
-      c.pause();
+      unawaited(c.pause());
     }
   }
 
@@ -425,7 +432,7 @@ class _AppCachedVideoPlayerState extends State<AppCachedVideoPlayer>
   Widget _coverThumbnail() {
     final thumbnailUrl = widget.thumbnailUrl?.trim() ?? '';
     if (thumbnailUrl.isEmpty) {
-      return ColoredBox(color: const Color(0xFF1B1B1F));
+      return ColoredBox(color: widget.backdropColor);
     }
     return AppCachedImage(
       imageUrl: thumbnailUrl,
@@ -436,14 +443,28 @@ class _AppCachedVideoPlayerState extends State<AppCachedVideoPlayer>
 
   @override
   Widget build(BuildContext context) {
+    // PageView keeps off-tab reels mounted with TickerMode off. That change
+    // alone does not rebuild this player — force a pause/mute sync when the
+    // ticker flips so audio cannot leak onto Home/Profile/etc.
+    final tickerEnabled = TickerMode.of(context);
+    if (_lastTickerEnabled != tickerEnabled) {
+      _lastTickerEnabled = tickerEnabled;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        _syncPlayState();
+      });
+    }
+
     final controller = _controller;
     final showVideo = !_isLoading && _hasPlayableSize && controller != null;
 
     Widget child = Stack(
       fit: StackFit.expand,
       children: [
-        // Letterbox / pillarbox stays dark when fit is contain.
-        const ColoredBox(color: Color(0xFF0E0E11)),
+        // Letterbox / pillarbox / empty frame — themed via [backdropColor].
+        ColoredBox(color: widget.backdropColor),
         _coverThumbnail(),
         if (showVideo)
           FittedBox(

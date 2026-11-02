@@ -445,8 +445,9 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppColors.surface,
                         shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.cardBorder),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.12),
@@ -455,7 +456,7 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                           ),
                         ],
                       ),
-                      child: const Center(
+                      child: Center(
                         child: AppHeroIconData(
                           HeroIcons.xMark,
                           color: AppColors.text,
@@ -470,8 +471,9 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                     child: Container(
                       height: 52,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppColors.surface,
                         borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: AppColors.cardBorder),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.12),
@@ -494,14 +496,14 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                           hintStyle: AppFonts.beVietnam(
                             size: 14,
                             weight: FontWeight.w500,
-                            color: const Color(0xFF9A8F8A),
+                            color: AppColors.hintText,
                           ),
-                          prefixIcon: const Padding(
-                            padding: EdgeInsets.only(left: 16, right: 10),
+                          prefixIcon: Padding(
+                            padding: const EdgeInsets.only(left: 16, right: 10),
                             child: AppHeroIconData(
                               HeroIcons.magnifyingGlass,
                               size: 20,
-                              color: Color(0xFF9A8F8A),
+                              color: AppColors.hintText,
                             ),
                           ),
                           prefixIconConstraints: const BoxConstraints(minWidth: 46),
@@ -515,9 +517,9 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                                     });
                                     _scheduleSearch('');
                                   },
-                                  icon: const Icon(
+                                  icon: Icon(
                                     Icons.close_rounded,
-                                    color: Color(0xFF9A8F8A),
+                                    color: AppColors.hintText,
                                     size: 20,
                                   ),
                                 )
@@ -540,8 +542,9 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                   margin: const EdgeInsets.only(top: 8, left: 60),
                   constraints: const BoxConstraints(maxHeight: 320),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppColors.cardBorder),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.12),
@@ -611,8 +614,9 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.surface,
                   shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.cardBorder),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.15),

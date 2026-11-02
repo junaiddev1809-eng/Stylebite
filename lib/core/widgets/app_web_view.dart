@@ -59,7 +59,7 @@ class _AppWebViewState extends State<AppWebView> {
               color: AppColors.background,
               border: Border(
                 bottom: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.8),
+                  color: AppColors.divider,
                 ),
               ),
             ),

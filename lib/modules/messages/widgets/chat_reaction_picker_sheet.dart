@@ -74,7 +74,7 @@ Future<String?> showChatReactionPickerSheet(
   return showModalBottomSheet<String>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: Colors.white,
+    backgroundColor: AppColors.surface,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
@@ -92,7 +92,7 @@ Future<String?> showChatReactionPickerSheet(
                   width: 48,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE7E2E0),
+                    color: AppColors.chip,
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -122,7 +122,7 @@ Future<String?> showChatReactionPickerSheet(
                         decoration: BoxDecoration(
                           color: currentReaction == emoji
                               ? AppColors.primary.withValues(alpha: 0.12)
-                              : const Color(0xFFF4F1F0),
+                              : AppColors.chip,
                           borderRadius: BorderRadius.circular(12),
                           border: currentReaction == emoji
                               ? Border.all(color: AppColors.primary)

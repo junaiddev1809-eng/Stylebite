@@ -19,7 +19,7 @@ class ContestCategoryTabs extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F0EF),
+        color: AppColors.chip,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
@@ -55,14 +55,17 @@ class _TabChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.transparent,
+          color: selected ? AppColors.surface : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
+          border: selected
+              ? Border.all(color: AppColors.cardBorder)
+              : null,
           boxShadow: selected
-              ? const [
+              ? [
                   BoxShadow(
-                    color: Color.fromRGBO(47, 47, 46, 0.08),
+                    color: Colors.black.withValues(alpha: 0.18),
                     blurRadius: 8,
-                    offset: Offset(0, 2),
+                    offset: const Offset(0, 2),
                   ),
                 ]
               : null,

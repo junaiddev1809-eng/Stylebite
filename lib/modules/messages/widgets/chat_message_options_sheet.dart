@@ -24,7 +24,7 @@ Future<ChatMessageOptionsResult?> showChatMessageOptionsSheet(
 }) {
   return showModalBottomSheet<ChatMessageOptionsResult>(
     context: context,
-    backgroundColor: Colors.white,
+    backgroundColor: AppColors.surface,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
@@ -40,7 +40,7 @@ Future<ChatMessageOptionsResult?> showChatMessageOptionsSheet(
                 width: 48,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE7E2E0),
+                  color: AppColors.chip,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -76,10 +76,10 @@ Future<ChatMessageOptionsResult?> showChatMessageOptionsSheet(
                           width: 48,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF4F1F0),
+                            color: AppColors.chip,
                             borderRadius: BorderRadius.circular(14),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.add_reaction_outlined,
                             color: AppColors.hintText,
                           ),
@@ -102,7 +102,7 @@ Future<ChatMessageOptionsResult?> showChatMessageOptionsSheet(
                         decoration: BoxDecoration(
                           color: selected
                               ? AppColors.primary.withValues(alpha: 0.14)
-                              : const Color(0xFFF4F1F0),
+                              : AppColors.chip,
                           borderRadius: BorderRadius.circular(14),
                           border: selected
                               ? Border.all(color: AppColors.primary)
@@ -129,12 +129,12 @@ Future<ChatMessageOptionsResult?> showChatMessageOptionsSheet(
                       vertical: 14,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF4F1F0),
+                      color: AppColors.chip,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Row(
                       children: [
-                        const HeroIcon(
+                        HeroIcon(
                           HeroIcons.flag,
                           color: AppColors.hintText,
                           size: 20,

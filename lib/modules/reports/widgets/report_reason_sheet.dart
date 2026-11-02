@@ -100,7 +100,7 @@ class _ReportReasonSheetState extends State<_ReportReasonSheet> {
                     width: 48,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE7E2E0),
+                      color: AppColors.chip,
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
@@ -281,7 +281,7 @@ class _ReasonRow extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected
               ? AppColors.primary.withValues(alpha: 0.08)
-              : const Color(0xFFF4F1F0),
+              : AppColors.chip,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: selected

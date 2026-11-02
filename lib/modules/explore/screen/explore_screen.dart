@@ -194,7 +194,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               margin: const EdgeInsets.fromLTRB(16, 0, 16, 22),
               padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.95),
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(32),
                 border: Border.all(
                   color: const Color(0xFFAFADAC).withValues(alpha: 0.3),
@@ -251,9 +251,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       IconButton(
                         onPressed: AppBackNavigation.handleBack,
                         style: IconButton.styleFrom(
-                          backgroundColor: const Color(0xFFF3F0EF),
+                          backgroundColor: AppColors.chip,
                         ),
-                        icon: const AppHeroIconData(
+                        icon: AppHeroIconData(
                           Icons.close_rounded,
                           color: AppColors.hintText,
                         ),
@@ -329,7 +329,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       child: Container(
         height: 46,
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F0EF),
+          color: AppColors.chip,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
@@ -435,7 +435,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     width: 40,
                     height: 40,
                     alignment: Alignment.center,
-                    child: const AppHeroIconData(
+                    child: AppHeroIconData(
                       Icons.arrow_back_rounded,
                       color: AppColors.hintText,
                     ),
@@ -487,7 +487,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   onPressed: () =>
                       _showToast('Streak boosted. Keep exploring.'),
                   style: IconButton.styleFrom(
-                    backgroundColor: const Color(0xFFF3F0EF),
+                    backgroundColor: AppColors.chip,
                     minimumSize: const Size(40, 40),
                   ),
                   icon: const AppHeroIconData(
@@ -511,14 +511,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
             height: 50,
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF3F0EF),
+              color: AppColors.chip,
               borderRadius: BorderRadius.circular(999),
             ),
             child: Row(
               children: [
-                const AppHeroIconData(
+                AppHeroIconData(
                   Icons.search_rounded,
-                  color: Color(0xFF9A8F8A),
+                  color: AppColors.hintText,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -574,13 +574,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          color: Colors.white,
+          color: AppColors.surface,
           child: Container(
             height: 50,
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF3F0EF),
+              color: AppColors.chip,
               borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: AppColors.cardBorder),
             ),
             child: Row(
               children: [
@@ -594,7 +595,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   ),
                 ),
                 const SizedBox(width: 4),
-                const AppHeroIconData(
+                AppHeroIconData(
                   Icons.expand_more_rounded,
                   color: AppColors.hintText,
                 ),
@@ -635,7 +636,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         colors: [AppColors.primary, Color(0xFFFF8A5B)],
                       )
                     : null,
-                color: isActive ? null : const Color(0xFFDFDCDC),
+                color: isActive ? null : AppColors.chip,
               ),
               child: Text(
                 _cap(tab),
@@ -754,8 +755,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-              decoration: BoxDecoration(
-                color: Colors.white,
+              decoration: BoxDecoration(color: AppColors.surface,
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(
                   color: const Color(0xFFAFADAC).withValues(alpha: 0.24),
@@ -763,7 +763,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               ),
               child: Row(
                 children: [
-                  const AppHeroIconData(
+                  AppHeroIconData(
                     Icons.tune_rounded,
                     size: 14,
                     color: AppColors.hintText,
@@ -845,14 +845,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(
-                        color: const Color(0xFFAFADAC).withValues(alpha: 0.2),
+                        color: isActive
+                            ? Colors.transparent
+                            : AppColors.cardBorder,
                       ),
                       gradient: isActive
                           ? const LinearGradient(
                               colors: [AppColors.primary, Color(0xFFFF8A5B)],
                             )
                           : null,
-                      color: isActive ? null : Colors.white,
+                      color: isActive ? null : AppColors.surface,
                     ),
                     child: Text(
                       '#$tag',
@@ -880,7 +882,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F0EF),
+        color: AppColors.chip,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: const Color(0xFFAFADAC).withValues(alpha: 0.25),
@@ -1047,13 +1049,9 @@ class _FoodCard extends StatelessWidget {
         width: 308,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF8F4F3), Color(0xFFF1EEED)],
-          ),
+          color: AppColors.card,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.86)),
+          border: Border.all(color: AppColors.cardBorder),
           boxShadow: const [
             BoxShadow(
               color: Color.fromRGBO(47, 47, 46, 0.15),
@@ -1082,7 +1080,7 @@ class _FoodCard extends StatelessWidget {
                         vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.92),
+                        color: AppColors.card,
                         borderRadius: BorderRadius.circular(999),
                         boxShadow: const [
                           BoxShadow(
@@ -1196,11 +1194,9 @@ class _ScoreTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.68),
+        color: AppColors.chip,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: const Color(0xFFAFADAC).withValues(alpha: 0.16),
-        ),
+        border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

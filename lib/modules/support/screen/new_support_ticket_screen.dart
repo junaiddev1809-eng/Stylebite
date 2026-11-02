@@ -60,7 +60,7 @@ class _NewSupportTicketScreenState extends State<NewSupportTicketScreen> {
               decoration: BoxDecoration(
                 color: AppColors.background.withValues(alpha: 0.88),
                 border: Border(
-                  bottom: BorderSide(color: Colors.white.withValues(alpha: 0.8)),
+                  bottom: BorderSide(color: AppColors.divider),
                 ),
               ),
               child: Row(
@@ -294,7 +294,7 @@ class _CategoryChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected
               ? AppColors.primary.withValues(alpha: 0.12)
-              : const Color(0xFFF4F1F0),
+              : AppColors.chip,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: selected ? AppColors.primary : Colors.transparent,
@@ -380,13 +380,13 @@ class _AttachmentPicker extends StatelessWidget {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: const Color(0xFFF4F1F0),
+                color: AppColors.chip,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: AppColors.hintText.withValues(alpha: 0.25),
                 ),
               ),
-              child: const HeroIcon(
+              child: HeroIcon(
                 HeroIcons.photo,
                 color: AppColors.hintText,
               ),

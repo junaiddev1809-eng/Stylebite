@@ -19,8 +19,7 @@ class StyleRatingSheet extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: Column(
@@ -30,7 +29,7 @@ class StyleRatingSheet extends StatelessWidget {
             width: 42,
             height: 4,
             decoration: BoxDecoration(
-              color: const Color(0xFFE5E0DF),
+              color: AppColors.chip,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -66,7 +65,7 @@ class StyleRatingSheet extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 40),
                 child: Column(
                   children: [
-                    const Icon(Icons.error_outline, color: AppColors.hintText, size: 48),
+                    Icon(Icons.error_outline, color: AppColors.hintText, size: 48),
                     const SizedBox(height: 16),
                     Text(
                       controller.errorMessage.value,
@@ -80,7 +79,10 @@ class StyleRatingSheet extends StatelessWidget {
                     const SizedBox(height: 20),
                     TextButton(
                       onPressed: controller.fetchRatingDistribution,
-                      child: const Text('Try Again', style: TextStyle(color: AppColors.primary)),
+                      child: Text(
+                        'Try Again',
+                        style: TextStyle(color: AppColors.primary),
+                      ),
                     ),
                   ],
                 ),
@@ -191,7 +193,7 @@ class StyleRatingSheet extends StatelessWidget {
                         label: 'Total Reviews',
                         value: _formatTotal(data.totalRatings),
                       ),
-                      Container(width: 1, height: 30, color: const Color(0xFFE5E0DF)),
+                      Container(width: 1, height: 30, color: AppColors.chip),
                       _QuickStat(
                         label: 'Positive Feedback',
                         value: '${(controller.getPercentage(5) * 100 + controller.getPercentage(4) * 100).toInt()}%',
@@ -238,7 +240,7 @@ class _SmallDistributionRow extends StatelessWidget {
           child: Container(
             height: 6,
             decoration: BoxDecoration(
-              color: const Color(0xFFF3F0EF),
+              color: AppColors.chip,
               borderRadius: BorderRadius.circular(3),
             ),
             child: FractionallySizedBox(

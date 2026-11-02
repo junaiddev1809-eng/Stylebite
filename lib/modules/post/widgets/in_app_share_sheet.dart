@@ -247,7 +247,7 @@ class _InAppShareSheetBodyState extends State<_InAppShareSheetBody> {
     return Container(
       height: MediaQuery.sizeOf(context).height * 0.72,
       padding: EdgeInsets.fromLTRB(16, 10, 16, 12 + bottom),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -259,7 +259,7 @@ class _InAppShareSheetBodyState extends State<_InAppShareSheetBody> {
               width: 42,
               height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFFE0D6D3),
+                color: AppColors.cardBorder,
                 borderRadius: BorderRadius.circular(999),
               ),
             ),
@@ -283,7 +283,7 @@ class _InAppShareSheetBodyState extends State<_InAppShareSheetBody> {
               hintText: 'Search people',
               prefixIcon: const Icon(Icons.search_rounded),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: AppColors.inputFill,
               contentPadding: const EdgeInsets.symmetric(vertical: 12),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -303,7 +303,7 @@ class _InAppShareSheetBodyState extends State<_InAppShareSheetBody> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.text,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                side: const BorderSide(color: Color(0xFFE0D6D3)),
+                side: BorderSide(color: AppColors.cardBorder),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(999),
                 ),
@@ -346,7 +346,7 @@ class _InAppShareSheetBodyState extends State<_InAppShareSheetBody> {
           children: [
             ClipOval(
               child: person.avatarUrl.trim().isEmpty
-                  ? const ColoredBox(
+                  ? ColoredBox(
                       color: Color(0xFFF1EBE8),
                       child: SizedBox(
                         width: 44,

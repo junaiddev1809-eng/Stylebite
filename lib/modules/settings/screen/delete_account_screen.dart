@@ -26,7 +26,7 @@ class DeleteAccountScreen extends GetView<DeleteAccountController> {
                 color: AppColors.background.withValues(alpha: 0.88),
                 border: Border(
                   bottom: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: AppColors.divider,
                   ),
                 ),
               ),
@@ -81,8 +81,7 @@ class DeleteAccountScreen extends GetView<DeleteAccountController> {
                       const SizedBox(height: 12),
                       Obx(() => Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
+                            decoration: BoxDecoration(color: AppColors.surface,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
                                 color: const Color(0xFFF2DDD1),
@@ -262,7 +261,7 @@ class _DeleteAccountCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
@@ -342,8 +341,7 @@ class _DeletePoint extends StatelessWidget {
             margin: const EdgeInsets.only(top: 7),
             width: 6,
             height: 6,
-            decoration: const BoxDecoration(
-              color: AppColors.secondary,
+            decoration: BoxDecoration(color: AppColors.secondary,
               shape: BoxShape.circle,
             ),
           ),

@@ -80,10 +80,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
               spacing: 8,
               runSpacing: 6,
               children: [
-                _tag(c.format, const Color(0xFFF3F0EF), AppColors.text, true),
+                _tag(c.format, AppColors.chip, AppColors.text, true),
                 _tag(
                   c.window,
-                  const Color(0xFFF3F0EF),
+                  AppColors.chip,
                   AppColors.hintText,
                   false,
                 ),
@@ -120,7 +120,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                                     ],
                                   )
                                 : null,
-                            color: isActive ? null : const Color(0xFFF3F0EF),
+                            color: isActive ? null : AppColors.chip,
                           ),
                           child: Text(
                             _capitalize(period),
@@ -156,8 +156,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: isActive
-                            ? const Color(0xFFDFDCDC)
-                            : const Color(0xFFF3F0EF),
+                            ? AppColors.chip
+                            : AppColors.chip,
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
@@ -354,7 +354,7 @@ class _HeroCard extends StatelessWidget {
                   arguments: {'contestId': contest.id},
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
+                  backgroundColor: AppColors.surface,
                   foregroundColor: AppColors.primary,
                 ),
                 child: const Text('Contest Detail'),
@@ -441,7 +441,7 @@ class _Podium extends StatelessWidget {
                     colors: [AppColors.primary, AppColors.secondary],
                   )
                 : null,
-            color: winner ? null : const Color(0xFFF3F0EF),
+            color: winner ? null : AppColors.chip,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
           ),
           alignment: Alignment.topCenter,
@@ -484,7 +484,7 @@ class _Table extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF3F0EF),
+                color: AppColors.chip,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -596,7 +596,7 @@ class _TeamStandings extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F0EF),
+        color: AppColors.chip,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -711,7 +711,7 @@ class _BottomCta extends StatelessWidget {
               ElevatedButton(
                 onPressed: () {},
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
+                  backgroundColor: AppColors.surface,
                   foregroundColor: AppColors.primary,
                 ),
                 child: const Text('Enter Battle'),

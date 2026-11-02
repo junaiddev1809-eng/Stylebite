@@ -22,7 +22,7 @@ class AboutStylebiteScreen extends StatelessWidget {
                 color: AppColors.background.withValues(alpha: 0.88),
                 border: Border(
                   bottom: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: AppColors.divider,
                   ),
                 ),
               ),
@@ -108,7 +108,7 @@ class _AboutHero extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.8),
+              color: AppColors.divider,
               borderRadius: BorderRadius.circular(18),
             ),
             child: const AppHeroIconData(Icons.restaurant_menu_rounded,
@@ -150,7 +150,7 @@ class _AboutStory extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
@@ -196,7 +196,7 @@ class _AboutHighlights extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
@@ -340,7 +340,7 @@ class _AboutFooter extends StatelessWidget {
             style: AppFonts.beVietnam(
               size: 14,
               weight: FontWeight.w500,
-              color: Colors.white.withValues(alpha: 0.92),
+              color: AppColors.surface,
               height: 1.5,
             ),
           ),
@@ -350,7 +350,7 @@ class _AboutFooter extends StatelessWidget {
             style: AppFonts.beVietnam(
               size: 12,
               weight: FontWeight.w700,
-              color: Colors.white.withValues(alpha: 0.8),
+              color: AppColors.divider,
             ),
           ),
         ],

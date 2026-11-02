@@ -458,10 +458,41 @@ class ReelItemModel {
       ),
       showAd: _asBool(json['show_ad']),
       adTriggerRatio: _asDouble(json['ad_trigger_ratio'], fallback: 0.4),
-      ratingEnabled: _asBool(json['in_contest']) ||
-          ContestEnrollmentStore.instance.contains(
-            (json['id'] ?? '').toString(),
-          ),
+      ratingEnabled: () {
+        final contest = _asMap(json['contest']);
+        final status = (contest['status'] ?? '').toString().trim().toLowerCase();
+        final closed = status == 'completed' ||
+            status == 'ended' ||
+            status == 'closed' ||
+            status == 'cancelled' ||
+            status == 'canceled';
+        if (closed) {
+          return false;
+        }
+        final votingEndRaw =
+            (contest['voting_end_at'] ?? '').toString().trim();
+        final votingEnd = DateTime.tryParse(votingEndRaw);
+        if (votingEnd != null &&
+            DateTime.now().toUtc().isAfter(votingEnd.toUtc())) {
+          return false;
+        }
+        if (contest.containsKey('can_vote') && !_asBool(contest['can_vote'])) {
+          return false;
+        }
+        final viewerState = _asMap(json['viewer_state']);
+        // `in_contest` stays true after voting ends — trophy only, no bar.
+        final apiCanVote = _asBool(json['rating_enabled']) ||
+            _asBool(json['can_vote']) ||
+            _asBool(viewerState['can_vote']);
+        if (apiCanVote) {
+          return true;
+        }
+        // Only fall back to enrollment when API omitted contest status.
+        return status.isEmpty &&
+            ContestEnrollmentStore.instance.contains(
+              (json['id'] ?? '').toString(),
+            );
+      }(),
       publishedAt: AppTimeFormatter.parse(
         (json['published_at'] ?? json['created_at'] ?? json['posted_at'])
             ?.toString(),

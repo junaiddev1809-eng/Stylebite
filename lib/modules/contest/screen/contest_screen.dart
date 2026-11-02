@@ -49,7 +49,7 @@ class _ContestScreenState extends State<ContestScreen> {
       behavior: HitTestBehavior.opaque,
       onTap: () => FocusScope.of(context).unfocus(),
       child: DecoratedBox(
-        decoration: const BoxDecoration(color: AppColors.background),
+        decoration: BoxDecoration(color: AppColors.background),
         child: SafeArea(
           bottom: false,
           child: Column(
@@ -334,7 +334,7 @@ class _ContestSearchField extends StatelessWidget {
       decoration: InputDecoration(
         hintText: 'Search contest participants',
         hintStyle: AppFonts.beVietnam(size: 13, color: AppColors.hintText),
-        prefixIcon: const AppHeroIconData(
+        prefixIcon: AppHeroIconData(
           Icons.search_rounded,
           color: AppColors.hintText,
         ),
@@ -346,7 +346,7 @@ class _ContestSearchField extends StatelessWidget {
               )
             : null,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: AppColors.inputFill,
         contentPadding: const EdgeInsets.symmetric(vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -374,7 +374,7 @@ class _EmptyBattleState extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
         boxShadow: const [
           BoxShadow(

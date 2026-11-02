@@ -10,7 +10,7 @@ enum MediaSourceChoice { camera, gallery }
 Future<MediaSourceChoice?> showMediaSourceSheet(BuildContext context) {
   return showModalBottomSheet<MediaSourceChoice>(
     context: context,
-    backgroundColor: Colors.white,
+    backgroundColor: AppColors.surface,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
@@ -26,7 +26,7 @@ Future<MediaSourceChoice?> showMediaSourceSheet(BuildContext context) {
                 width: 48,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE8E3E1),
+                  color: AppColors.chip,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -75,7 +75,7 @@ Widget _tile({
     child: Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF4F1F0),
+        color: AppColors.chip,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(

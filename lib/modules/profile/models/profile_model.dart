@@ -282,6 +282,7 @@ class ProfilePostModel {
     this.tags = const <String>[],
     this.contestId = 0,
     this.contestTitle = '',
+    this.contestStatus = '',
     this.visibility = '',
     this.isSaved = false,
   });
@@ -302,6 +303,7 @@ class ProfilePostModel {
   final List<String> tags;
   final int contestId;
   final String contestTitle;
+  final String contestStatus;
   final String visibility;
   final bool isSaved;
 
@@ -329,7 +331,37 @@ class ProfilePostModel {
       createdAt: _asString(map['created_at']),
       // Voting when disabled 403s server-side, so an absent/unparseable
       // value must fail closed — _asBool here already defaults to false.
-      ratingEnabled: _asBool(map['in_contest']) || stored != null,
+      ratingEnabled: () {
+        final status =
+            (contestMap?['status'] ?? '').toString().trim().toLowerCase();
+        final closed = status == 'completed' ||
+            status == 'ended' ||
+            status == 'closed' ||
+            status == 'cancelled' ||
+            status == 'canceled';
+        if (closed) {
+          return false;
+        }
+        final votingEndRaw =
+            (contestMap?['voting_end_at'] ?? '').toString().trim();
+        final votingEnd = DateTime.tryParse(votingEndRaw);
+        if (votingEnd != null &&
+            DateTime.now().toUtc().isAfter(votingEnd.toUtc())) {
+          return false;
+        }
+        if (contestMap != null &&
+            contestMap.containsKey('can_vote') &&
+            !_asBool(contestMap['can_vote'])) {
+          return false;
+        }
+        // `in_contest` stays true after voting ends — do not treat it as canVote.
+        final apiCanVote =
+            _asBool(map['rating_enabled']) || _asBool(map['can_vote']);
+        if (apiCanVote) {
+          return true;
+        }
+        return status.isEmpty && stored != null;
+      }(),
       tags: parsePostTags(map),
       contestId: contestMap != null
           ? _asInt(contestMap['id'])
@@ -337,6 +369,9 @@ class ProfilePostModel {
       contestTitle: contestMap != null
           ? _asString(contestMap['title'])
           : (stored?.contestTitle ?? ''),
+      contestStatus: contestMap != null
+          ? _asString(contestMap['status'])
+          : '',
       visibility: _asString(map['visibility']).toLowerCase(),
       isSaved: _asBool(map['is_saved']),
     );
@@ -474,6 +509,7 @@ class ProfilePostModel {
       ratingEnabled: ratingEnabled,
       contestId: contestId,
       contestTitle: contestTitle,
+      contestStatus: contestStatus,
       visibility: visibility,
       dishName: isFood ? displayTitle : '',
       restaurant: '',

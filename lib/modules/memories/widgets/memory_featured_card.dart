@@ -34,8 +34,7 @@ class MemoryFeaturedCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         child: Container(
           padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.white,
+          decoration: BoxDecoration(color: AppColors.surface,
             borderRadius: BorderRadius.circular(22),
             boxShadow: [
               BoxShadow(
@@ -139,7 +138,7 @@ class MemoryFeaturedCard extends StatelessWidget {
                       color: const Color(0xFFF8F8F8),
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: const AppHeroIconData(
+                    child: AppHeroIconData(
                       Icons.chevron_right_rounded,
                       size: 18,
                       color: AppColors.hintText,
@@ -164,7 +163,7 @@ class MemoryFeaturedCard extends StatelessWidget {
           fit: BoxFit.cover,
           width: double.infinity,
           placeholder: (context, url) => Container(
-            color: const Color(0xFFF3F0EF),
+            color: AppColors.chip,
             child: const Center(
               child: CircularProgressIndicator(
                 strokeWidth: 2,

@@ -20,11 +20,11 @@ class LandingTabPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFFFFF5F0), AppColors.background],
+          colors: [AppColors.surface, AppColors.background],
         ),
       ),
       child: SafeArea(

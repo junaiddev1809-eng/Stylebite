@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-const bool useAwsTestBackend = false;
+const bool useAwsTestBackend = true;
 
 /// When true, EVERY API call goes to local Laravel.
 /// Keep false so the existing app stays on the live backend, and only

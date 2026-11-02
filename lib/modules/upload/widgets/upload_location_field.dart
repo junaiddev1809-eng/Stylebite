@@ -65,7 +65,7 @@ class UploadLocationField extends StatelessWidget {
                     IconButton(
                       tooltip: 'Clear location',
                       onPressed: controller.clearLocation,
-                      icon: const AppHeroIconData(
+                      icon: AppHeroIconData(
                         Icons.close_rounded,
                         color: AppColors.hintText,
                         size: 18,
@@ -128,8 +128,7 @@ class UploadLocationField extends StatelessWidget {
           if (suggestions.isNotEmpty) ...[
             const SizedBox(height: 8),
             Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
+              decoration: BoxDecoration(color: AppColors.surface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
               ),

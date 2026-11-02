@@ -217,12 +217,12 @@ class _MessagesScreenState extends State<MessagesScreen> {
           height: 58,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: isFocused ? 0.95 : 0.72),
+            color: AppColors.surface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: isFocused
                   ? AppColors.primary.withValues(alpha: 0.45)
-                  : Colors.white.withValues(alpha: 0.8),
+                  : AppColors.divider,
               width: 1.3,
             ),
             boxShadow: [
@@ -276,7 +276,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     _controller.searchController.clear();
                     _controller.onQueryChanged('');
                   },
-                  icon: const AppHeroIconData(
+                  icon: AppHeroIconData(
                     Icons.close_rounded,
                     size: 18,
                     color: AppColors.hintText,
@@ -295,9 +295,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
 /// loading shimmer, so they read as one consistent premium surface language.
 BoxDecoration _softCardDecoration() {
   return BoxDecoration(
-    color: Colors.white.withValues(alpha: 0.7),
+    color: AppColors.card,
     borderRadius: BorderRadius.circular(28),
-    border: Border.all(color: Colors.white.withValues(alpha: 0.85), width: 1.1),
+    border: Border.all(color: AppColors.cardBorder, width: 1.1),
     boxShadow: [
       BoxShadow(
         color: const Color(0xFF2F2F2E).withValues(alpha: 0.07),
@@ -468,36 +468,36 @@ class _MessagesBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFFFF6F2),
-            Color(0xFFFDF2EE),
-            AppColors.background,
-            Color(0xFFF6EFEA),
-          ],
-          stops: [0.0, 0.28, 0.62, 1.0],
-        ),
-      ),
+    return DecoratedBox(
+      decoration: BoxDecoration(color: AppColors.background),
       child: Stack(
         children: [
           Positioned(
             top: -60,
             right: -40,
-            child: _GlowBlob(size: 190, color: Color(0xFFFFD1C3)),
+            child: _GlowBlob(
+              size: 190,
+              color: AppColors.primary,
+              opacity: 0.10,
+            ),
           ),
           Positioned(
             top: 110,
             left: -60,
-            child: _GlowBlob(size: 150, color: Color(0xFFFFE7A8)),
+            child: _GlowBlob(
+              size: 150,
+              color: AppColors.secondary,
+              opacity: 0.08,
+            ),
           ),
           Positioned(
             bottom: 200,
             right: -50,
-            child: _GlowBlob(size: 140, color: Color(0xFFFFC0CB)),
+            child: _GlowBlob(
+              size: 140,
+              color: AppColors.accent,
+              opacity: 0.07,
+            ),
           ),
           Positioned(
             bottom: -60,
@@ -505,7 +505,7 @@ class _MessagesBackdrop extends StatelessWidget {
             child: _GlowBlob(
               size: 150,
               color: AppColors.primary,
-              opacity: 0.14,
+              opacity: 0.10,
             ),
           ),
         ],
@@ -564,7 +564,7 @@ class _MessagesTopBar extends StatelessWidget {
                     width: 40,
                     height: 40,
                     alignment: Alignment.center,
-                    child: const AppHeroIconData(
+                    child: AppHeroIconData(
                       Icons.arrow_back_rounded,
                       color: AppColors.hintText,
                     ),
@@ -591,8 +591,8 @@ class _MessagesTopBar extends StatelessWidget {
                                 width: 42,
                                 height: 42,
                               )
-                            : const CircleAvatar(
-                                backgroundColor: Color(0xFFE7E3E1),
+                            : CircleAvatar(
+                                backgroundColor: AppColors.chip,
                                 child: AppHeroIconData(
                                   Icons.person_rounded,
                                   color: AppColors.hintText,
@@ -654,14 +654,12 @@ class _MessageTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(14, 14, 16, 14),
           decoration: BoxDecoration(
-            color: isUnread
-                ? Colors.white.withValues(alpha: 0.92)
-                : Colors.white.withValues(alpha: 0.6),
+            color: isUnread ? AppColors.surface : AppColors.card,
             borderRadius: BorderRadius.circular(26),
             border: Border.all(
               color: isUnread
                   ? AppColors.primary.withValues(alpha: 0.22)
-                  : Colors.white.withValues(alpha: 0.75),
+                  : AppColors.cardBorder,
               width: 1.1,
             ),
             boxShadow: [
@@ -714,7 +712,7 @@ class _MessageTile extends StatelessWidget {
                           const SizedBox(width: 8),
                           _Pill(
                             label: thread.lastMessageTimeLabel,
-                            background: const Color(0xFFF4EEEC),
+                            background: AppColors.chip,
                             foreground: AppColors.hintText,
                           ),
                         ],
@@ -758,10 +756,10 @@ class _MessageTile extends StatelessWidget {
                       Row(
                         children: [
                           if (thread.isIncomingRequest)
-                            const _Pill(
+                            _Pill(
                               label: 'Request',
-                              background: Color(0xFFFFF4E5),
-                              foreground: Color(0xFFB45309),
+                              background: AppColors.chip,
+                              foreground: const Color(0xFFE0A04A),
                               fontSize: 10,
                             ),
                           if (thread.isIncomingRequest &&
@@ -770,22 +768,22 @@ class _MessageTile extends StatelessWidget {
                           if (thread.isBlockedByMe)
                             _Pill(
                               label: 'Blocked',
-                              background: const Color(0xFFFDECEC),
-                              foreground: const Color(0xFFB42318),
+                              background: AppColors.chip,
+                              foreground: const Color(0xFFFF7A7A),
                               fontSize: 10,
                             )
                           else if (thread.isBlockedByOther)
                             _Pill(
                               label: 'Blocked you',
-                              background: const Color(0xFFFDECEC),
-                              foreground: const Color(0xFFB42318),
+                              background: AppColors.chip,
+                              foreground: const Color(0xFFFF7A7A),
                               fontSize: 10,
                             )
                           else if (thread.isStopped)
                             _Pill(
                               label: 'Messaging stopped',
-                              background: const Color(0xFFFDECEC),
-                              foreground: const Color(0xFFB42318),
+                              background: AppColors.chip,
+                              foreground: const Color(0xFFFF7A7A),
                               fontSize: 10,
                             ),
                         ],
@@ -832,9 +830,9 @@ class _Avatar extends StatelessWidget {
               ),
               child: Container(
                 padding: const EdgeInsets.all(1.6),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white,
+                  color: AppColors.surface,
                 ),
                 child: ClipOval(
                   child: thread.user.imageUrl.trim().isNotEmpty
@@ -844,9 +842,9 @@ class _Avatar extends StatelessWidget {
                           height: 50,
                         )
                       : Container(
-                          color: const Color(0xFFF1EBE8),
+                          color: AppColors.chip,
                           alignment: Alignment.center,
-                          child: const AppHeroIconData(
+                          child: AppHeroIconData(
                             Icons.person_rounded,
                             color: AppColors.hintText,
                             size: 22,

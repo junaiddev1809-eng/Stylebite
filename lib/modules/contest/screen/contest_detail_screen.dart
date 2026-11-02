@@ -213,7 +213,7 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(
+                                      Icon(
                                         Icons.star_rounded,
                                         size: 12,
                                         color: AppColors.text,
@@ -514,14 +514,14 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
       margin: EdgeInsets.only(bottom: marginBottom),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFEFD),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1E9E5)),
-        boxShadow: const <BoxShadow>[
+        border: Border.all(color: AppColors.cardBorder),
+        boxShadow: [
           BoxShadow(
-            color: Color.fromRGBO(21, 16, 12, 0.06),
+            color: Colors.black.withValues(alpha: 0.18),
             blurRadius: 22,
-            offset: Offset(0, 10),
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -537,7 +537,7 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F4F1),
+        color: AppColors.chip,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -585,7 +585,7 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F4F1),
+        color: AppColors.chip,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -637,7 +637,7 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
   Widget _participantSearchField() {
     _participantQuery.value;
     return Material(
-      color: Colors.white,
+      color: AppColors.surface,
       borderRadius: BorderRadius.circular(999),
       child: TextField(
         controller: _participantSearchController,
@@ -648,7 +648,7 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
         decoration: InputDecoration(
           hintText: 'Search contest participants',
           hintStyle: AppFonts.beVietnam(size: 13, color: AppColors.hintText),
-          prefixIcon: const AppHeroIconData(
+          prefixIcon: AppHeroIconData(
             Icons.search_rounded,
             color: AppColors.hintText,
           ),
@@ -659,13 +659,13 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
                     _participantSearchController.clear();
                     _participantQuery.value = '';
                   },
-                  icon: const AppHeroIconData(
+                  icon: AppHeroIconData(
                     Icons.close_rounded,
                     color: AppColors.hintText,
                   ),
                 ),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: AppColors.inputFill,
           contentPadding: const EdgeInsets.symmetric(vertical: 14),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(999),
@@ -673,7 +673,7 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(999),
-            borderSide: const BorderSide(color: Color(0xFFF1E9E5)),
+            borderSide: BorderSide(color: AppColors.cardBorder),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(999),
@@ -945,8 +945,27 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
           : null,
       profileUsername: submission.username,
       authorCity: '',
-      ratingEnabled: true,
+      contestId: contest.id,
+      contestTitle: contest.title,
+      contestStatus: contest.status,
+      ratingEnabled: _contestVotingOpen(contest),
     );
+  }
+
+  bool _contestVotingOpen(ContestDetailModel contest) {
+    final status = contest.status.trim().toLowerCase();
+    if (status == 'completed' ||
+        status == 'ended' ||
+        status == 'closed' ||
+        status == 'cancelled' ||
+        status == 'canceled') {
+      return false;
+    }
+    final end = contest.votingEndAt;
+    if (end != null && DateTime.now().toUtc().isAfter(end.toUtc())) {
+      return false;
+    }
+    return true;
   }
 
   String _resolveParticipantAvatar(
@@ -1056,7 +1075,7 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
       StatefulBuilder(
         builder: (context, setState) {
           return Dialog(
-            backgroundColor: Colors.white,
+            backgroundColor: AppColors.surface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
@@ -1075,7 +1094,7 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Rate a post from 1 to 5.\n\nYour place comes from the average of those ratings, plus the likes on the post.\n\nRatings count much more than likes. The highest score wins.',
+                    'Rate a post from 1 to 5.\n\nYour place comes from the average of those ratings, plus the likes on the post.\n\nRatings count much more than likes. The highest score wins.\n\nA post needs at least 10 different people to rate it before it can win.',
                     style: AppFonts.beVietnam(
                       size: 13,
                       color: AppColors.text,
@@ -1181,7 +1200,7 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
           setSheetState = updateSheetState;
           return Container(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.background,
               borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
@@ -1226,8 +1245,7 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
                     const SizedBox(height: 10),
                     Container(
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
+                      decoration: BoxDecoration(color: AppColors.surface,
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: const [
                           BoxShadow(
@@ -1320,7 +1338,7 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  const AppHeroIconData(
+                                  AppHeroIconData(
                                     Icons.chevron_right_rounded,
                                     color: AppColors.hintText,
                                   ),
@@ -1344,7 +1362,7 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
                                         : Container(
                                             width: double.infinity,
                                             height: 180,
-                                            color: const Color(0xFFF3F0EF),
+                                            color: AppColors.chip,
                                             alignment: Alignment.center,
                                             child: Column(
                                               mainAxisAlignment:
@@ -1492,7 +1510,7 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
     return await Get.bottomSheet<ProfilePostModel?>(
       Container(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.background,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
@@ -1579,7 +1597,7 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
         hintText: hintText ?? hint,
         hintStyle: AppFonts.beVietnam(color: AppColors.hintText),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: AppColors.inputFill,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 14,
           vertical: 12,
@@ -1730,7 +1748,7 @@ class _ContestPhotoBadges extends StatelessWidget {
         _InfoPill(
           emoji: '⭐',
           label: average.toStringAsFixed(1),
-          background: Colors.white.withValues(alpha: 0.92),
+          background: AppColors.surface,
           foreground: AppColors.text,
         ),
         const SizedBox(height: 6),
@@ -1844,7 +1862,7 @@ class _PlaceBadge extends StatelessWidget {
       1 => (const Color(0xFFFFF4CC), const Color(0xFF8A5A00)),
       2 => (const Color(0xFFF3F4F6), const Color(0xFF3F3F46)),
       3 => (const Color(0xFFFFE8D6), const Color(0xFF9A3412)),
-      _ => (Colors.white, AppColors.text),
+      _ => (AppColors.surface, AppColors.text),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

@@ -76,7 +76,7 @@ class _FeaturedContestCard extends StatelessWidget {
       onTap: () => onOpenContest(contest),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(20),
           boxShadow: const [
             BoxShadow(
@@ -162,7 +162,7 @@ class _FeaturedContestCard extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.star_rounded,
                                 size: 12,
                                 color: AppColors.text,
@@ -247,7 +247,7 @@ class _FeaturedContestCard extends StatelessWidget {
                   if (contest.participantCount > 0) ...[
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.people_alt_rounded,
                           size: 16,
                           color: AppColors.hintText,
@@ -327,7 +327,7 @@ class _SecondaryContestCard extends StatelessWidget {
       onTap: () => onOpenContest(contest),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(

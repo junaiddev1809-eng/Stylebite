@@ -68,12 +68,12 @@ class _VisibilityChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? Colors.white : const Color(0xFFF3F0EF),
+          color: selected ? AppColors.surface : AppColors.chip,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: selected
-                ? AppColors.primary.withValues(alpha: 0.25)
-                : Colors.transparent,
+                ? AppColors.primary.withValues(alpha: 0.45)
+                : AppColors.cardBorder,
             width: 1.5,
           ),
         ),

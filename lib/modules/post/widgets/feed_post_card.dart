@@ -30,6 +30,7 @@ import '../widgets/winner_sparkle_overlay.dart';
 import '../widgets/food_post_details.dart';
 import '../widgets/post_action_bar.dart';
 import '../widgets/post_likers_sheet.dart';
+import '../widgets/post_raters_sheet.dart';
 import '../widgets/post_media_carousel.dart';
 import '../widgets/post_hashtag_chips.dart';
 import '../widgets/restaurant_review_sheet.dart';
@@ -155,8 +156,9 @@ class _FeedPostCardState extends State<FeedPostCard> {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F0EF),
+        color: AppColors.card,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.cardBorder),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -174,8 +176,8 @@ class _FeedPostCardState extends State<FeedPostCard> {
                     height: 40,
                     child: ClipOval(
                       child: post.avatarUrl.trim().isEmpty
-                          ? const ColoredBox(
-                              color: Color(0xFFE7E3E1),
+                          ? ColoredBox(
+                              color: AppColors.chip,
                               child: Center(
                                 child: AppHeroIconData(
                                   Icons.person_rounded,
@@ -305,145 +307,133 @@ class _FeedPostCardState extends State<FeedPostCard> {
               child: AspectRatio(
                 key: _mediaKey,
                 aspectRatio: 4 / 5,
-                child: GestureDetector(
-                  onTap: post.resolvedMediaType == AppMediaType.video
-                      ? () => _openMedia(post)
-                      : null,
-                  onDoubleTap: post.resolvedMediaType == AppMediaType.video
-                      ? _onDoubleTapLike
-                      : null,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      if (post.resolvedMediaType == AppMediaType.video)
-                        AppCachedVideoPlayer(
-                          videoUrl: post.primaryMediaUrl,
-                          thumbnailUrl: post.thumbnailUrl,
-                          autoPlay: true,
-                          isActive: _isVideoActive,
-                          deferInitUntilActive: true,
-                          showControls: true,
-                          showPlayPauseButton: false,
-                          showMuteButton: true,
-                          controlsPosition: AppVideoControlsPosition.topLeft,
-                          onProgressChanged: (value) => _videoProgress = value,
-                          shareMute: true,
-                          onMutedChanged: SharedVideoMute.setMuted,
-                        )
-                      else if (post.isCarousel)
-                        PostMediaCarousel(
-                          imageUrls: post.carouselImageUrls,
-                          memCacheWidth: 800,
-                          counterOnLeft: post.ratingEnabled || post.isInContest,
-                          dotsBottom: _ratingOnPicture ? 78 : 12,
-                          onImageTap: () => _openMedia(post),
-                          onDoubleTapLike: _onDoubleTapLike,
-                        )
-                      else
-                        DoubleTapZoom(
-                          onTap: () => _openMedia(post),
-                          onDoubleTapLike: _onDoubleTapLike,
-                          child: AppCachedImage(
-                          imageUrl: post.primaryMediaUrl,
-                          // Only bounding width (not both dimensions) lets
-                          // the decoder scale down while preserving the
-                          // source aspect ratio — specifying both forces an
-                          // exact, non-uniform resize that stretches any
-                          // image whose native ratio isn't already 4:5
-                          // (this card only enforces 4:5 via its outer
-                          // AspectRatio + BoxFit.cover, at the layout
-                          // level).
-                            memCacheWidth: 800,
-                          ),
-                        ),
-                      if (post.isContestWinner) const WinnerSparkleOverlay(),
-                      if (widget.pictureBadge != null)
-                        Positioned(
-                          left: 12,
-                          top: widget.pictureBadgeAtTop
-                              ? (post.resolvedMediaType == AppMediaType.video
-                                    ? 52
-                                    : 14)
-                              : null,
-                          bottom: widget.pictureBadgeAtTop
-                              ? null
-                              : (_ratingOnPicture ? 86 : 14),
-                          child: widget.pictureBadge!,
-                        ),
-                      // rating_enabled comes straight from the post payload
-                      // — when it's false the backend rejects votes with a
-                      // 403, so the rating badge/selector must not render
-                      // at all rather than surface a vote that always fails.
-                      // Star rating is contest-only. Trophy/name still mark
-                      // enrollment even when voting is closed.
-                      if (!widget.hideRatingBadge &&
-                          (post.ratingEnabled || post.isInContest))
-                        Positioned(
-                          top: 14,
-                          right: 14,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // Contest posts keep the score badge in feed /
-                                  // explore / profile — never on normal posts.
-                                  if (post.ratingEnabled || post.isInContest)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.7,
-                                        ),
-                                        borderRadius: BorderRadius.circular(
-                                          999,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          const AppHeroIconData(
-                                            Icons.star_rounded,
-                                            size: 16,
-                                            color: AppColors.primary,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            post.displayRating.toStringAsFixed(
-                                              1,
-                                            ),
-                                            style: AppFonts.beVietnam(
-                                              size: 13,
-                                              weight: FontWeight.w700,
-                                              color: AppColors.text,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  if (post.isInContest) ...[
-                                    if (post.ratingEnabled || post.isInContest)
-                                      const SizedBox(width: 6),
-                                    const ContestTrophyBadge(),
-                                  ],
-                                ],
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    GestureDetector(
+                      onTap: post.resolvedMediaType == AppMediaType.video
+                          ? () => _openMedia(post)
+                          : null,
+                      onDoubleTap: post.resolvedMediaType == AppMediaType.video
+                          ? _onDoubleTapLike
+                          : null,
+                      child: post.resolvedMediaType == AppMediaType.video
+                          ? AppCachedVideoPlayer(
+                              videoUrl: post.primaryMediaUrl,
+                              thumbnailUrl: post.thumbnailUrl,
+                              autoPlay: true,
+                              isActive: _isVideoActive,
+                              deferInitUntilActive: true,
+                              showControls: true,
+                              showPlayPauseButton: false,
+                              showMuteButton: true,
+                              controlsPosition: AppVideoControlsPosition.topLeft,
+                              onProgressChanged: (value) =>
+                                  _videoProgress = value,
+                              shareMute: true,
+                              onMutedChanged: SharedVideoMute.setMuted,
+                              backdropColor: AppColors.card,
+                            )
+                          : post.isCarousel
+                          ? PostMediaCarousel(
+                              imageUrls: post.carouselImageUrls,
+                              memCacheWidth: 800,
+                              counterOnLeft: post.showContestVotingChrome ||
+                                  post.isInContest,
+                              dotsBottom: _ratingOnPicture ? 78 : 12,
+                              onImageTap: () => _openMedia(post),
+                              onDoubleTapLike: _onDoubleTapLike,
+                            )
+                          : DoubleTapZoom(
+                              onTap: () => _openMedia(post),
+                              onDoubleTapLike: _onDoubleTapLike,
+                              child: AppCachedImage(
+                                imageUrl: post.primaryMediaUrl,
+                                // Only bounding width (not both dimensions) lets
+                                // the decoder scale down while preserving the
+                                // source aspect ratio — specifying both forces an
+                                // exact, non-uniform resize that stretches any
+                                // image whose native ratio isn't already 4:5
+                                // (this card only enforces 4:5 via its outer
+                                // AspectRatio + BoxFit.cover, at the layout
+                                // level).
+                                memCacheWidth: 800,
                               ),
-                              // Contest name tag — tapping it opens the
-                              // contest page (only the tag, not the media).
-                              if (post.isInContest) ...[
-                                const SizedBox(height: 6),
-                                ContestNameTag(
-                                  contestId: post.contestId,
-                                  contestTitle: post.contestTitle,
-                                ),
+                            ),
+                    ),
+                    if (post.isContestWinner) const WinnerSparkleOverlay(),
+                    if (widget.pictureBadge != null)
+                      Positioned(
+                        left: 12,
+                        top: widget.pictureBadgeAtTop
+                            ? (post.resolvedMediaType == AppMediaType.video
+                                  ? 52
+                                  : 14)
+                            : null,
+                        bottom: widget.pictureBadgeAtTop
+                            ? null
+                            : (_ratingOnPicture ? 86 : 14),
+                        child: widget.pictureBadge!,
+                      ),
+                    // Contest chrome sits above media gestures so score/trophy
+                    // taps open the raters sheet instead of opening media.
+                    if (!widget.hideRatingBadge && post.isInContest)
+                      Positioned(
+                        top: 14,
+                        right: 14,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                              Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (post.showContestVotingChrome)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.7,
+                                      ),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const AppHeroIconData(
+                                          Icons.star_rounded,
+                                          size: 16,
+                                          color: AppColors.primary,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          post.displayRating.toStringAsFixed(1),
+                                          style: AppFonts.beVietnam(
+                                            size: 13,
+                                            weight: FontWeight.w700,
+                                            color: AppColors.textLight,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                if (post.showContestVotingChrome)
+                                  const SizedBox(width: 6),
+                                const ContestTrophyBadge(),
                               ],
+                            ),
+                            if (post.showContestVotingChrome) ...[
+                              const SizedBox(height: 6),
+                              ContestNameTag(
+                                contestId: post.contestId,
+                                contestTitle: post.contestTitle,
+                              ),
                             ],
-                          ),
+                          ],
                         ),
-                      if (_ratingOnPicture)
+                      ),
+                    if (_ratingOnPicture)
                         Positioned(
                           left: 20,
                           right: 20,
@@ -454,15 +444,15 @@ class _FeedPostCardState extends State<FeedPostCard> {
                             child: Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.85),
+                                color: AppColors.surface.withValues(alpha: 0.94),
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.5),
+                                  color: AppColors.cardBorder,
                                   width: 1.5,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.08),
+                                    color: Colors.black.withValues(alpha: 0.28),
                                     blurRadius: 20,
                                     offset: const Offset(0, 8),
                                   ),
@@ -490,7 +480,12 @@ class _FeedPostCardState extends State<FeedPostCard> {
                                           shape: BoxShape.circle,
                                           color: isSelected
                                               ? AppColors.primary
-                                              : Colors.white,
+                                              : AppColors.chip,
+                                          border: isSelected
+                                              ? null
+                                              : Border.all(
+                                                  color: AppColors.cardBorder,
+                                                ),
                                           boxShadow: [
                                             BoxShadow(
                                               color: isSelected
@@ -500,11 +495,8 @@ class _FeedPostCardState extends State<FeedPostCard> {
                                                       109,
                                                       0.35,
                                                     )
-                                                  : const Color.fromRGBO(
-                                                      47,
-                                                      47,
-                                                      46,
-                                                      0.12,
+                                                  : Colors.black.withValues(
+                                                      alpha: 0.18,
                                                     ),
                                               blurRadius: 10,
                                               offset: const Offset(0, 4),
@@ -530,9 +522,8 @@ class _FeedPostCardState extends State<FeedPostCard> {
                             ),
                           ),
                         ),
-                      LikeHeartBurst(burstTick: _likeBurst),
-                    ],
-                  ),
+                    LikeHeartBurst(burstTick: _likeBurst),
+                  ],
                 ),
               ),
             ),
@@ -600,9 +591,13 @@ class _FeedPostCardState extends State<FeedPostCard> {
                 CommentsScreen.show(context, post: post, tag: tag);
               },
               onShare: _showShareSheet,
+              onRatersTap: post.isInContest
+                  ? () => _openPostRaters(context)
+                  : null,
               showCommentAction: widget.showCommentAction,
               showLikeAction: widget.showLikeAction,
-              showRatingSelector: widget.ratingInActionBar && post.ratingEnabled,
+              showRatingSelector:
+                  widget.ratingInActionBar && post.showContestVotingChrome,
               selectedRating: widget.selectedRating,
               onRatingSelected: widget.onRatingSelected,
               isVoteLoading: widget.isVoteLoading,
@@ -619,7 +614,21 @@ class _FeedPostCardState extends State<FeedPostCard> {
   }
 
   bool get _ratingOnPicture =>
-      widget.post.ratingEnabled && !widget.ratingInActionBar;
+      widget.post.showContestVotingChrome && !widget.ratingInActionBar;
+
+  void _openPostRaters(BuildContext context) {
+    final post = widget.post;
+    // Immediate feedback so a missing live API is obvious vs a dead tap.
+    unawaited(
+      showPostRatersSheet(
+        context,
+        postId: post.id,
+        isReel: post.mediaType == HomeMediaType.video,
+        ratingCountLabel: post.ratingCount > 0 ? '${post.ratingCount}' : null,
+        ratingAvg: post.displayRating > 0 ? post.displayRating : null,
+      ),
+    );
+  }
 
   bool get _isBiteCard =>
       widget.post.feedType == HomeFeedType.bite || widget.post.isFoodPost;
@@ -699,7 +708,7 @@ class _FeedPostCardState extends State<FeedPostCard> {
                       const SizedBox(height: 10),
                       FoodRatingsCard(
                         post: _reviewPost,
-                        backgroundColor: Colors.white,
+                        backgroundColor: AppColors.card,
                         showAllMetrics: true,
                       ),
                       RestaurantReviewAction(post: _reviewPost),

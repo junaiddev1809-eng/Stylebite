@@ -70,11 +70,11 @@ class _IntroScreenState extends State<IntroScreen> {
         fit: StackFit.expand,
         children: [
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFFFFF5F0), AppColors.background],
+                colors: [AppColors.surface, AppColors.background],
               ),
             ),
           ),

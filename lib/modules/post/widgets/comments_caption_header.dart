@@ -48,8 +48,8 @@ class CommentsCaptionHeader extends StatelessWidget {
                       memCacheWidth: 108,
                     )
                   : ColoredBox(
-                      color: const Color(0xFFE9E3E1),
-                      child: const SizedBox(
+                      color: AppColors.chip,
+                      child: SizedBox(
                         width: 36,
                         height: 36,
                         child: Center(
@@ -106,7 +106,7 @@ class CommentsCaptionHeader extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 14),
-        const Divider(height: 1, color: Color(0xFFE7E2E0)),
+        Divider(height: 1, color: AppColors.divider),
         const SizedBox(height: 12),
       ],
     );

@@ -19,14 +19,14 @@ class HomeWelcomeCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 24),
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 28),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white),
-        boxShadow: const [
+        border: Border.all(color: AppColors.cardBorder),
+        boxShadow: [
           BoxShadow(
-            color: Color.fromRGBO(47, 47, 46, 0.12),
+            color: Colors.black.withValues(alpha: 0.14),
             blurRadius: 24,
-            offset: Offset(0, 8),
+            offset: const Offset(0, 8),
           ),
         ],
       ),

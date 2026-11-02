@@ -34,13 +34,9 @@ class FoodShowcaseCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFFFF4EA), Color(0xFFF7EFEA)],
-          ),
+          color: AppColors.card,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFFFE0C8)),
+          border: Border.all(color: AppColors.cardBorder),
         ),
         child: Row(
           children: [
@@ -48,7 +44,7 @@ class FoodShowcaseCard extends StatelessWidget {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFE3C6),
+                color: AppColors.chip,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: const AppHeroIconData(
@@ -206,16 +202,17 @@ class FoodRatingsCard extends StatelessWidget {
   const FoodRatingsCard({
     super.key,
     required this.post,
-    this.backgroundColor = const Color(0xFFF3F0EF),
+    this.backgroundColor,
     this.showAllMetrics = false,
   });
 
   final HomePostModel post;
-  final Color backgroundColor;
+  final Color? backgroundColor;
   final bool showAllMetrics;
 
   @override
   Widget build(BuildContext context) {
+    final resolvedBackground = backgroundColor ?? AppColors.chip;
     final store = RestaurantReviewStore.instance;
 
     return Obx(() {
@@ -262,7 +259,7 @@ class FoodRatingsCard extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: backgroundColor,
+          color: resolvedBackground,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
@@ -326,7 +323,7 @@ class FoodRatingsCard extends StatelessWidget {
                       child: LinearProgressIndicator(
                         minHeight: 9,
                         value: (item.value.clamp(0, 5)) / 5,
-                        backgroundColor: Colors.white,
+                        backgroundColor: AppColors.surface,
                         valueColor: AlwaysStoppedAnimation<Color>(item.color),
                       ),
                     ),

@@ -67,11 +67,16 @@ class _FollowUserButtonState extends State<FollowUserButton> {
       );
       final isLoading = _controller.isLoading(normalizedUsername);
 
+      // `dark: true` = overlay on video/media. Keep a solid light pill with
+      // always-dark label text so it stays readable even when app theme is Dark
+      // (AppColors.text is cream in dark mode and would vanish on white).
       final background = widget.dark
-          ? (isFollowing ? Colors.white.withValues(alpha: 0.12) : Colors.white)
-          : (isFollowing ? const Color(0xFFE9E3E1) : AppColors.text);
+          ? (isFollowing
+                ? Colors.white.withValues(alpha: 0.18)
+                : Colors.white)
+          : (isFollowing ? AppColors.chip : AppColors.text);
       final foreground = widget.dark
-          ? (isFollowing ? Colors.white : AppColors.text)
+          ? AppColors.textLight
           : (isFollowing ? AppColors.text : Colors.white);
 
       return GestureDetector(
@@ -105,7 +110,7 @@ class _FollowUserButtonState extends State<FollowUserButton> {
             border: Border.all(
               color: widget.dark
                   ? Colors.white.withValues(alpha: isFollowing ? 0.18 : 0)
-                  : (isFollowing ? const Color(0xFFD8CFCC) : AppColors.text),
+                  : (isFollowing ? AppColors.cardBorder : AppColors.text),
             ),
           ),
           child: isLoading

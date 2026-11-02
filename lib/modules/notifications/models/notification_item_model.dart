@@ -83,6 +83,31 @@ class NotificationItemModel {
     return '';
   }
 
+  /// Winner / results announcements (e.g. "See who won") open the
+  /// leaderboard; live "New contest just dropped" opens contest detail.
+  bool get isContestResultsNotification {
+    if (kind != NotificationKind.contest) {
+      return false;
+    }
+    final resultsQuery =
+        Uri.tryParse(actionUrl.trim())?.queryParameters['results']?.trim() ??
+            '';
+    if (resultsQuery.isNotEmpty) {
+      return true;
+    }
+    final blob = '$title $message'.toLowerCase();
+    return blob.contains('see who won') ||
+        blob.contains('you ate') ||
+        blob.contains('podium secured') ||
+        blob.contains('you understood the assignment') ||
+        blob.contains('you popped off') ||
+        blob.contains('you placed') ||
+        RegExp(r'\byou won\b').hasMatch(blob);
+  }
+
+  String get contestActionLabel =>
+      isContestResultsNotification ? 'View Leaderboard' : 'View Contest';
+
   // Mirrors the actual dispatch rules in
   // NotificationsScreen._handleActionTap — whether tapping the primary
   // "Open" button would go anywhere at all. entity_id/entity_type alone
@@ -176,7 +201,7 @@ class NotificationItemModel {
       ),
       hasActor: hasActor,
       thumbnail: _nullableString(source['image_url'] ?? json['image_url']),
-      primaryActionText: _primaryActionLabel(kind),
+      primaryActionText: _primaryActionLabel(kind, type),
       secondaryActionText: kind == NotificationKind.vibeRequest
           ? 'De-Vibe'
           : null,
@@ -450,7 +475,11 @@ class NotificationItemModel {
     return type.replaceAll('_', ' ').trim().isEmpty ? 'Notification' : type;
   }
 
-  static String? _primaryActionLabel(NotificationKind kind) {
+  static String? _primaryActionLabel(NotificationKind kind, String type) {
+    final normalized = type.trim().toLowerCase();
+    if (normalized.contains('withdrawal') || normalized.contains('payout')) {
+      return 'View Earnings';
+    }
     switch (kind) {
       case NotificationKind.comment:
       case NotificationKind.like:

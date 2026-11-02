@@ -64,7 +64,7 @@ class TappableProfileAvatar extends StatelessWidget {
               )
             : ClipOval(
                 child: ColoredBox(
-                  color: const Color(0xFFE9E3E1),
+                  color: AppColors.chip,
                   child: Center(
                     child: AppHeroIconData(
                       Icons.person_rounded,

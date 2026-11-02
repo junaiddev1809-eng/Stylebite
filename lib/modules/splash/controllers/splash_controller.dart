@@ -46,8 +46,8 @@ class SplashController extends GetxController {
     }
 
     _setProgress(0.4, model.subtitle);
-    // Show the logo briefly, then leave. The feed loads on the next screen.
-    await Future<void>.delayed(const Duration(milliseconds: 450));
+    // Let the logo fade+scale settle before leaving (~720ms enter + hold).
+    await Future<void>.delayed(const Duration(milliseconds: 1350));
     if (_hasNavigated) {
       return;
     }

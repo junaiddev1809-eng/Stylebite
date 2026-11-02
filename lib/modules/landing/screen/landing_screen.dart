@@ -111,42 +111,45 @@ class _LandingScreenState extends State<LandingScreen> {
               final navBand = kBottomNavHeight +
                   kBottomNavVerticalMargin +
                   (bottomInset > 0 ? bottomInset : 8);
-              return _ExcludeBottomHits(
-                bottomExclude: navBand,
-                child: RawGestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  gestures: <Type, GestureRecognizerFactory>{
-                    _LandingPageSwipeRecognizer:
-                        GestureRecognizerFactoryWithHandlers<
-                            _LandingPageSwipeRecognizer>(
-                      () => _LandingPageSwipeRecognizer(
-                        isLocked: () =>
-                            _controller.horizontalChildLocks.value > 0,
+              return Obx(() {
+                final index = _controller.currentIndex.value;
+                _warm(index);
+                // Reels hide the floating nav — do not eat that bottom band or
+                // the seek bar / scrub gestures never receive hits.
+                final excludeBottom = index == 1 ? 0.0 : navBand;
+                return _ExcludeBottomHits(
+                  bottomExclude: excludeBottom,
+                  child: RawGestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    gestures: <Type, GestureRecognizerFactory>{
+                      _LandingPageSwipeRecognizer:
+                          GestureRecognizerFactoryWithHandlers<
+                              _LandingPageSwipeRecognizer>(
+                        () => _LandingPageSwipeRecognizer(
+                          isLocked: () =>
+                              _controller.horizontalChildLocks.value > 0,
+                        ),
+                        (recognizer) {
+                          recognizer
+                            ..onStart = (_) {
+                              _warm(_controller.currentIndex.value);
+                              _controller.beginUserPageDrag();
+                            }
+                            ..onUpdate = (details) {
+                              _controller.updateUserPageDrag(
+                                details.primaryDelta ?? details.delta.dx,
+                              );
+                            }
+                            ..onEnd = (details) {
+                              _controller.endUserPageDrag(
+                                details.primaryVelocity ?? 0,
+                              );
+                            }
+                            ..onCancel = _controller.cancelUserPageDrag;
+                        },
                       ),
-                      (recognizer) {
-                        recognizer
-                          ..onStart = (_) {
-                            _warm(_controller.currentIndex.value);
-                            _controller.beginUserPageDrag();
-                          }
-                          ..onUpdate = (details) {
-                            _controller.updateUserPageDrag(
-                              details.primaryDelta ?? details.delta.dx,
-                            );
-                          }
-                          ..onEnd = (details) {
-                            _controller.endUserPageDrag(
-                              details.primaryVelocity ?? 0,
-                            );
-                          }
-                          ..onCancel = _controller.cancelUserPageDrag;
-                      },
-                    ),
-                  },
-                  child: Obx(() {
-                    final index = _controller.currentIndex.value;
-                    _warm(index);
-                    return PageView.builder(
+                    },
+                    child: PageView.builder(
                       controller: _controller.pageController,
                       physics: const NeverScrollableScrollPhysics(),
                       allowImplicitScrolling: true,
@@ -163,10 +166,10 @@ class _LandingScreenState extends State<LandingScreen> {
                           ),
                         );
                       },
-                    );
-                  }),
-                ),
-              );
+                    ),
+                  ),
+                );
+              });
             },
           ),
         ),

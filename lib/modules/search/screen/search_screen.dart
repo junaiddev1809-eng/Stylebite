@@ -9,6 +9,7 @@ import '../../../core/utils/app_back_navigation.dart';
 import '../../../core/widgets/app_sliding_toggle.dart';
 import '../../../core/widgets/app_cached_image.dart';
 import '../../../core/widgets/app_hero_icon.dart';
+import '../../../core/widgets/app_user_avatar.dart';
 import '../../../core/widgets/app_verified_badge.dart';
 import '../../../core/widgets/states/app_empty_state.dart';
 import '../../../core/widgets/states/app_error_state.dart';
@@ -1195,22 +1196,7 @@ class _UserResultCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipOval(
-              child: user.avatarUrl.trim().isEmpty
-                  ? Container(
-                      width: 54,
-                      height: 54,
-                      color: AppColors.chip,
-                      alignment: Alignment.center,
-                      child: const AppHeroIconData(Icons.person_rounded),
-                    )
-                  : AppCachedImage(
-                      imageUrl: user.avatarUrl,
-                      width: 54,
-                      height: 54,
-                      fit: BoxFit.cover,
-                    ),
-            ),
+            AppUserAvatar(imageUrl: user.avatarUrl, size: 54),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

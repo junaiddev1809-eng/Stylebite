@@ -276,11 +276,15 @@ class LoginController extends GetxController {
       
       Get.offAllNamed(AppRoutes.landing);
       unawaited(DeepLinkService.flushPending());
-    } else if (responseData['requires_verification'] == true) {
+    } else if (responseData['requires_verification'] == true ||
+        responseData['requires_2fa'] == true) {
       final email = responseData['email'] ?? loginId;
 
       Get.toNamed(AppRoutes.otp, arguments: {
         'email': email,
+        'purpose': responseData['requires_2fa'] == true
+            ? 'login_2fa'
+            : 'email_verification',
         'debug_otp': responseData['debug_otp'],
       });
     } else {

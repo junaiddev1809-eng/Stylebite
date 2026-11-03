@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import '../../../core/utils/api_helper.dart';
 import '../../../core/utils/app_helper.dart';
 import '../../../core/utils/verified_badge_hydrator.dart';
+import '../../contest/services/contest_enrollment_store.dart';
 import '../../home/controllers/home_controller.dart';
 import '../../home/models/home_post_model.dart';
 import '../../post/screens/post_detail_screen.dart';
@@ -227,6 +228,9 @@ class UserSearchController extends GetxController {
     }
 
     try {
+      if (reset) {
+        await ContestEnrollmentStore.instance.ensureLoaded();
+      }
       final nextPage = _explorePage + 1;
       final results = await Future.wait<Object?>([
         _tryFetchFeed(

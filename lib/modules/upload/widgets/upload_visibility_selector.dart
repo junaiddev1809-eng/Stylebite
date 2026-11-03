@@ -104,3 +104,15 @@ UploadPostVisibility? parseUploadPostVisibility(String? raw) {
       return null;
   }
 }
+
+/// Maps the enum to the API `visibility` string.
+String uploadPostVisibilityToApi(UploadPostVisibility visibility) {
+  switch (visibility) {
+    case UploadPostVisibility.followersOnly:
+      return 'followers_only';
+    case UploadPostVisibility.private:
+      return 'private';
+    case UploadPostVisibility.public:
+      return 'public';
+  }
+}

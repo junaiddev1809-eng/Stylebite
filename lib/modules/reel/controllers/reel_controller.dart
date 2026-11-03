@@ -1219,8 +1219,8 @@ class ReelController extends GetxController {
     _applyVisibleReels();
   }
 
-  /// Keep contest star ratings on enrolled reels even when the reels API
-  /// omits `in_contest` (same idea as the home feed).
+  /// Sync enrollment metadata onto reels. Never revive the Rate button —
+  /// only force it off when the contest has finished voting.
   void _applyContestEnrollment() {
     final session = _session;
     if (session.reels.isEmpty) {
@@ -1230,12 +1230,19 @@ class ReelController extends GetxController {
     final next = <ReelItemModel>[];
     for (final reel in session.reels) {
       final info = ContestEnrollmentStore.instance.infoFor(reel.id);
-      if (reel.ratingEnabled || info == null) {
-        next.add(reel);
-        continue;
+      if (info != null && info.votingClosed) {
+        if (reel.ratingEnabled || !reel.contestVotingClosed) {
+          changed = true;
+          next.add(
+            reel.copyWith(
+              ratingEnabled: false,
+              contestVotingClosed: true,
+            ),
+          );
+          continue;
+        }
       }
-      changed = true;
-      next.add(reel.copyWith(ratingEnabled: true));
+      next.add(reel);
     }
     if (!changed) {
       return;

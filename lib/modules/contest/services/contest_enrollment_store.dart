@@ -8,12 +8,16 @@ class ContestEnrollmentInfo {
   const ContestEnrollmentInfo({
     required this.contestId,
     required this.contestTitle,
+    this.contestStatus = '',
   });
 
   final int contestId;
   final String contestTitle;
+  final String contestStatus;
 
   bool get hasContest => contestId > 0;
+
+  bool get votingClosed => _statusMeansVotingClosed(contestStatus);
 
   ContestEnrollmentInfo merge(ContestEnrollmentInfo other) {
     return ContestEnrollmentInfo(
@@ -21,8 +25,31 @@ class ContestEnrollmentInfo {
       contestTitle: other.contestTitle.trim().isNotEmpty
           ? other.contestTitle
           : contestTitle,
+      contestStatus: _preferStatus(other.contestStatus, contestStatus),
     );
   }
+}
+
+bool _statusMeansVotingClosed(String status) {
+  final normalized = status.trim().toLowerCase();
+  return normalized == 'completed' ||
+      normalized == 'ended' ||
+      normalized == 'closed' ||
+      normalized == 'cancelled' ||
+      normalized == 'canceled';
+}
+
+String _preferStatus(String a, String b) {
+  if (_statusMeansVotingClosed(a)) {
+    return a.trim();
+  }
+  if (_statusMeansVotingClosed(b)) {
+    return b.trim();
+  }
+  if (a.trim().isNotEmpty) {
+    return a.trim();
+  }
+  return b.trim();
 }
 
 /// Post IDs currently enrolled in a contest (plus which contest). Feed,
@@ -52,7 +79,12 @@ class ContestEnrollmentStore {
     return _byPostId[id];
   }
 
-  void add(dynamic postId, {int contestId = 0, String contestTitle = ''}) {
+  void add(
+    dynamic postId, {
+    int contestId = 0,
+    String contestTitle = '',
+    String contestStatus = '',
+  }) {
     final id = _normalizeId('$postId');
     if (id.isEmpty) {
       return;
@@ -60,6 +92,7 @@ class ContestEnrollmentStore {
     final incoming = ContestEnrollmentInfo(
       contestId: contestId,
       contestTitle: contestTitle.trim(),
+      contestStatus: contestStatus.trim(),
     );
     final existing = _byPostId[id];
     _byPostId[id] = existing == null ? incoming : existing.merge(incoming);
@@ -69,9 +102,15 @@ class ContestEnrollmentStore {
     Iterable<dynamic> postIds, {
     int contestId = 0,
     String contestTitle = '',
+    String contestStatus = '',
   }) {
     for (final postId in postIds) {
-      add(postId, contestId: contestId, contestTitle: contestTitle);
+      add(
+        postId,
+        contestId: contestId,
+        contestTitle: contestTitle,
+        contestStatus: contestStatus,
+      );
     }
   }
 
@@ -138,6 +177,8 @@ class ContestEnrollmentStore {
             item['post_id'],
             contestId: int.tryParse('${item['contest_id'] ?? ''}') ?? 0,
             contestTitle: (item['contest_title'] ?? '').toString(),
+            contestStatus: (item['contest_status'] ?? item['status'] ?? '')
+                .toString(),
           );
         }
         return true;
@@ -221,15 +262,18 @@ class ContestEnrollmentStore {
   void _ingestContest(Map<String, dynamic> contest) {
     final contestId = int.tryParse('${contest['id'] ?? ''}') ?? 0;
     final contestTitle = (contest['title'] ?? '').toString();
+    final contestStatus = (contest['status'] ?? '').toString();
     addAll(
       contest['enrolled_post_ids'] as List<dynamic>? ?? const [],
       contestId: contestId,
       contestTitle: contestTitle,
+      contestStatus: contestStatus,
     );
     addAll(
       contest['post_ids'] as List<dynamic>? ?? const [],
       contestId: contestId,
       contestTitle: contestTitle,
+      contestStatus: contestStatus,
     );
     final submissions = contest['submissions'];
     if (submissions is! List) {
@@ -243,6 +287,7 @@ class ContestEnrollmentStore {
         item['post_id'] ?? item['postId'],
         contestId: contestId,
         contestTitle: contestTitle,
+        contestStatus: contestStatus,
       );
     }
   }

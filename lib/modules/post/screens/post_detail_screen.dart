@@ -11,6 +11,7 @@ import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/local_storage.dart';
 import '../../../core/widgets/like_heart_burst.dart';
 import '../../../core/widgets/app_cached_image.dart';
+import '../../../core/widgets/app_user_avatar.dart';
 import '../../../core/widgets/double_tap_zoom.dart';
 import '../../../core/widgets/app_cached_video_player.dart';
 import '../../../core/widgets/app_verified_badge.dart';
@@ -116,24 +117,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: _openAuthorProfile,
-                  child: SizedBox(
-                    width: 40,
-                    height: 40,
-                    child: ClipOval(
-                      child: post.hasAvatar
-                          ? AppCachedImage(
-                              imageUrl: post.avatarUrl,
-                              width: 40,
-                              height: 40,
-                              fit: BoxFit.cover,
-                              memCacheWidth: 120,
-                            )
-                          : ColoredBox(color: AppColors.chip,
-                              child: Center(
-                                child: AppHeroIconData(Icons.person_rounded),
-                              ),
-                            ),
-                    ),
+                  child: AppUserAvatar(
+                    imageUrl: post.avatarUrl,
+                    size: 40,
+                    memCacheWidth: 120,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -521,17 +508,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                 avatarUrl: comment.avatar,
                               );
                             },
-                            child: CircleAvatar(
-                              radius: 15,
-                              backgroundImage: comment.hasAvatar
-                                  ? NetworkImage(comment.avatar)
-                                  : null,
-                              child: comment.hasAvatar
-                                  ? null
-                                  : const AppHeroIconData(
-                                      Icons.person_rounded,
-                                      size: 15,
-                                    ),
+                            child: AppUserAvatar(
+                              imageUrl: comment.avatar,
+                              size: 30,
                             ),
                           ),
                           const SizedBox(width: 10),

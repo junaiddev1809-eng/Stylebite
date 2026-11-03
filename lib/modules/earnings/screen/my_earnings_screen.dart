@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:heroicons/heroicons.dart';
 
+import '../../../app/routes/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../../../core/widgets/states/app_shimmer_box.dart';
@@ -113,25 +114,43 @@ class MyEarningsScreen extends StatelessWidget {
                           const SizedBox(height: 24),
                           Obx(() {
                             final eligibility = _controller.eligibility.value;
-                            if (eligibility == null && _controller.isEligibilityLoading.value) {
+                            if (eligibility == null &&
+                                _controller.isEligibilityLoading.value) {
                               return const _EligibilityShimmer();
                             }
                             if (eligibility != null) {
-                              if (eligibility.isEligible) {
+                              if (eligibility.isApproved) {
                                 return Column(
                                   children: [
                                     _AdsToggleSection(controller: _controller),
                                     const SizedBox(height: 32),
                                   ],
                                 );
-                              } else {
-                                return Column(
-                                  children: [
-                                    _MonetizationEligibilitySection(eligibility: eligibility),
-                                    const SizedBox(height: 32),
-                                  ],
-                                );
                               }
+                              return Column(
+                                children: [
+                                  _MonetizationEligibilitySection(
+                                    eligibility: eligibility,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: TextButton(
+                                      onPressed: () =>
+                                          Get.toNamed(AppRoutes.monetization),
+                                      child: Text(
+                                        'Open Monetization',
+                                        style: AppFonts.beVietnam(
+                                          size: 13,
+                                          weight: FontWeight.w700,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                ],
+                              );
                             }
                             return const SizedBox.shrink();
                           }),

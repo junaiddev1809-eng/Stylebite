@@ -18,6 +18,10 @@ class AppTextField extends StatefulWidget {
     this.maxLines = 1,
     this.prefixIcon,
     this.errorMaxLines = 2,
+    this.borderColor,
+    this.helperText,
+    this.helperColor,
+    this.onChanged,
   });
 
   final TextEditingController controller;
@@ -31,6 +35,10 @@ class AppTextField extends StatefulWidget {
   final int maxLines;
   final IconData? prefixIcon;
   final int? errorMaxLines;
+  final Color? borderColor;
+  final String? helperText;
+  final Color? helperColor;
+  final ValueChanged<String>? onChanged;
 
   @override
   State<AppTextField> createState() => _AppTextFieldState();
@@ -45,8 +53,17 @@ class _AppTextFieldState extends State<AppTextField> {
     _obscureText = widget.isPassword;
   }
 
+  OutlineInputBorder _border(Color color, {double width = 1}) {
+    return OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: color, width: width),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final override = widget.borderColor;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -67,6 +84,7 @@ class _AppTextFieldState extends State<AppTextField> {
           obscureText: _obscureText,
           maxLength: widget.maxLength,
           maxLines: widget.isPassword ? 1 : widget.maxLines,
+          onChanged: widget.onChanged,
           style: AppFonts.beVietnam(
             size: 14,
             weight: FontWeight.w500,
@@ -103,29 +121,14 @@ class _AppTextFieldState extends State<AppTextField> {
                 : null,
             filled: true,
             fillColor: AppColors.inputFill,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: AppColors.cardBorder),
+            border: _border(override ?? AppColors.cardBorder),
+            enabledBorder: _border(override ?? AppColors.cardBorder),
+            focusedBorder: _border(
+              override ?? AppColors.primary,
+              width: 1.2,
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: AppColors.cardBorder),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(
-                color: AppColors.primary,
-                width: 1.2,
-              ),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: Colors.redAccent),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
-            ),
+            errorBorder: _border(Colors.redAccent),
+            focusedErrorBorder: _border(Colors.redAccent, width: 1.2),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
               vertical: 14,
@@ -135,6 +138,13 @@ class _AppTextFieldState extends State<AppTextField> {
               size: 12,
               weight: FontWeight.w500,
               color: Colors.redAccent,
+            ),
+            helperText: widget.helperText,
+            helperMaxLines: 2,
+            helperStyle: AppFonts.beVietnam(
+              size: 12,
+              weight: FontWeight.w500,
+              color: widget.helperColor ?? AppColors.hintText,
             ),
           ),
         ),

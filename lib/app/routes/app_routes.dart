@@ -16,6 +16,7 @@ abstract class AppRoutes {
   static const String messages = '/messages';
   static const String editProfile = '/edit-profile';
   static const String myEarnings = '/my-earnings';
+  static const String monetization = '/settings/monetization';
   static const String createContest = '/create-contest';
   static const String contestDetail = '/contest-detail';
   static const String contestRanking = '/contest-ranking';

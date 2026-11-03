@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../../../core/widgets/app_hero_icon.dart';
+import '../../../core/widgets/app_user_avatar.dart';
 import '../../../core/widgets/app_media_source_sheet.dart';
 import '../../SelectLocationScreen/select_location_screen.dart';
 import '../controllers/upload_controller.dart';
@@ -306,15 +307,9 @@ class _Header extends StatelessWidget {
       child: Row(
         children: [
           Obx(
-            () => CircleAvatar(
-              radius: 20,
-              backgroundImage:
-                  profileController.avatarImageUrl.value.trim().isNotEmpty
-                  ? NetworkImage(profileController.avatarImageUrl.value)
-                  : null,
-              child: profileController.avatarImageUrl.value.trim().isNotEmpty
-                  ? null
-                  : const AppHeroIconData(Icons.person_rounded),
+            () => AppUserAvatar(
+              imageUrl: profileController.avatarImageUrl.value,
+              size: 40,
             ),
           ),
           const SizedBox(width: 10),

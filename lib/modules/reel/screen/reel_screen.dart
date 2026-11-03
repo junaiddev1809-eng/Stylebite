@@ -14,6 +14,7 @@ import '../../../core/widgets/app_video_seek_bar.dart';
 import '../../../core/widgets/like_heart_burst.dart';
 import '../../../core/widgets/app_admob_native.dart';
 import '../../../core/widgets/app_hero_icon.dart';
+import '../../../core/widgets/app_user_avatar.dart';
 import '../../../core/widgets/app_verified_badge.dart';
 import '../../../core/utils/verified_flag.dart';
 import '../../../core/widgets/states/app_error_state.dart';
@@ -1229,7 +1230,7 @@ class _ReelMeta extends StatelessWidget {
                 ),
               ),
             ],
-            if (live.ratingEnabled) ...[
+            if (live.showContestScoreBadge) ...[
               const SizedBox(width: 10),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1270,29 +1271,12 @@ class _ReelMeta extends StatelessWidget {
           children: [
             GestureDetector(
               onTap: () => onTapProfile(live),
-              child: SizedBox(
-                width: 36,
-                height: 36,
-                child: ClipOval(
-                  child: live.hasAvatar
-                      ? AppCachedImage(
-                          imageUrl: live.avatarUrl,
-                          width: 36,
-                          height: 36,
-                          fit: BoxFit.cover,
-                          memCacheWidth: 108,
-                        )
-                      : ColoredBox(
-                          color: Colors.white.withValues(alpha: 0.16),
-                          child: const Center(
-                            child: AppHeroIconData(
-                              HeroIcons.user,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                ),
+              child: AppUserAvatar(
+                imageUrl: live.avatarUrl,
+                size: 36,
+                memCacheWidth: 108,
+                backgroundColor: Colors.white.withValues(alpha: 0.16),
+                iconColor: Colors.white,
               ),
             ),
             const SizedBox(width: 10),
@@ -1647,13 +1631,15 @@ class _ReelActions extends StatelessWidget {
               likeCountLabel: live.likes,
             ),
           ),
-          if (reel.ratingEnabled) ...[
+          // Rate only while contest voting is open. Ended contests keep the
+          // score badge near the avatar — not a Rate action icon.
+          if (live.ratingEnabled) ...[
             const SizedBox(height: 12),
             _ActionItem(
               icon: HeroIcons.star,
-              label: reel.viewerRating?.toString() ?? 'Rate',
+              label: live.viewerRating?.toString() ?? 'Rate',
               isLoading: controller.isVoteLoading.value,
-              onTap: () => _showRatingSheet(context, controller, reel),
+              onTap: () => _showRatingSheet(context, controller, live),
             ),
           ],
           const SizedBox(height: 12),
@@ -2044,17 +2030,9 @@ class _ReelCommentsSheetState extends State<_ReelCommentsSheet> {
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  CircleAvatar(
-                                    radius: 16,
-                                    backgroundImage: comment.hasAvatar
-                                        ? NetworkImage(comment.avatar)
-                                        : null,
-                                    child: comment.hasAvatar
-                                        ? null
-                                        : const AppHeroIconData(
-                                            HeroIcons.user,
-                                            size: 16,
-                                          ),
+                                  AppUserAvatar(
+                                    imageUrl: comment.avatar,
+                                    size: 32,
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(

@@ -155,16 +155,64 @@ class PushNotificationService {
   }
 
   static void _openChatFromPayload(Map<String, dynamic> payload) {
-    final type = _firstText(payload['type']);
+    final type = _firstText(payload['type'], payload['notification_type']);
     final entityType = _firstText(payload['entity_type']);
     final entityId = _readInt(payload['entity_id']);
     final actionUrl = _firstText(
       payload['action_url'],
       payload['click_action'],
     );
-    if ((type == 'contest' || entityType == 'contest') && entityId > 0) {
-      Get.toNamed(AppRoutes.contestDetail, arguments: {'contestId': entityId});
+    final notificationId = _firstText(
+      payload['notification_id'],
+      payload['id'],
+    );
+    final blob =
+        '${payload['title'] ?? ''} ${payload['body'] ?? ''} ${payload['message'] ?? ''} ${payload['text'] ?? ''}'
+            .toLowerCase();
+    final isLike = NotificationItemModel.isLikeType(type) ||
+        NotificationItemModel.isLikeType(entityType) ||
+        blob.contains('liked your') ||
+        blob.contains('like your') ||
+        blob.contains('likes your') ||
+        blob.contains('loved your');
+
+    // Likes open the notifications list and glow that row — not the post/reel.
+    if (isLike) {
+      _openNotificationsHighlighting(notificationId);
       return;
+    }
+
+    if (type == 'contest' ||
+        type.contains('contest') ||
+        entityType == 'contest' ||
+        entityType.contains('contest')) {
+      final contestId = entityId > 0
+          ? entityId
+          : _resourceIdFromActionUrl(actionUrl, const ['contests', 'contest']);
+      final postId = _queryIntFromActionUrl(actionUrl, 'post_id');
+      final isResults =
+          _hasResultsQuery(actionUrl) ||
+          blob.contains('see who won') ||
+          blob.contains('you ate') ||
+          blob.contains('you won') ||
+          blob.contains('podium secured');
+      if (contestId > 0 && isResults) {
+        Get.toNamed(
+          AppRoutes.contestRanking,
+          arguments: {'contestId': contestId},
+        );
+        return;
+      }
+      if (contestId > 0) {
+        Get.toNamed(
+          AppRoutes.contestDetail,
+          arguments: <String, dynamic>{
+            'contestId': contestId,
+            if (postId > 0) 'postId': postId,
+          },
+        );
+        return;
+      }
     }
     if ((type == 'support' || entityType == 'support_ticket') && entityId > 0) {
       Get.toNamed(
@@ -173,36 +221,42 @@ class PushNotificationService {
       );
       return;
     }
-    if (NotificationItemModel.isLikeType(type) ||
-        NotificationItemModel.isLikeType(entityType) ||
-        type == 'comment' ||
+
+    final isComment = type == 'comment' ||
         type.contains('comment') ||
-        entityType == 'post') {
-      // For a comment notification, entity_id/entity_type describe the
-      // COMMENT, not the post — action_url ("/posts/{id}") is the only
-      // reliable source of the post id here. entity_id is only trustworthy
-      // as a post id when entity_type actually says "post".
+        entityType == 'comment' ||
+        blob.contains('comment') ||
+        blob.contains('replied');
+    final isPostOrReel = entityType == 'post' ||
+        entityType == 'reel' ||
+        type == 'post' ||
+        type == 'reel' ||
+        type == 'feed';
+
+    if (isComment || isPostOrReel) {
+      // Comment entity_id is the comment — prefer action_url for the post/reel.
       if (_openFromActionUrlPath(actionUrl)) {
         return;
       }
-      if (entityType == 'post' && entityId > 0) {
+      if ((entityType == 'post' || entityType == 'reel') && entityId > 0) {
         PostDetailOpenHelper.openById(entityId.toString());
         return;
       }
-      Get.to<void>(() => const NotificationsScreen());
+      _openNotificationsHighlighting(notificationId);
       return;
     }
 
     final isMessage = type == 'message' ||
         type.contains('chat') ||
         entityType == 'message' ||
-        entityType == 'chat';
+        entityType == 'chat' ||
+        entityType == 'conversation';
     final username = _resolveUsername(payload);
     final conversationId = _resolveConversationId(payload);
-    if (isMessage && username.isNotEmpty) {
+    if (isMessage && (username.isNotEmpty || conversationId > 0)) {
       Get.to<void>(
         () => MessagesScreen(
-          initialUsername: username,
+          initialUsername: username.isNotEmpty ? username : null,
           initialConversationId: conversationId > 0 ? conversationId : null,
         ),
       );
@@ -220,6 +274,18 @@ class PushNotificationService {
     // future type this client doesn't special-case) still deserves to go
     // somewhere on tap rather than silently doing nothing — the
     // notifications list is the correct catch-all destination.
+    _openNotificationsHighlighting(notificationId);
+  }
+
+  static void _openNotificationsHighlighting(String notificationId) {
+    if (!Get.isRegistered<NotificationsController>()) {
+      Get.put(NotificationsController(), permanent: true);
+    }
+    final controller = Get.find<NotificationsController>();
+    controller.highlightFromPush(notificationId);
+    if (controller.notifications.isEmpty) {
+      unawaited(controller.fetchNotifications(reset: true));
+    }
     Get.to<void>(() => const NotificationsScreen());
   }
 
@@ -228,6 +294,16 @@ class PushNotificationService {
     final segments =
         uri?.pathSegments.where((segment) => segment.isNotEmpty).toList() ??
         const <String>[];
+    if (segments.isEmpty) {
+      return false;
+    }
+
+    if (segments.length == 1 &&
+        segments[0].toLowerCase() == 'monetization') {
+      Get.toNamed(AppRoutes.monetization);
+      return true;
+    }
+
     if (segments.length < 2) {
       return false;
     }
@@ -235,18 +311,59 @@ class PushNotificationService {
     final resource = segments[0].toLowerCase();
     final identifier = segments[1];
 
+    if (resource == 'settings' && identifier.toLowerCase() == 'monetization') {
+      Get.toNamed(AppRoutes.monetization);
+      return true;
+    }
+
+    if (resource == 'chats' || resource == 'chat') {
+      final conversationId = int.tryParse(identifier) ??
+          _queryIntFromActionUrl(actionUrl, 'conversation_id');
+      final usernameFromPath = int.tryParse(identifier) == null
+          ? identifier.replaceFirst('@', '')
+          : '';
+      final username = _firstText(
+        uri?.queryParameters['username'],
+        uri?.queryParameters['chat_username'],
+        usernameFromPath,
+      ).replaceFirst('@', '');
+      if (username.isNotEmpty || conversationId > 0) {
+        Get.to<void>(
+          () => MessagesScreen(
+            initialUsername: username.isNotEmpty ? username : null,
+            initialConversationId: conversationId > 0 ? conversationId : null,
+          ),
+        );
+        return true;
+      }
+      return false;
+    }
+
     switch (resource) {
       case 'posts':
       case 'post':
+      case 'reels':
+      case 'reel':
         PostDetailOpenHelper.openById(identifier);
         return true;
       case 'contests':
       case 'contest':
         final contestId = int.tryParse(identifier);
         if (contestId != null && contestId > 0) {
+          final postId = _queryIntFromActionUrl(actionUrl, 'post_id');
+          if (_hasResultsQuery(actionUrl)) {
+            Get.toNamed(
+              AppRoutes.contestRanking,
+              arguments: {'contestId': contestId},
+            );
+            return true;
+          }
           Get.toNamed(
             AppRoutes.contestDetail,
-            arguments: {'contestId': contestId},
+            arguments: <String, dynamic>{
+              'contestId': contestId,
+              if (postId > 0) 'postId': postId,
+            },
           );
           return true;
         }
@@ -347,9 +464,14 @@ class PushNotificationService {
         if (body.isEmpty) {
           body = 'liked your post';
         }
-      } else if (username.isNotEmpty) {
+      } else if (username.isNotEmpty ||
+          type == 'message' ||
+          type.contains('chat') ||
+          _firstText(data['entity_type']) == 'message') {
         if (title.isEmpty) {
-          title = 'New message from @$username';
+          title = username.isNotEmpty
+              ? '$username sent you a message'
+              : 'New message';
         }
         if (body.isEmpty) {
           final resolvedBody = _firstText(
@@ -431,11 +553,71 @@ class PushNotificationService {
   }
 
   static int _resolveConversationId(Map<String, dynamic> payload) {
-    return _readInt(
+    final direct = _readInt(
       payload['conversation_id'] ??
           payload['chat_id'] ??
           payload['conversationId'],
     );
+    if (direct > 0) {
+      return direct;
+    }
+
+    final type = _firstText(payload['type'], payload['notification_type']);
+    final entityType = _firstText(payload['entity_type']);
+    final isMessage = type == 'message' ||
+        type.contains('chat') ||
+        entityType == 'message' ||
+        entityType == 'chat' ||
+        entityType == 'conversation';
+    if (isMessage) {
+      final fromEntity = _readInt(payload['entity_id']);
+      if (fromEntity > 0) {
+        return fromEntity;
+      }
+    }
+
+    final actionUrl = _firstText(
+      payload['action_url'],
+      payload['click_action'],
+    );
+    final fromQuery = _queryIntFromActionUrl(actionUrl, 'conversation_id');
+    if (fromQuery > 0) {
+      return fromQuery;
+    }
+
+    return _resourceIdFromActionUrl(actionUrl, const ['chat', 'chats', 'conversation']);
+  }
+
+  static int _queryIntFromActionUrl(String actionUrl, String key) {
+    final uri = Uri.tryParse(actionUrl.trim());
+    if (uri == null) {
+      return 0;
+    }
+    return _readInt(uri.queryParameters[key]);
+  }
+
+  static bool _hasResultsQuery(String actionUrl) {
+    final uri = Uri.tryParse(actionUrl.trim());
+    final results = uri?.queryParameters['results']?.trim() ?? '';
+    return results.isNotEmpty;
+  }
+
+  static int _resourceIdFromActionUrl(
+    String actionUrl,
+    List<String> resources,
+  ) {
+    final uri = Uri.tryParse(actionUrl.trim());
+    final segments =
+        uri?.pathSegments.where((segment) => segment.isNotEmpty).toList() ??
+            const <String>[];
+    if (segments.length < 2) {
+      return 0;
+    }
+    final resource = segments[0].toLowerCase();
+    if (!resources.contains(resource)) {
+      return 0;
+    }
+    return int.tryParse(segments[1]) ?? 0;
   }
 
   static String _firstText(dynamic first, [dynamic second, dynamic third]) {

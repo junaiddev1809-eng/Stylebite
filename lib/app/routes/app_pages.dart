@@ -22,6 +22,7 @@ import '../../modules/post/screens/hashtag_feed_screen.dart';
 import '../../modules/search/screen/search_screen.dart';
 import '../../modules/settings/screen/about_stylebite_screen.dart';
 import '../../modules/settings/screen/help_center_screen.dart';
+import '../../modules/settings/screen/monetization_screen.dart';
 import '../../modules/settings/screen/privacy_policy_screen.dart';
 import '../../modules/splash/screen/splash_screen.dart';
 import '../../modules/support/screen/new_support_ticket_screen.dart';
@@ -82,6 +83,7 @@ class AppPages {
     _slide(AppRoutes.messages, MessagesScreen.new),
     _slide(AppRoutes.editProfile, EditProfileScreen.new),
     _slide(AppRoutes.myEarnings, MyEarningsScreen.new),
+    _slide(AppRoutes.monetization, MonetizationScreen.new),
     _slide(AppRoutes.createContest, CreateContestScreen.new),
     _slide(AppRoutes.contestDetail, ContestDetailScreen.new),
     _slide(AppRoutes.contestRanking, ContestRankingScreen.new),

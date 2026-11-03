@@ -65,6 +65,9 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
   final TextEditingController _participantSearchController =
       TextEditingController();
   final RxString _participantQuery = ''.obs;
+  int _focusPostId = 0;
+  int? _highlightedSubmissionId;
+  Timer? _highlightClearTimer;
 
   @override
   void initState() {
@@ -73,12 +76,17 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
         ? Get.find<ContestController>()
         : Get.put(ContestController());
 
-    final args = Get.arguments is Map<String, dynamic>
-        ? Get.arguments as Map<String, dynamic>
+    final args = Get.arguments is Map
+        ? Map<String, dynamic>.from(Get.arguments as Map)
         : const <String, dynamic>{};
     _contestId =
         (args['contestId'] as int?) ??
+        int.tryParse('${args['contestId'] ?? ''}') ??
         int.tryParse(widget.contestKey ?? '') ??
+        0;
+    _focusPostId =
+        (args['postId'] as int?) ??
+        int.tryParse('${args['postId'] ?? args['post_id'] ?? ''}') ??
         0;
     final participantQuery = (args['participantQuery'] ?? '').toString().trim();
     if (participantQuery.isNotEmpty) {
@@ -105,6 +113,7 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
   void dispose() {
     _interactionWorker?.dispose();
     _liveRefreshTimer?.cancel();
+    _highlightClearTimer?.cancel();
     _participantSearchController.dispose();
     super.dispose();
   }
@@ -471,29 +480,34 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
                                 contest,
                               );
                               final place = contest.placeForSubmission(submission);
-                              return _SubmissionCard(
-                                post: post,
-                                place: place,
-                                totalScore:
-                                    _totalScoreOverrides[submission.id] ??
-                                    submission.totalScore,
-                                officialPlace:
-                                    contest.status.trim().toLowerCase() ==
-                                    'completed',
-                                isLikeLoading: _participantLikeLoadingIds
-                                    .contains(postId),
-                                isShareLoading: _participantShareLoadingIds
-                                    .contains(postId),
-                                isVoteLoading: _votingSubmissionIds.contains(
-                                  submission.id,
+                              final focused =
+                                  _highlightedSubmissionId == submission.id;
+                              return _ContestEntryGlow(
+                                glowing: focused,
+                                child: _SubmissionCard(
+                                  post: post,
+                                  place: place,
+                                  totalScore:
+                                      _totalScoreOverrides[submission.id] ??
+                                      submission.totalScore,
+                                  officialPlace:
+                                      contest.status.trim().toLowerCase() ==
+                                      'completed',
+                                  isLikeLoading: _participantLikeLoadingIds
+                                      .contains(postId),
+                                  isShareLoading: _participantShareLoadingIds
+                                      .contains(postId),
+                                  isVoteLoading: _votingSubmissionIds.contains(
+                                    submission.id,
+                                  ),
+                                  onLike: () => _toggleParticipantLike(post),
+                                  onSave: () => _toggleParticipantSave(post),
+                                  onShare: (channel) =>
+                                      _shareParticipant(post, channel),
+                                  onRatingSelected: (value) {
+                                    _onRatingSelected(submission, value);
+                                  },
                                 ),
-                                onLike: () => _toggleParticipantLike(post),
-                                onSave: () => _toggleParticipantSave(post),
-                                onShare: (channel) =>
-                                    _shareParticipant(post, channel),
-                                onRatingSelected: (value) {
-                                  _onRatingSelected(submission, value);
-                                },
                               );
                             }),
                         ]),
@@ -712,6 +726,42 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
       return source;
     }
     if (_pinnedFeedIds.isEmpty) {
+      ContestSubmissionModel? focus;
+      if (_focusPostId > 0) {
+        for (final item in source) {
+          if (item.postId == _focusPostId) {
+            focus = item;
+            break;
+          }
+        }
+      }
+      if (focus != null) {
+        _pinnedFeedIds
+          ..add(focus.id)
+          ..addAll(
+            source
+                .where((item) => item.id != focus!.id)
+                .map((item) => item.id),
+          );
+        if (_highlightedSubmissionId != focus.id) {
+          _highlightedSubmissionId = focus.id;
+          _highlightClearTimer?.cancel();
+          _highlightClearTimer = Timer(const Duration(seconds: 4), () {
+            if (!mounted) {
+              return;
+            }
+            setState(() {
+              if (_highlightedSubmissionId == focus!.id) {
+                _highlightedSubmissionId = null;
+              }
+            });
+          });
+        }
+        return [
+          focus,
+          ...source.where((item) => item.id != focus!.id),
+        ];
+      }
       _pinnedFeedIds.addAll(source.map((item) => item.id));
       return source;
     }
@@ -1664,6 +1714,85 @@ class _Chip extends StatelessWidget {
         text,
         style: AppFonts.beVietnam(size: 12, weight: FontWeight.w700, color: fg),
       ),
+    );
+  }
+}
+
+class _ContestEntryGlow extends StatefulWidget {
+  const _ContestEntryGlow({
+    required this.glowing,
+    required this.child,
+  });
+
+  final bool glowing;
+  final Widget child;
+
+  @override
+  State<_ContestEntryGlow> createState() => _ContestEntryGlowState();
+}
+
+class _ContestEntryGlowState extends State<_ContestEntryGlow>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    if (widget.glowing) {
+      _pulse.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _ContestEntryGlow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.glowing && !_pulse.isAnimating) {
+      _pulse.repeat(reverse: true);
+    } else if (!widget.glowing && _pulse.isAnimating) {
+      _pulse
+        ..stop()
+        ..value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.glowing) {
+      return widget.child;
+    }
+    return AnimatedBuilder(
+      animation: _pulse,
+      builder: (context, child) {
+        final t = _pulse.value;
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.2 + t * 0.35),
+                blurRadius: 18 + t * 16,
+                spreadRadius: 0.5 + t * 2,
+              ),
+            ],
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.4 + t * 0.4),
+              width: 1.5,
+            ),
+          ),
+          child: child,
+        );
+      },
+      child: widget.child,
     );
   }
 }

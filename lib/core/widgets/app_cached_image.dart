@@ -18,6 +18,9 @@ class AppCachedImage extends StatelessWidget {
     this.memCacheWidth,
     this.memCacheHeight,
     this.filterQuality = FilterQuality.low,
+    this.fallbackIcon,
+    this.fallbackBackgroundColor,
+    this.fallbackIconColor,
   });
 
   final String imageUrl;
@@ -28,6 +31,11 @@ class AppCachedImage extends StatelessWidget {
   final int? memCacheWidth;
   final int? memCacheHeight;
   final FilterQuality filterQuality;
+
+  /// When set, empty/error states use this icon instead of the broken-image glyph.
+  final IconData? fallbackIcon;
+  final Color? fallbackBackgroundColor;
+  final Color? fallbackIconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -83,12 +91,18 @@ class AppCachedImage extends StatelessWidget {
 
     Widget child;
     final localFile = _localImageFile(imageUrl);
-    if (imageUrl.trim().isEmpty) {
-      child = _FallbackBox(
-        icon: Icons.image_not_supported_outlined,
+    Widget fallback({required IconData defaultIcon}) {
+      return _FallbackBox(
+        icon: fallbackIcon ?? defaultIcon,
         width: resolvedWidth,
         height: resolvedHeight,
+        backgroundColor: fallbackBackgroundColor,
+        iconColor: fallbackIconColor,
       );
+    }
+
+    if (imageUrl.trim().isEmpty) {
+      child = fallback(defaultIcon: Icons.image_not_supported_outlined);
     } else if (localFile != null) {
       child = Image.file(
         localFile,
@@ -96,11 +110,8 @@ class AppCachedImage extends StatelessWidget {
         width: resolvedWidth,
         height: resolvedHeight,
         filterQuality: filterQuality,
-        errorBuilder: (context, error, stackTrace) => _FallbackBox(
-          icon: Icons.broken_image_outlined,
-          width: resolvedWidth,
-          height: resolvedHeight,
-        ),
+        errorBuilder: (context, error, stackTrace) =>
+            fallback(defaultIcon: Icons.broken_image_outlined),
       );
     } else {
       child = CachedNetworkImage(
@@ -120,11 +131,8 @@ class AppCachedImage extends StatelessWidget {
           height: resolvedHeight,
           borderRadius: borderRadius,
         ),
-        errorWidget: (context, url, error) => _FallbackBox(
-          icon: Icons.broken_image_outlined,
-          width: resolvedWidth,
-          height: resolvedHeight,
-        ),
+        errorWidget: (context, url, error) =>
+            fallback(defaultIcon: Icons.broken_image_outlined),
         imageBuilder: (context, imageProvider) {
           return SizedBox.expand(
             child: DecoratedBox(
@@ -213,20 +221,29 @@ class _FallbackBox extends StatelessWidget {
     required this.icon,
     required this.width,
     required this.height,
+    this.backgroundColor,
+    this.iconColor,
   });
 
   final IconData icon;
   final double? width;
   final double? height;
+  final Color? backgroundColor;
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: const Color(0xFFEFECEC),
+      color: backgroundColor ?? const Color(0xFFEFECEC),
       child: SizedBox(
         width: width,
         height: height,
-        child: Center(child: AppHeroIconData(icon)),
+        child: Center(
+          child: AppHeroIconData(
+            icon,
+            color: iconColor,
+          ),
+        ),
       ),
     );
   }

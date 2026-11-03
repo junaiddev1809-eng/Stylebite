@@ -9,6 +9,7 @@ import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/app_helper.dart';
 import '../../../core/utils/local_storage.dart';
 import '../../../core/widgets/app_cached_image.dart';
+import '../../../core/widgets/app_user_avatar.dart';
 import '../../messages/models/chat_models.dart';
 import '../../messages/services/chat_api_service.dart';
 import '../controllers/flash_controller.dart';
@@ -258,12 +259,10 @@ class _FlashViewerScreenState extends State<FlashViewerScreen> {
                           color: Colors.white,
                         ),
                       ),
-                      CircleAvatar(
-                        radius: 14,
+                      AppUserAvatar(
+                        imageUrl: item.avatarUrl,
+                        size: 28,
                         backgroundColor: const Color(0xFFE9E3E1),
-                        backgroundImage: item.avatarUrl.trim().isNotEmpty
-                            ? NetworkImage(item.avatarUrl)
-                            : null,
                       ),
                       const SizedBox(width: 8),
                       Expanded(

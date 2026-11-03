@@ -8,7 +8,7 @@ import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/api_helper.dart';
 import '../../../core/utils/app_helper.dart';
 import '../../../core/utils/local_storage.dart';
-import '../../../core/widgets/app_cached_image.dart';
+import '../../../core/widgets/app_user_avatar.dart';
 import '../../../core/widgets/app_hero_icon.dart';
 import '../../messages/models/chat_models.dart';
 import '../../messages/services/chat_api_service.dart';
@@ -344,26 +344,7 @@ class _InAppShareSheetBodyState extends State<_InAppShareSheetBody> {
         final sent = _sent.contains(key);
         return Row(
           children: [
-            ClipOval(
-              child: person.avatarUrl.trim().isEmpty
-                  ? ColoredBox(
-                      color: Color(0xFFF1EBE8),
-                      child: SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: AppHeroIconData(
-                          Icons.person_rounded,
-                          color: AppColors.hintText,
-                          size: 20,
-                        ),
-                      ),
-                    )
-                  : AppCachedImage(
-                      imageUrl: person.avatarUrl,
-                      width: 44,
-                      height: 44,
-                    ),
-            ),
+            AppUserAvatar(imageUrl: person.avatarUrl, size: 44),
             const SizedBox(width: 10),
             Expanded(
               child: Column(

@@ -7,7 +7,7 @@ import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/api_helper.dart';
 import '../../../core/utils/verified_badge_hydrator.dart';
 import '../../../core/utils/verified_flag.dart';
-import '../../../core/widgets/app_cached_image.dart';
+import '../../../core/widgets/app_user_avatar.dart';
 import '../../../core/widgets/app_verified_badge.dart';
 import '../../profile/models/follower_model.dart';
 import '../../profile/models/profile_model.dart';
@@ -294,12 +294,7 @@ class _LikerTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
         child: Row(
           children: [
-            AppCachedImage(
-              imageUrl: user.avatarUrl,
-              width: 48,
-              height: 48,
-              borderRadius: BorderRadius.circular(999),
-            ),
+            AppUserAvatar(imageUrl: user.avatarUrl, size: 48),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

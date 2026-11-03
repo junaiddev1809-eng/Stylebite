@@ -25,7 +25,10 @@ class OtpController extends GetxController {
   late String? _token;
   late Map<String, dynamic>? _user;
   late String? _email;
+  late String _purpose;
   final debugOtp = RxnString();
+
+  bool get isLoginTwoFactor => _purpose == 'login_2fa';
 
   @override
   void onInit() {
@@ -33,6 +36,7 @@ class OtpController extends GetxController {
     _token = Get.arguments?['token'];
     _user = Get.arguments?['user'];
     _email = Get.arguments?['email'];
+    _purpose = (Get.arguments?['purpose']?.toString() ?? 'email_verification');
     _applyDebugOtp(Get.arguments?['debug_otp']);
     startTimer();
   }
@@ -70,11 +74,16 @@ class OtpController extends GetxController {
     if (formKey.currentState?.validate() ?? false) {
       isLoading.value = true;
       try {
+        final metadata = await AppDeviceService.getLoginMetadata();
         final response = await ApiHelper.postRequest(
           "auth/verify-email-otp",
           {
             'email': _email,
             'code': otpController.text.trim(),
+            'device_id': metadata.deviceId,
+            'platform': metadata.platform,
+            'push_token': metadata.pushToken,
+            'app_version': metadata.appVersion,
           },
         );
 

@@ -113,6 +113,7 @@ class ReelItemModel {
     this.showAd = false,
     this.adTriggerRatio = 0.4,
     this.ratingEnabled = false,
+    this.contestVotingClosed = false,
     this.publishedAt,
   });
 
@@ -156,9 +157,15 @@ class ReelItemModel {
   final bool showAd;
   final double adTriggerRatio;
   final bool ratingEnabled;
+
+  /// Contest voting window is over — show the saved score, never the rate UI.
+  final bool contestVotingClosed;
   final DateTime? publishedAt;
 
   bool get hasAvatar => avatarUrl.trim().isNotEmpty;
+
+  bool get showContestScoreBadge =>
+      ratingEnabled || (contestVotingClosed && rating.trim().isNotEmpty);
 
   String get views => _formatCount(viewCount);
 
@@ -248,6 +255,7 @@ class ReelItemModel {
     bool? showAd,
     double? adTriggerRatio,
     bool? ratingEnabled,
+    bool? contestVotingClosed,
     DateTime? publishedAt,
     bool clearViewerRating = false,
   }) {
@@ -294,6 +302,8 @@ class ReelItemModel {
       showAd: showAd ?? this.showAd,
       adTriggerRatio: adTriggerRatio ?? this.adTriggerRatio,
       ratingEnabled: ratingEnabled ?? this.ratingEnabled,
+      contestVotingClosed:
+          contestVotingClosed ?? this.contestVotingClosed,
       publishedAt: publishedAt ?? this.publishedAt,
     );
   }
@@ -459,39 +469,36 @@ class ReelItemModel {
       showAd: _asBool(json['show_ad']),
       adTriggerRatio: _asDouble(json['ad_trigger_ratio'], fallback: 0.4),
       ratingEnabled: () {
-        final contest = _asMap(json['contest']);
-        final status = (contest['status'] ?? '').toString().trim().toLowerCase();
-        final closed = status == 'completed' ||
-            status == 'ended' ||
-            status == 'closed' ||
-            status == 'cancelled' ||
-            status == 'canceled';
+        final postId = (json['id'] ?? '').toString();
+        final enrollment = ContestEnrollmentStore.instance.infoFor(postId);
+        final closed = _contestVotingClosedFromJson(json) ||
+            (enrollment?.votingClosed ?? false);
         if (closed) {
           return false;
         }
-        final votingEndRaw =
-            (contest['voting_end_at'] ?? '').toString().trim();
-        final votingEnd = DateTime.tryParse(votingEndRaw);
-        if (votingEnd != null &&
-            DateTime.now().toUtc().isAfter(votingEnd.toUtc())) {
-          return false;
-        }
-        if (contest.containsKey('can_vote') && !_asBool(contest['can_vote'])) {
-          return false;
-        }
         final viewerState = _asMap(json['viewer_state']);
-        // `in_contest` stays true after voting ends — trophy only, no bar.
+        // Trust the API when it sent an explicit vote flag. Enrollment must
+        // never revive Rate after can_vote/rating_enabled is false.
+        final hasExplicitVoteFlag = json.containsKey('rating_enabled') ||
+            json.containsKey('can_vote') ||
+            viewerState.containsKey('can_vote');
         final apiCanVote = _asBool(json['rating_enabled']) ||
             _asBool(json['can_vote']) ||
             _asBool(viewerState['can_vote']);
-        if (apiCanVote) {
-          return true;
+        if (hasExplicitVoteFlag) {
+          return apiCanVote;
         }
-        // Only fall back to enrollment when API omitted contest status.
-        return status.isEmpty &&
-            ContestEnrollmentStore.instance.contains(
-              (json['id'] ?? '').toString(),
-            );
+        // Payload omitted flags (e.g. contest detail seed) — only enable for
+        // contests that are still open by status.
+        return enrollment != null &&
+            !enrollment.votingClosed &&
+            _contestStatusAllowsVoting(enrollment.contestStatus);
+      }(),
+      contestVotingClosed: () {
+        final postId = (json['id'] ?? '').toString();
+        final enrollment = ContestEnrollmentStore.instance.infoFor(postId);
+        return _contestVotingClosedFromJson(json) ||
+            (enrollment?.votingClosed ?? false);
       }(),
       publishedAt: AppTimeFormatter.parse(
         (json['published_at'] ?? json['created_at'] ?? json['posted_at'])
@@ -551,6 +558,7 @@ class ReelItemModel {
       isFollowingAuthor: isFollowingAuthor,
       isVerifiedBadge: isVerifiedBadge,
       ratingEnabled: ratingEnabled,
+      contestStatus: contestVotingClosed ? 'completed' : '',
       latitude: latitude,
       longitude: longitude,
       publishedAt: publishedAt,
@@ -563,6 +571,53 @@ class ReelItemModel {
       }(),
     );
   }
+}
+
+bool _contestStatusAllowsVoting(String status) {
+  final normalized = status.trim().toLowerCase();
+  return normalized == 'active' ||
+      normalized == 'upcoming' ||
+      normalized == 'voting' ||
+      normalized == 'live';
+}
+
+bool _contestVotingClosedFromJson(Map<String, dynamic> json) {
+  final contest = _asMap(json['contest']);
+  final status = (contest['status'] ?? '').toString().trim().toLowerCase();
+  if (status == 'completed' ||
+      status == 'ended' ||
+      status == 'closed' ||
+      status == 'cancelled' ||
+      status == 'canceled') {
+    return true;
+  }
+  final votingEndRaw = (contest['voting_end_at'] ?? '').toString().trim();
+  final votingEnd = DateTime.tryParse(votingEndRaw);
+  if (votingEnd != null &&
+      DateTime.now().toUtc().isAfter(votingEnd.toUtc())) {
+    return true;
+  }
+  if (contest.containsKey('can_vote') && !_asBool(contest['can_vote'])) {
+    return true;
+  }
+  // Top-level API flags win when present and false.
+  final viewerState = _asMap(json['viewer_state']);
+  if (json.containsKey('rating_enabled') && !_asBool(json['rating_enabled'])) {
+    return (json['in_contest'] == true) ||
+        _asBool(json['in_contest']) ||
+        contest.isNotEmpty;
+  }
+  if (json.containsKey('can_vote') && !_asBool(json['can_vote'])) {
+    return (json['in_contest'] == true) ||
+        _asBool(json['in_contest']) ||
+        contest.isNotEmpty;
+  }
+  if (viewerState.containsKey('can_vote') && !_asBool(viewerState['can_vote'])) {
+    return (json['in_contest'] == true) ||
+        _asBool(json['in_contest']) ||
+        contest.isNotEmpty;
+  }
+  return false;
 }
 
 ReelFeedType _parseFeedType(dynamic responseType, dynamic postType) {

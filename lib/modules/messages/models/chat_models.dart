@@ -355,6 +355,9 @@ class ChatMessageModel {
     required this.timeLabel,
     required this.status,
     required this.isSeen,
+    this.messageType = 'text',
+    this.mediaUrl = '',
+    this.thumbnailUrl = '',
     this.myReaction = '',
     this.reactions = const <ChatMessageReactionGroup>[],
   });
@@ -367,8 +370,27 @@ class ChatMessageModel {
   final String timeLabel;
   final String status;
   final bool isSeen;
+  final String messageType;
+  final String mediaUrl;
+  final String thumbnailUrl;
   final String myReaction;
   final List<ChatMessageReactionGroup> reactions;
+
+  bool get hasMedia => mediaUrl.trim().isNotEmpty;
+
+  bool get isVideo =>
+      messageType.trim().toLowerCase() == 'video' ||
+      _looksLikeVideoUrl(mediaUrl);
+
+  static bool _looksLikeVideoUrl(String url) {
+    final lower = url.trim().toLowerCase();
+    return lower.endsWith('.mp4') ||
+        lower.endsWith('.mov') ||
+        lower.endsWith('.webm') ||
+        lower.endsWith('.mkv') ||
+        lower.endsWith('.m4v') ||
+        lower.endsWith('.avi');
+  }
 
   ChatMessageModel copyWith({
     String? status,
@@ -376,6 +398,9 @@ class ChatMessageModel {
     bool? isMine,
     String? myReaction,
     List<ChatMessageReactionGroup>? reactions,
+    String? messageType,
+    String? mediaUrl,
+    String? thumbnailUrl,
   }) {
     return ChatMessageModel(
       id: id,
@@ -386,6 +411,9 @@ class ChatMessageModel {
       timeLabel: timeLabel,
       status: status ?? this.status,
       isSeen: isSeen ?? this.isSeen,
+      messageType: messageType ?? this.messageType,
+      mediaUrl: mediaUrl ?? this.mediaUrl,
+      thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
       myReaction: myReaction ?? this.myReaction,
       reactions: reactions ?? this.reactions,
     );
@@ -410,6 +438,16 @@ class ChatMessageModel {
       json['time'],
     );
     final rawReactions = json['reactions'];
+    final attachments = json['attachments'];
+    Map<String, dynamic>? primaryAttachment;
+    if (attachments is List && attachments.isNotEmpty) {
+      final first = attachments.first;
+      if (first is Map) {
+        primaryAttachment = first.map(
+          (key, value) => MapEntry(key.toString(), value),
+        );
+      }
+    }
 
     return ChatMessageModel(
       id: _asInt(json['id']),
@@ -424,6 +462,24 @@ class ChatMessageModel {
       timeLabel: _messageTimeLabel(createdAt),
       status: _firstText(json['status'], json['delivery_status']),
       isSeen: _asBool(json['is_seen'] ?? json['seen']),
+      messageType: _firstText(
+        json['message_type'],
+        json['type'],
+        primaryAttachment?['media_type'],
+        primaryAttachment == null ? 'text' : 'image',
+      ),
+      mediaUrl: _firstText(
+        json['media_url'],
+        json['file_url'],
+        primaryAttachment?['file_url'],
+        primaryAttachment?['url'],
+      ),
+      thumbnailUrl: _firstText(
+        json['thumbnail_url'],
+        primaryAttachment?['thumbnail_url'],
+        json['media_url'],
+        primaryAttachment?['file_url'],
+      ),
       myReaction: (json['my_reaction'] ?? '').toString(),
       reactions: rawReactions is List
           ? [

@@ -196,6 +196,7 @@ class ContestController extends GetxController {
           detail.visibleSubmissions.map((item) => item.postId),
           contestId: detail.id,
           contestTitle: detail.title,
+          contestStatus: detail.status,
         );
       }
     } catch (error) {
@@ -312,6 +313,7 @@ class ContestController extends GetxController {
           joinedPostId,
           contestId: contestId,
           contestTitle: contestTitle,
+          contestStatus: 'active',
         );
         if (Get.isRegistered<HomeController>()) {
           Get.find<HomeController>().markPostContestEnrolled(
@@ -507,6 +509,7 @@ class ContestController extends GetxController {
         contest.enrolledPostIds,
         contestId: contest.id,
         contestTitle: contest.title,
+        contestStatus: contest.status,
       );
     }
   }

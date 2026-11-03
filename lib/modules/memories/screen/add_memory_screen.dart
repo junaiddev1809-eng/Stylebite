@@ -15,6 +15,8 @@ import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/config.dart';
 import '../controllers/memories_controller.dart';
 import '../models/memory_item_model.dart';
+import '../../upload/models/upload_post_model.dart';
+import '../../upload/widgets/upload_visibility_selector.dart';
 
 class AddMemoryScreen extends StatefulWidget {
   final Memories? memory;
@@ -47,6 +49,7 @@ class _AddMemoryScreenState extends State<AddMemoryScreen> {
   List<dynamic> _locationSuggestions = [];
   Timer? _debounce;
   bool _isLocating = false;
+  UploadPostVisibility _visibility = UploadPostVisibility.public;
 
   @override
   void initState() {
@@ -66,6 +69,9 @@ class _AddMemoryScreenState extends State<AddMemoryScreen> {
       _countryController.text = widget.memory!.country ?? '';
       _latController.text = widget.memory!.lat?.toString() ?? '';
       _lngController.text = widget.memory!.lng?.toString() ?? '';
+      _visibility =
+          parseUploadPostVisibility(widget.memory!.visibility) ??
+          UploadPostVisibility.public;
     }
   }
 
@@ -535,6 +541,20 @@ class _AddMemoryScreenState extends State<AddMemoryScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Who can see this memory?',
+                      style: AppFonts.beVietnam(
+                        size: 14,
+                        weight: FontWeight.w700,
+                        color: AppColors.text,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    UploadVisibilitySelector(
+                      selected: _visibility,
+                      onChanged: (value) => setState(() => _visibility = value),
+                    ),
                     const SizedBox(height: 24),
                     Container(
                       width: double.infinity,
@@ -561,6 +581,8 @@ class _AddMemoryScreenState extends State<AddMemoryScreen> {
                               'country': _countryController.text,
                               'lat': _latController.text,
                               'lng': _lngController.text,
+                              'visibility':
+                                  uploadPostVisibilityToApi(_visibility),
                             },
                             images: _selectedImages,
                             deletedImageIds: _deletedImageIds,

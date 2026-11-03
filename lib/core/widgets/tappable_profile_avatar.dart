@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
-import 'app_cached_image.dart';
 import 'app_hero_icon.dart';
+import 'app_user_avatar.dart';
 
 class TappableProfileAvatar extends StatelessWidget {
   const TappableProfileAvatar({
@@ -49,12 +49,9 @@ class TappableProfileAvatar extends StatelessWidget {
                     MaterialRectArcTween(begin: begin, end: end),
                 flightShuttleBuilder:
                     (context, animation, direction, fromContext, toContext) {
-                      return ClipOval(
-                        child: AppCachedImage(
-                          imageUrl: imageUrl,
-                          fit: BoxFit.cover,
-                          filterQuality: FilterQuality.high,
-                        ),
+                      return AppUserAvatar(
+                        imageUrl: imageUrl,
+                        size: photoSize,
                       );
                     },
                 child: Material(
@@ -180,18 +177,10 @@ class _CirclePhoto extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: ClipOval(
-        child: AppCachedImage(
-          imageUrl: imageUrl,
-          fit: BoxFit.cover,
-          width: size,
-          height: size,
-          filterQuality: FilterQuality.high,
-        ),
-      ),
+    return AppUserAvatar(
+      imageUrl: imageUrl,
+      size: size,
+      memCacheWidth: (size * 3).round(),
     );
   }
 }

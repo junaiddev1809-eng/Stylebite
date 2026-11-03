@@ -328,12 +328,24 @@ class AdEligibilityModel {
     required this.adsEnabled,
     required this.requirements,
     this.config,
+    this.monetizationStatus = 'none',
+    this.canRequest = false,
+    this.isApproved = false,
+    this.info = '',
+    this.overallProgress = 0,
+    this.adminNote,
   });
 
   final bool isEligible;
   final bool adsEnabled;
   final List<AdRequirementModel> requirements;
   final AdConfigModel? config;
+  final String monetizationStatus;
+  final bool canRequest;
+  final bool isApproved;
+  final String info;
+  final double overallProgress;
+  final String? adminNote;
 
   factory AdEligibilityModel.fromJson(Map<String, dynamic> json) {
     final List<AdRequirementModel> requirements = [];
@@ -346,8 +358,8 @@ class AdEligibilityModel {
                   AdRequirementModel.fromJson(item.cast<String, dynamic>()),
             ),
       );
-    } 
-    
+    }
+
     // Case 2: Requirements is a Map
     else if (json['requirements'] is Map) {
       final reqMap = json['requirements'] as Map;
@@ -365,31 +377,90 @@ class AdEligibilityModel {
 
     // Case 3: Flat keys from the specific log provided
     if (requirements.isEmpty) {
-      if (json.containsKey('followers')) {
+      if (json.containsKey('followers') || json.containsKey('vibe_count')) {
         requirements.add(AdRequirementModel(
           type: 'followers',
-          label: 'Followers',
-          current: _asDouble(json['followers']),
-          threshold: _asDouble(json['min_followers'] ?? json['followers_threshold'] ?? 0),
-          isPassed: _asBool(json['meets_followers'] ?? json['followers_passed'] ?? false),
+          label: 'Vibe Count',
+          current: _asDouble(json['vibe_count'] ?? json['followers']),
+          threshold: _asDouble(
+            json['min_vibe_count'] ??
+                json['min_followers'] ??
+                json['followers_threshold'] ??
+                0,
+          ),
+          isPassed: _asBool(
+            json['meets_vibe_count'] ??
+                json['meets_followers'] ??
+                json['followers_passed'] ??
+                false,
+          ),
         ));
       }
       if (json.containsKey('watch_hours')) {
         requirements.add(AdRequirementModel(
           type: 'watch_hours',
-          label: 'Watch Hours',
+          label: 'Watch Time',
           current: _asDouble(json['watch_hours']),
-          threshold: _asDouble(json['min_watch_hours'] ?? json['watch_hours_threshold'] ?? 0),
-          isPassed: _asBool(json['meets_watch_hours'] ?? json['watch_hours_passed'] ?? false),
+          threshold: _asDouble(
+            json['min_watch_hours'] ?? json['watch_hours_threshold'] ?? 0,
+          ),
+          isPassed: _asBool(
+            json['meets_watch_hours'] ?? json['watch_hours_passed'] ?? false,
+          ),
         ));
       }
     }
 
+    final status = (json['monetization_status'] ?? 'none').toString();
+    final adsEnabled = _asBool(json['ads_enabled']);
+    final isEligible = _asBool(
+      json['eligible'] ?? json['is_eligible'] ?? json['status'],
+    );
+
     return AdEligibilityModel(
-      isEligible: _asBool(json['eligible'] ?? json['is_eligible'] ?? json['status']),
-      adsEnabled: _asBool(json['ads_enabled']),
+      isEligible: isEligible,
+      adsEnabled: adsEnabled,
       requirements: requirements,
-      config: json['config'] != null ? AdConfigModel.fromJson(json['config']) : null,
+      config: json['config'] is Map
+          ? AdConfigModel.fromJson(
+              (json['config'] as Map).cast<String, dynamic>(),
+            )
+          : null,
+      monetizationStatus: status,
+      canRequest: _asBool(
+        json['can_request'] ??
+            (isEligible && (status == 'none' || status == 'rejected')),
+      ),
+      isApproved: _asBool(json['is_approved'] ?? (status == 'approved' || adsEnabled)),
+      info: (json['info'] ?? '').toString(),
+      overallProgress: _asDouble(json['overall_progress']),
+      adminNote: _asNullableString(json['monetization_admin_note']),
+    );
+  }
+
+  AdEligibilityModel copyWith({
+    bool? isEligible,
+    bool? adsEnabled,
+    List<AdRequirementModel>? requirements,
+    AdConfigModel? config,
+    String? monetizationStatus,
+    bool? canRequest,
+    bool? isApproved,
+    String? info,
+    double? overallProgress,
+    String? adminNote,
+  }) {
+    return AdEligibilityModel(
+      isEligible: isEligible ?? this.isEligible,
+      adsEnabled: adsEnabled ?? this.adsEnabled,
+      requirements: requirements ?? this.requirements,
+      config: config ?? this.config,
+      monetizationStatus: monetizationStatus ?? this.monetizationStatus,
+      canRequest: canRequest ?? this.canRequest,
+      isApproved: isApproved ?? this.isApproved,
+      info: info ?? this.info,
+      overallProgress: overallProgress ?? this.overallProgress,
+      adminNote: adminNote ?? this.adminNote,
     );
   }
 }

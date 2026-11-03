@@ -6,7 +6,9 @@ import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/app_back_navigation.dart';
 import '../../../core/utils/app_time_formatter.dart';
 import '../../../core/widgets/app_cached_image.dart';
+import '../../../core/widgets/app_cached_video_player.dart';
 import '../../../core/widgets/app_hero_icon.dart';
+import '../../../core/widgets/app_user_avatar.dart';
 import '../../../core/widgets/app_verified_badge.dart';
 import '../../../core/widgets/states/app_error_state.dart';
 import '../../../core/widgets/states/app_shimmer_box.dart';
@@ -184,6 +186,26 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           ? _ChatRequestActions(controller: _controller)
                           : Row(
                               children: [
+                                InkWell(
+                                  onTap: _controller.canAttachMedia
+                                      ? _controller.sendGalleryMedia
+                                      : null,
+                                  borderRadius: BorderRadius.circular(18),
+                                  child: SizedBox(
+                                    width: 42,
+                                    height: 42,
+                                    child: Icon(
+                                      Icons.perm_media_outlined,
+                                      size: 22,
+                                      color: _controller.canAttachMedia
+                                          ? AppColors.primary
+                                          : AppColors.hintText.withValues(
+                                              alpha: 0.55,
+                                            ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
                                 Expanded(
                                   child: AnimatedContainer(
                                     duration: const Duration(milliseconds: 180),
@@ -339,6 +361,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final choice = await showChatMessageOptionsSheet(
       context,
       canReport: !message.isMine,
+      canSaveToGallery: message.hasMedia,
+      isVideo: message.isVideo,
       currentReaction: message.myReaction,
     );
     if (!mounted || choice == null) {
@@ -358,6 +382,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           return;
         }
         await _controller.reactToMessage(message, emoji);
+        return;
+      case ChatMessageOptionAction.saveToGallery:
+        await _controller.saveMessageMedia(message);
         return;
       case ChatMessageOptionAction.report:
         final result = await showReportReasonSheet(
@@ -424,21 +451,9 @@ class _ChatHeader extends StatelessWidget {
                         colors: [AppColors.primary, AppColors.secondary],
                       ),
                     ),
-                    child: ClipOval(
-                      child: user?.imageUrl.trim().isNotEmpty == true
-                          ? AppCachedImage(
-                              imageUrl: user!.imageUrl,
-                              width: 42,
-                              height: 42,
-                            )
-                          : Container(
-                              color: AppColors.chip,
-                              alignment: Alignment.center,
-                              child: AppHeroIconData(
-                                Icons.person_rounded,
-                                color: AppColors.hintText,
-                              ),
-                            ),
+                    child: AppUserAvatar(
+                      imageUrl: user?.imageUrl ?? '',
+                      size: 42,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -864,6 +879,60 @@ class _ChatMessageBubble extends StatelessWidget {
   final ValueChanged<String>? onReactionTap;
 
   Widget _messageBody(BuildContext context, bool isMine) {
+    if (message.hasMedia) {
+      final caption = message.body.trim();
+      final mediaChild = message.isVideo
+          ? AppCachedVideoPlayer(
+              videoUrl: message.mediaUrl,
+              thumbnailUrl: message.thumbnailUrl.isNotEmpty
+                  ? message.thumbnailUrl
+                  : null,
+              autoPlay: false,
+              looping: true,
+              isActive: true,
+              showControls: true,
+              showPlayPauseButton: true,
+              showMuteButton: true,
+              showCenterPlayPauseButton: true,
+              enableTapToTogglePlayback: true,
+              showProgressBar: true,
+              borderRadius: BorderRadius.circular(16),
+              fit: BoxFit.cover,
+            )
+          : AppCachedImage(
+              imageUrl: message.thumbnailUrl.isNotEmpty
+                  ? message.thumbnailUrl
+                  : message.mediaUrl,
+              fit: BoxFit.cover,
+            );
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(
+              width: 220,
+              height: 220,
+              child: mediaChild,
+            ),
+          ),
+          if (caption.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              caption,
+              style: AppFonts.beVietnam(
+                size: 15,
+                height: 1.35,
+                weight: FontWeight.w500,
+                color: isMine ? Colors.white : AppColors.text,
+              ),
+            ),
+          ],
+        ],
+      );
+    }
+
     final share = InAppSharePayload.tryParse(message.body);
     if (share == null) {
       return Text(

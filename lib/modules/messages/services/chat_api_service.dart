@@ -79,6 +79,41 @@ class ChatApiService {
     );
   }
 
+  Future<ChatSendMessageResponseModel> sendMediaMessage({
+    required int conversationId,
+    required String mediaPath,
+    String body = '',
+  }) async {
+    final response = await ApiHelper.multipartRequest(
+      'chats/$conversationId/messages',
+      fields: <String, String>{
+        if (body.trim().isNotEmpty) 'body': body.trim(),
+      },
+      fileFieldName: 'media',
+      filePath: mediaPath,
+      withAuth: true,
+    );
+
+    final payload = _decodeResponse(response);
+    return ChatSendMessageResponseModel.fromJson(
+      payload,
+      currentUsername: LocalStorage.getUsername() ?? '',
+    );
+  }
+
+  @Deprecated('Use sendMediaMessage')
+  Future<ChatSendMessageResponseModel> sendImageMessage({
+    required int conversationId,
+    required String imagePath,
+    String body = '',
+  }) {
+    return sendMediaMessage(
+      conversationId: conversationId,
+      mediaPath: imagePath,
+      body: body,
+    );
+  }
+
   Future<ChatMessageModel> toggleReaction({
     required int conversationId,
     required int messageId,

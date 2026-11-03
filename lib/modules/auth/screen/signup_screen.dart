@@ -126,20 +126,31 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: Icons.alternate_email,
                 ),
                 const SizedBox(height: 14),
-                AppTextField(
-                  controller: _controller.emailController,
-                  label: 'Email',
-                  hintText: 'you@example.com',
-                  keyboardType: TextInputType.emailAddress,
-                  textInputAction: TextInputAction.next,
-                  validator: (value) {
-                    final validatorError = AppValidators.email(value);
-                    if (validatorError != null) return validatorError;
-                    
-                    return _controller.emailError.value;
-                  },
-                  prefixIcon: Icons.email_outlined,
-                ),
+                Obx(() {
+                  final available = _controller.emailAvailable.value;
+                  final ok = available == true;
+                  return AppTextField(
+                    controller: _controller.emailController,
+                    label: 'Email',
+                    hintText: 'you@gmail.com',
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    onChanged: _controller.onEmailChanged,
+                    borderColor: ok ? Colors.green : null,
+                    helperText: ok ? 'Email is available.' : null,
+                    helperColor: Colors.green.shade700,
+                    validator: (value) {
+                      final validatorError = AppValidators.email(value);
+                      if (validatorError != null) return validatorError;
+                      if (_controller.emailAvailable.value == false) {
+                        return _controller.emailError.value ??
+                            'An account already exists with this email.';
+                      }
+                      return null;
+                    },
+                    prefixIcon: Icons.email_outlined,
+                  );
+                }),
                 const SizedBox(height: 14),
                 AppTextField(
                   controller: _controller.passwordController,

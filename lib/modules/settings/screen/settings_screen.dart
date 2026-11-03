@@ -15,6 +15,7 @@ import '../../support/screen/support_tickets_screen.dart';
 import '../screen/about_stylebite_screen.dart';
 import '../screen/blocked_users_screen.dart';
 import '../screen/help_center_screen.dart';
+import '../screen/monetization_screen.dart';
 import '../screen/privacy_policy_screen.dart';
 import '../controllers/settings_controller.dart';
 import '../widgets/settings_row_tile.dart';
@@ -135,6 +136,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           trailingIcon: Icons.chevron_right_rounded,
                           onTap: () =>
                               Get.to<void>(() => const MemoriesScreen()),
+                        ),
+                        SettingsRowTile(
+                          title: 'Monetization',
+                          trailingIcon: Icons.chevron_right_rounded,
+                          onTap: () =>
+                              Get.to<void>(() => const MonetizationScreen()),
                         ),
                       ],
                     ),

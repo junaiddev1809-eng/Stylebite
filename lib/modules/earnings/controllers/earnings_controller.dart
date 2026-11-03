@@ -147,18 +147,16 @@ class EarningsController extends GetxController {
     }
   }
 
+  final RxBool isRequestingMonetization = false.obs;
+
   Future<void> toggleAds(bool enable) async {
     if (isTogglingAds.value) return;
 
     // Optimistic UI update
     final current = eligibility.value;
     if (current == null) return;
-    
-    eligibility.value = AdEligibilityModel(
-      isEligible: current.isEligible,
-      adsEnabled: enable,
-      requirements: current.requirements,
-    );
+
+    eligibility.value = current.copyWith(adsEnabled: enable);
 
     isTogglingAds.value = true;
     try {
@@ -166,23 +164,76 @@ class EarningsController extends GetxController {
         'ads/toggle',
         body: {'enabled': enable},
       );
-      
+
       if (response == null || response.statusCode != 200) {
         throw Exception('Failed to update ad settings');
       }
-      
+
       final payload = jsonDecode(response.body) as Map<String, dynamic>;
       if (payload['status_code'] != 1 && payload['status_code'] != '1') {
         throw Exception(payload['message'] ?? 'Failed to update ad settings');
       }
 
-      successSnackBar(message: enable ? 'Ads enabled successfully' : 'Ads disabled');
+      if (payload['data'] is Map) {
+        eligibility.value = AdEligibilityModel.fromJson(
+          (payload['data'] as Map).cast<String, dynamic>(),
+        );
+      }
+
+      successSnackBar(
+        message: enable ? 'Ads enabled successfully' : 'Ads disabled',
+      );
     } catch (e) {
       // Revert on error
       eligibility.value = current;
       errorSnackBar(message: e.toString().replaceFirst('Exception: ', ''));
     } finally {
       isTogglingAds.value = false;
+    }
+  }
+
+  Future<bool> requestMonetization() async {
+    if (isRequestingMonetization.value) return false;
+
+    isRequestingMonetization.value = true;
+    try {
+      final response = await ApiHelper.postRequestWithAuthorization(
+        'monetization/request',
+        body: <String, dynamic>{},
+      );
+
+      final payload = response == null
+          ? null
+          : jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (payload != null && payload['data'] is Map) {
+        eligibility.value = AdEligibilityModel.fromJson(
+          (payload['data'] as Map).cast<String, dynamic>(),
+        );
+      }
+
+      if (response == null ||
+          (response.statusCode != 200 && response.statusCode != 201)) {
+        throw Exception(
+          payload?['message']?.toString() ??
+              'Could not submit monetization request',
+        );
+      }
+
+      if (payload?['status_code'] != 1 && payload?['status_code'] != '1') {
+        throw Exception(
+          payload?['message']?.toString() ??
+              'Could not submit monetization request',
+        );
+      }
+
+      successSnackBar(message: 'Monetization request sent for review');
+      return true;
+    } catch (e) {
+      errorSnackBar(message: e.toString().replaceFirst('Exception: ', ''));
+      return false;
+    } finally {
+      isRequestingMonetization.value = false;
     }
   }
 

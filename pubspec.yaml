@@ -2,11 +2,7 @@
 description: "A new Flutter project."
 publish_to: 'none'
 
-<<<<<<< HEAD
-version: 1.0.16+40
-=======
-version: 1.0.17+51
->>>>>>> origin/phase2-profile-section-loading
+version: 1.0.17+52
 
 environment:
   sdk: ^3.11.1
@@ -69,3 +65,4 @@ flutter:
   assets:
     - assets/images/
     - assets/svg/
+

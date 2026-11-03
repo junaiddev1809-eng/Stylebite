@@ -16,6 +16,7 @@ class PostActionBar extends StatelessWidget {
     required this.onComment,
     required this.onShare,
     required this.onSave,
+    this.onRatersTap,
     this.isLikeLoading = false,
     this.isCommentLoading = false,
     this.isShareLoading = false,
@@ -42,6 +43,8 @@ class PostActionBar extends StatelessWidget {
   final VoidCallback onComment;
   final Future<void> Function() onShare;
   final VoidCallback onSave;
+  /// Opens who rated this contest post and their scores (between share & save).
+  final VoidCallback? onRatersTap;
   final bool isLikeLoading;
   final bool isCommentLoading;
   final bool isShareLoading;
@@ -94,7 +97,7 @@ class PostActionBar extends StatelessWidget {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const HeroIcon(
+                : HeroIcon(
                     HeroIcons.share,
                     style: HeroIconStyle.outline,
                     size: 20,
@@ -102,6 +105,21 @@ class PostActionBar extends StatelessWidget {
                   ),
           ),
         ),
+        if (onRatersTap != null) ...[
+          const SizedBox(width: 14),
+          InkWell(
+            onTap: onRatersTap,
+            borderRadius: BorderRadius.circular(10),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Icon(
+                Icons.star_rounded,
+                size: 22,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
         if (showRatingSelector && onRatingSelected != null)
           Flexible(
             child: Align(
@@ -144,11 +162,12 @@ class PostActionBar extends StatelessWidget {
     required HeroIcons heroIcon,
     required HeroIconStyle style,
     String? label,
-    Color color = AppColors.text,
+    Color? color,
     required VoidCallback onTap,
     VoidCallback? onLabelTap,
     bool isLoading = false,
   }) {
+    final resolvedColor = color ?? AppColors.text;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: Row(
@@ -166,7 +185,9 @@ class PostActionBar extends StatelessWidget {
                     heroIcon,
                     style: style,
                     size: 20,
-                    color: isLoading ? color.withValues(alpha: 0.75) : color,
+                    color: isLoading
+                        ? resolvedColor.withValues(alpha: 0.75)
+                        : resolvedColor,
                   ),
                   if (isLoading)
                     const SizedBox(
@@ -217,7 +238,10 @@ class PostActionBar extends StatelessWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isSelected ? AppColors.primary : const Color(0xFFF6F1EF),
+                color: isSelected ? AppColors.primary : AppColors.chip,
+                border: isSelected
+                    ? null
+                    : Border.all(color: AppColors.cardBorder),
               ),
               child: Text(
                 '$value',
@@ -245,7 +269,7 @@ class PostActionBar extends StatelessWidget {
         decoration: BoxDecoration(
           color: reviewsExpanded
               ? AppColors.primary
-              : const Color(0xFFE9E3E1),
+              : AppColors.chip,
           borderRadius: BorderRadius.circular(999),
         ),
         child: isReviewsLoading

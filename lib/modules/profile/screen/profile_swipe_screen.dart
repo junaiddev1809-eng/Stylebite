@@ -92,7 +92,7 @@ class _ProfileSwipeScreenState extends State<ProfileSwipeScreen> {
 
   Widget _buildUploadButton() {
     return Material(
-      color: Colors.white.withValues(alpha: 0.96),
+      color: AppColors.surface,
       shape: const CircleBorder(),
       elevation: 12,
       shadowColor: Colors.black.withValues(alpha: 0.30),

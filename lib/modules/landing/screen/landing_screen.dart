@@ -2,9 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:get/get.dart';
 
+import '../../../core/constants/bottom_nav_constants.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme_rebuild.dart';
 import '../controllers/landing_controller.dart';
 import '../widgets/landing_bottom_nav.dart';
 import '../widgets/landing_home_tab.dart';
@@ -73,7 +76,8 @@ class _LandingScreenState extends State<LandingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
+    return AppThemeRebuild(
+      builder: (context) => PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) {
@@ -90,7 +94,7 @@ class _LandingScreenState extends State<LandingScreen> {
       },
       child: Scaffold(
         extendBody: true,
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.backgroundThemed,
         body: NotificationListener<ScrollNotification>(
           onNotification: (notification) {
             _controller.onPrimaryScroll(notification);
@@ -99,55 +103,74 @@ class _LandingScreenState extends State<LandingScreen> {
           // The pager does not listen to every touch. A carousel or other
           // horizontal control wins its own drag. A clear sideways drag
           // follows the finger, then settles only if it was a real page swipe.
-          child: RawGestureDetector(
-            behavior: HitTestBehavior.translucent,
-            gestures: <Type, GestureRecognizerFactory>{
-              _LandingPageSwipeRecognizer:
-                  GestureRecognizerFactoryWithHandlers<
-                      _LandingPageSwipeRecognizer>(
-                () => _LandingPageSwipeRecognizer(
-                  isLocked: () => _controller.horizontalChildLocks.value > 0,
-                ),
-                (recognizer) {
-                  recognizer
-                    ..onStart = (_) {
-                      _warm(_controller.currentIndex.value);
-                      _controller.beginUserPageDrag();
-                    }
-                    ..onUpdate = (details) {
-                      _controller.updateUserPageDrag(
-                        details.primaryDelta ?? details.delta.dx,
-                      );
-                    }
-                    ..onEnd = (details) {
-                      _controller.endUserPageDrag(details.primaryVelocity ?? 0);
-                    }
-                    ..onCancel = _controller.cancelUserPageDrag;
-                },
-              ),
-            },
-            child: Obx(() {
-              final index = _controller.currentIndex.value;
-              _warm(index);
-              return PageView.builder(
-                controller: _controller.pageController,
-                physics: const NeverScrollableScrollPhysics(),
-                allowImplicitScrolling: true,
-                itemCount: _pages.length,
-                itemBuilder: (context, pageIndex) {
-                  final page = _pages[pageIndex];
-                  return TickerMode(
-                    enabled: pageIndex == index,
-                    child: ColoredBox(
-                      color: pageIndex == 1
-                          ? const Color(0xFF0E0E11)
-                          : AppColors.background,
-                      child: page ?? const SizedBox.expand(),
+          // Hits in the floating bottom-nav band are ignored so a tab tap
+          // cannot also start a page-swipe settle that yanks back to Feed.
+          child: Builder(
+            builder: (context) {
+              final bottomInset = MediaQuery.paddingOf(context).bottom;
+              final navBand = kBottomNavHeight +
+                  kBottomNavVerticalMargin +
+                  (bottomInset > 0 ? bottomInset : 8);
+              return Obx(() {
+                final index = _controller.currentIndex.value;
+                _warm(index);
+                // Reels hide the floating nav — do not eat that bottom band or
+                // the seek bar / scrub gestures never receive hits.
+                final excludeBottom = index == 1 ? 0.0 : navBand;
+                return _ExcludeBottomHits(
+                  bottomExclude: excludeBottom,
+                  child: RawGestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    gestures: <Type, GestureRecognizerFactory>{
+                      _LandingPageSwipeRecognizer:
+                          GestureRecognizerFactoryWithHandlers<
+                              _LandingPageSwipeRecognizer>(
+                        () => _LandingPageSwipeRecognizer(
+                          isLocked: () =>
+                              _controller.horizontalChildLocks.value > 0,
+                        ),
+                        (recognizer) {
+                          recognizer
+                            ..onStart = (_) {
+                              _warm(_controller.currentIndex.value);
+                              _controller.beginUserPageDrag();
+                            }
+                            ..onUpdate = (details) {
+                              _controller.updateUserPageDrag(
+                                details.primaryDelta ?? details.delta.dx,
+                              );
+                            }
+                            ..onEnd = (details) {
+                              _controller.endUserPageDrag(
+                                details.primaryVelocity ?? 0,
+                              );
+                            }
+                            ..onCancel = _controller.cancelUserPageDrag;
+                        },
+                      ),
+                    },
+                    child: PageView.builder(
+                      controller: _controller.pageController,
+                      physics: const NeverScrollableScrollPhysics(),
+                      allowImplicitScrolling: true,
+                      itemCount: _pages.length,
+                      itemBuilder: (context, pageIndex) {
+                        final page = _pages[pageIndex];
+                        return TickerMode(
+                          enabled: pageIndex == index,
+                          child: ColoredBox(
+                            color: pageIndex == 1
+                                ? const Color(0xFF0E0E11)
+                                : AppColors.backgroundThemed,
+                            child: page ?? const SizedBox.expand(),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              );
-            }),
+                  ),
+                );
+              });
+            },
           ),
         ),
         // Reels are full-bleed like TikTok/IG — no docked pill on that tab.
@@ -158,11 +181,17 @@ class _LandingScreenState extends State<LandingScreen> {
           return LandingBottomNav(
             tabs: _controller.tabs,
             currentIndex: _controller.currentIndex.value,
-            onTap: _controller.onTabChanged,
+            onTap: (index) {
+              // Build the destination page before the pager jumps so a
+              // cold tab never lands on an empty placeholder.
+              _warm(index);
+              _controller.onTabChanged(index);
+            },
             compact: _controller.isBottomNavCompact.value,
           );
         }),
       ),
+    ),
     );
   }
 }
@@ -181,6 +210,52 @@ Widget _pageFor(int index) {
       return const ProfileSwipeScreen();
     default:
       return const LandingHomeTab();
+  }
+}
+
+/// Lets the floating bottom nav own pointers in its band when `extendBody`
+/// draws the feed underneath it.
+class _ExcludeBottomHits extends SingleChildRenderObjectWidget {
+  const _ExcludeBottomHits({
+    required this.bottomExclude,
+    required super.child,
+  });
+
+  final double bottomExclude;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return _RenderExcludeBottomHits(bottomExclude: bottomExclude);
+  }
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderExcludeBottomHits renderObject,
+  ) {
+    renderObject.bottomExclude = bottomExclude;
+  }
+}
+
+class _RenderExcludeBottomHits extends RenderProxyBox {
+  _RenderExcludeBottomHits({required double bottomExclude})
+      : _bottomExclude = bottomExclude;
+
+  double _bottomExclude;
+
+  set bottomExclude(double value) {
+    if (_bottomExclude == value) {
+      return;
+    }
+    _bottomExclude = value;
+  }
+
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    if (_bottomExclude > 0 && position.dy > size.height - _bottomExclude) {
+      return false;
+    }
+    return super.hitTest(result, position: position);
   }
 }
 

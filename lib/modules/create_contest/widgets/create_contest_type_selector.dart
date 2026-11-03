@@ -64,7 +64,7 @@ class _TypeCard extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: selected ? AppColors.primary : Colors.transparent,

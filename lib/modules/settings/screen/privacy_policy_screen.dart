@@ -22,7 +22,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 color: AppColors.background.withValues(alpha: 0.88),
                 border: Border(
                   bottom: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: AppColors.divider,
                   ),
                 ),
               ),
@@ -215,7 +215,7 @@ class _PolicySection extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(

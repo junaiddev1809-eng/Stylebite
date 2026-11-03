@@ -17,6 +17,7 @@ class LocalStorage {
   static const String _savedLoginIdKey = 'savedLoginId';
   static const String _rememberLoginIdConsentKey = 'rememberLoginIdConsent';
   static const String _backendOriginKey = 'backendOrigin';
+  static const String _themeModeKey = 'themeMode';
 
   /// Reactive view of [getAvatarUrl] for widgets that must update without
   /// starting ProfileController (for example the Home top-bar avatar).
@@ -225,6 +226,24 @@ class LocalStorage {
 
   static bool hasSeenIntro() {
     return prefs.getBool(_hasSeenIntroKey) ?? false;
+  }
+
+  /// Persisted appearance: `light` | `dark` | `system`. Default light.
+  static String? getThemeMode() {
+    final stored = prefs.getString(_themeModeKey);
+    if (stored == null || stored.trim().isEmpty) {
+      return null;
+    }
+    return stored.trim().toLowerCase();
+  }
+
+  static Future<void> setThemeMode(String mode) async {
+    final normalized = mode.trim().toLowerCase();
+    const allowed = <String>{'light', 'dark', 'system'};
+    await prefs.setString(
+      _themeModeKey,
+      allowed.contains(normalized) ? normalized : 'light',
+    );
   }
 
   // Clear all stored data

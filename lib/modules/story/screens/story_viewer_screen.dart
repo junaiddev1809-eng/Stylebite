@@ -61,6 +61,13 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     _index = widget.startIndex.clamp(0, _items.length - 1);
     _replyFocus.addListener(_onReplyFocus);
     _startHold();
+    // Warm the DM thread so the first reaction isn't stuck on initializeChat.
+    if (_canReply) {
+      final name = widget.bucket.username.trim().replaceFirst('@', '');
+      if (name.isNotEmpty) {
+        unawaited(_ensureConversation(name));
+      }
+    }
   }
 
   @override
@@ -104,7 +111,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     _elapsedMs = 0;
     _holdPaused = false;
     _advancing = false;
-    _conversationId = null;
+    // Keep _conversationId across items in this bucket (same author).
     unawaited(StoryController.ensure().markSeen(_current.id));
     // Videos only advance via playback progress; if init/network hangs they
     // used to sit forever. Fail-safe moves on after a few seconds.
@@ -236,14 +243,36 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     }
   }
 
+  void _showBurst(String value) {
+    setState(() => _burst = value);
+    final holdMs = value == 'Sent' ? 450 : 260;
+    Future<void>.delayed(Duration(milliseconds: holdMs), () {
+      if (!mounted || _burst != value) {
+        return;
+      }
+      setState(() => _burst = null);
+    });
+  }
+
   Future<void> _send(String body, {String? burst}) async {
     final text = body.trim();
     final username = _current.username.trim().replaceFirst('@', '');
-    if (text.isEmpty || username.isEmpty || _sending || widget.bucket.isMine) {
+    if (text.isEmpty || username.isEmpty || widget.bucket.isMine) {
       return;
     }
-    setState(() => _sending = true);
-    _setInputPaused(true);
+    final isReaction = burst != null && _reactions.contains(burst);
+    // Typed replies stay single-flight; emoji reactions stay snappy and can overlap.
+    if (!isReaction && _sending) {
+      return;
+    }
+
+    if (isReaction) {
+      _showBurst(burst);
+    } else {
+      setState(() => _sending = true);
+      _setInputPaused(true);
+    }
+
     try {
       final conversationId = await _ensureConversation(username);
       if (conversationId == null) {
@@ -253,19 +282,17 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
       if (!mounted) {
         return;
       }
-      _replyController.clear();
-      _replyFocus.unfocus();
-      setState(() => _burst = burst ?? 'Sent');
-      await Future<void>.delayed(const Duration(milliseconds: 700));
-      if (mounted) {
-        setState(() => _burst = null);
+      if (!isReaction) {
+        _replyController.clear();
+        _replyFocus.unfocus();
+        _showBurst('Sent');
       }
     } on ChatApiException catch (error) {
       errorSnackBar(message: error.message);
     } catch (_) {
       errorSnackBar(message: 'Unable to send that right now.');
     } finally {
-      if (mounted) {
+      if (mounted && !isReaction) {
         setState(() => _sending = false);
         if (!_replyFocus.hasFocus) {
           _setInputPaused(false);
@@ -502,7 +529,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
           children: [
             for (final emoji in _reactions)
               GestureDetector(
-                onTap: _sending ? null : () => _send(_storyNote(emoji), burst: emoji),
+                onTap: () => unawaited(_send(_storyNote(emoji), burst: emoji)),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
                   child: Text(emoji, style: const TextStyle(fontSize: 28)),

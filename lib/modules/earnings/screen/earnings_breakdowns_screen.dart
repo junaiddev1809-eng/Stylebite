@@ -136,7 +136,7 @@ class _BreakdownsShimmer extends StatelessWidget {
       itemBuilder: (context, index) => Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
         ),
         child: const Row(

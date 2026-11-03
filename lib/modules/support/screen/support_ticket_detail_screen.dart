@@ -71,7 +71,7 @@ class _SupportTicketDetailScreenState
                   color: AppColors.background.withValues(alpha: 0.88),
                   border: Border(
                     bottom: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.8),
+                      color: AppColors.divider,
                     ),
                   ),
                 ),
@@ -110,7 +110,7 @@ class _SupportTicketDetailScreenState
                           ? InkWell(
                               onTap: _confirmClose,
                               borderRadius: BorderRadius.circular(999),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.lock_outline_rounded,
                                 color: AppColors.hintText,
                               ),
@@ -246,7 +246,7 @@ class _TicketSummaryCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
         boxShadow: const [
           BoxShadow(
@@ -334,12 +334,10 @@ class _MessageBubble extends StatelessWidget {
                         colors: [AppColors.primary, Color(0xFFFF8A5B)],
                       )
                     : null,
-                color: isMine ? null : Colors.white,
+                color: isMine ? null : AppColors.card,
                 border: isMine
                     ? null
-                    : Border.all(
-                        color: AppColors.hintText.withValues(alpha: 0.12),
-                      ),
+                    : Border.all(color: AppColors.cardBorder),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -422,7 +420,7 @@ class _ReplyComposer extends StatelessWidget {
         10 + MediaQuery.of(context).viewInsets.bottom,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -468,7 +466,7 @@ class _ReplyComposer extends StatelessWidget {
                                 child: Container(
                                   width: 18,
                                   height: 18,
-                                  decoration: const BoxDecoration(
+                                  decoration: BoxDecoration(
                                     color: Colors.black87,
                                     shape: BoxShape.circle,
                                   ),
@@ -493,7 +491,7 @@ class _ReplyComposer extends StatelessWidget {
               InkWell(
                 onTap: () => _pickAttachment(context),
                 borderRadius: BorderRadius.circular(999),
-                child: const SizedBox(
+                child: SizedBox(
                   width: 40,
                   height: 40,
                   child: HeroIcon(
@@ -516,7 +514,7 @@ class _ReplyComposer extends StatelessWidget {
                       color: AppColors.hintText,
                     ),
                     filled: true,
-                    fillColor: const Color(0xFFF3F0EF),
+                    fillColor: AppColors.chip,
                     border: OutlineInputBorder(
                       borderSide: BorderSide.none,
                       borderRadius: BorderRadius.circular(999),
@@ -536,7 +534,7 @@ class _ReplyComposer extends StatelessWidget {
                   child: Container(
                     width: 40,
                     height: 40,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
                         colors: [AppColors.primary, AppColors.secondary],
@@ -618,7 +616,7 @@ class _ClosedTicketBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),

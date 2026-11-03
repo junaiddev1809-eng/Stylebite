@@ -178,7 +178,7 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
                       elevation: 4,
                       child: IconButton(
                         onPressed: () => Get.back<void>(),
-                        icon: const AppHeroIconData(
+                        icon: AppHeroIconData(
                           Icons.arrow_back_rounded,
                           color: AppColors.text,
                         ),
@@ -187,7 +187,7 @@ class _RestaurantMapScreenState extends State<RestaurantMapScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Material(
-                        color: Colors.white,
+                        color: AppColors.surface,
                         elevation: 4,
                         borderRadius: BorderRadius.circular(18),
                         child: Padding(

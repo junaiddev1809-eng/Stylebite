@@ -28,7 +28,7 @@ class UploadFoodRatings extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F0EF),
+        color: AppColors.chip,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(

@@ -95,8 +95,8 @@ class _StoryRing extends StatelessWidget {
                     ),
                     child: Container(
                       padding: const EdgeInsets.all(1.6),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
                         shape: BoxShape.circle,
                       ),
                       child: ClipOval(
@@ -108,8 +108,8 @@ class _StoryRing extends StatelessWidget {
                                 fit: BoxFit.cover,
                                 memCacheWidth: 160,
                               )
-                            : const ColoredBox(
-                                color: Color(0xFFE9E3E1),
+                            : ColoredBox(
+                                color: AppColors.chip,
                                 child: Center(
                                   child: AppHeroIconData(
                                     Icons.person_rounded,

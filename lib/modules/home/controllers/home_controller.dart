@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
@@ -308,6 +309,9 @@ class HomeController extends GetxController {
     
     try {
       final cache = _session;
+      // New seed each refresh / cold start so For You does not pin the
+      // same post on top until something newer is uploaded.
+      cache.feedSeed = math.Random().nextInt(1 << 30) + 1;
       final staleIds = List<String>.from(cache.loadedPostIds);
 
       // Fetch page 1 and replace existing data in cache and visible list
@@ -532,7 +536,12 @@ class HomeController extends GetxController {
     final next = <HomePostModel>[];
     for (final post in visiblePosts) {
       final info = ContestEnrollmentStore.instance.infoFor(post.id);
-      if (post.ratingEnabled || info == null) {
+      // Never revive the 1–5 bar when the API already closed voting (ended
+      // contest keeps trophy via contestId/title + status).
+      if (info == null ||
+          post.ratingEnabled ||
+          post.isContestEnded ||
+          (post.isInContest && !post.ratingEnabled)) {
         next.add(post);
         continue;
       }
@@ -805,9 +814,17 @@ class HomeController extends GetxController {
     final parsed = HomeFeedResponse.fromJson(payload);
     final filteredFeed = parsed.feed.where(_matchesCurrentSelection).toList();
     final store = PostInteractionStore.ensure();
-    final rankedFeed = (selectedDiscoverType.value == HomeDiscoverType.forYou
-            ? TrendingRanker.rankPosts(filteredFeed)
-            : filteredFeed)
+    final useSessionShuffle =
+        selectedDiscoverType.value == HomeDiscoverType.forYou &&
+        _session.feedSeed > 0;
+    // Session shuffle comes from the API — do not re-sort with TrendingRanker
+    // or the same high-engagement posts climb back to the top every open.
+    final orderedFeed = useSessionShuffle
+        ? filteredFeed
+        : (selectedDiscoverType.value == HomeDiscoverType.forYou
+              ? TrendingRanker.rankPosts(filteredFeed)
+              : filteredFeed);
+    final rankedFeed = orderedFeed
         .map((post) => store.ingestHome(post, observedAt: observedAt))
         .toList(growable: false);
     final cache = _session;
@@ -846,12 +863,20 @@ class HomeController extends GetxController {
         ? 'for_you'
         : 'nearby';
     
-    var endpoint = 'feed/home?type=$type&page=$page&per_page=10&discover_type=$discoverType';
-    
-    if (selectedDiscoverType.value == HomeDiscoverType.nearby && lat != null && lng != null) {
+    var endpoint =
+        'feed/home?type=$type&page=$page&per_page=10&discover_type=$discoverType';
+
+    if (selectedDiscoverType.value == HomeDiscoverType.forYou &&
+        _session.feedSeed > 0) {
+      endpoint += '&feed_seed=${_session.feedSeed}';
+    }
+
+    if (selectedDiscoverType.value == HomeDiscoverType.nearby &&
+        lat != null &&
+        lng != null) {
       endpoint += '&lat=$lat&lng=$lng';
     }
-    
+
     return endpoint;
   }
 
@@ -1290,4 +1315,6 @@ class _FeedSessionState {
   bool hasMore = true;
   double scrollOffset = 0;
   DateTime? lastSyncedAt;
+  /// Stable for load-more within one session; refreshed on each refreshFeed.
+  int feedSeed = 0;
 }

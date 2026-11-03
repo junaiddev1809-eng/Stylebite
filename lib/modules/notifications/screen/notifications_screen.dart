@@ -96,8 +96,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     horizontal: 12,
                     vertical: 8,
                   ),
-                  side: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
-                  backgroundColor: Colors.white.withValues(alpha: 0.55),
+                  side: BorderSide(color: AppColors.cardBorder),
+                  backgroundColor: AppColors.chip,
                 ),
                 child: Text(
                   _controller.isMarkingAllRead.value
@@ -299,14 +299,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         _openActorProfile(item);
         break;
       case NotificationKind.contest:
-        if (item.entityId > 0) {
-          Get.toNamed(
-            AppRoutes.contestDetail,
-            arguments: {'contestId': item.entityId},
-          );
-        } else {
-          _openLandingTab(3);
-        }
+        _openContestNotification(item);
         break;
       case NotificationKind.message:
         Get.to<void>(() => const MessagesScreen());
@@ -331,19 +324,70 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  void _openContestNotification(NotificationItemModel item) {
+    final contestId = item.entityId > 0
+        ? item.entityId
+        : _contestIdFromActionUrl(item.actionUrl);
+    if (contestId <= 0) {
+      _openLandingTab(3);
+      return;
+    }
+    if (item.isContestResultsNotification) {
+      Get.toNamed(
+        AppRoutes.contestRanking,
+        arguments: {'contestId': contestId},
+      );
+      return;
+    }
+    Get.toNamed(
+      AppRoutes.contestDetail,
+      arguments: {'contestId': contestId},
+    );
+  }
+
+  int _contestIdFromActionUrl(String actionUrl) {
+    final uri = Uri.tryParse(actionUrl.trim());
+    final segments =
+        uri?.pathSegments.where((segment) => segment.isNotEmpty).toList() ??
+            const <String>[];
+    if (segments.length < 2) {
+      return 0;
+    }
+    final resource = segments[0].toLowerCase();
+    if (resource != 'contests' && resource != 'contest') {
+      return 0;
+    }
+    return int.tryParse(segments[1]) ?? 0;
+  }
+
   bool _openFromActionUrl(String actionUrl) {
     final uri = Uri.tryParse(actionUrl.trim());
     final segments =
         uri?.pathSegments.where((segment) => segment.isNotEmpty).toList() ??
         const <String>[];
-    if (segments.length < 2) {
+    if (segments.isEmpty) {
       return false;
+    }
+
+    if (segments.length == 1) {
+      switch (segments[0].toLowerCase()) {
+        case 'my-earnings':
+        case 'earnings':
+          Get.toNamed(AppRoutes.myEarnings);
+          return true;
+        default:
+          return false;
+      }
     }
 
     final resource = segments[0].toLowerCase();
     final identifier = segments[1];
 
     switch (resource) {
+      case 'my-earnings':
+      case 'earnings':
+        Get.toNamed(AppRoutes.myEarnings);
+        return true;
       case 'posts':
       case 'post':
         PostDetailOpenHelper.openById(identifier);
@@ -352,8 +396,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'contest':
         final contestId = int.tryParse(identifier);
         if (contestId != null && contestId > 0) {
+          final hasResults = (uri?.queryParameters['results'] ?? '')
+              .trim()
+              .isNotEmpty;
           Get.toNamed(
-            AppRoutes.contestDetail,
+            hasResults ? AppRoutes.contestRanking : AppRoutes.contestDetail,
             arguments: {'contestId': contestId},
           );
           return true;
@@ -503,31 +550,35 @@ class _SwipeRevealDeleteState extends State<_SwipeRevealDelete> {
 
   @override
   Widget build(BuildContext context) {
+    // Only paint the delete strip once the card has started sliding —
+    // otherwise a translucent light-mode card lets the red bleed through.
+    final showDelete = _offset > 0.5;
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
       child: Stack(
         children: [
-          Positioned.fill(
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: SizedBox(
-                width: widget.revealWidth,
-                child: Material(
-                  color: const Color(0xFFE5484D),
-                  child: InkWell(
-                    onTap: widget.onDelete,
-                    child: const Center(
-                      child: AppHeroIconData(
-                        Icons.delete_rounded,
-                        color: Colors.white,
-                        size: 24,
+          if (showDelete)
+            Positioned.fill(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: SizedBox(
+                  width: widget.revealWidth,
+                  child: Material(
+                    color: const Color(0xFFE5484D),
+                    child: InkWell(
+                      onTap: widget.onDelete,
+                      child: const Center(
+                        child: AppHeroIconData(
+                          Icons.delete_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
           GestureDetector(
             onHorizontalDragUpdate: (details) {
               final next = (_offset - details.delta.dx).clamp(
@@ -580,7 +631,7 @@ class _TopBar extends StatelessWidget {
                 InkWell(
                   onTap: AppBackNavigation.handleBack,
                   borderRadius: BorderRadius.circular(999),
-                  child: const SizedBox(
+                  child: SizedBox(
                     width: 40,
                     height: 40,
                     child: AppHeroIconData(
@@ -675,14 +726,17 @@ class _NotificationCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.78),
+        // Opaque surface — translucent card let the swipe-delete red show
+        // through on light backgrounds.
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.055),
-            blurRadius: 28,
-            offset: const Offset(0, 10),
-            spreadRadius: -14,
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+            spreadRadius: -10,
           ),
         ],
       ),
@@ -702,13 +756,13 @@ class _NotificationCard extends StatelessWidget {
                     ),
                   ),
                   if (item.unread)
-                    const Positioned(
+                    Positioned(
                       right: -1,
                       top: -1,
                       child: CircleAvatar(
                         radius: 5,
-                        backgroundColor: Colors.white,
-                        child: CircleAvatar(
+                        backgroundColor: AppColors.surface,
+                        child: const CircleAvatar(
                           radius: 4,
                           backgroundColor: Color(0xFFFF4D6D),
                         ),
@@ -933,8 +987,8 @@ class _NotificationCard extends StatelessWidget {
           child: OutlinedButton(
             onPressed: () => onTapVibeAction('De-Vibed'),
             style: OutlinedButton.styleFrom(
-              side: BorderSide(color: Colors.black.withValues(alpha: 0.2)),
-              backgroundColor: Colors.white.withValues(alpha: 0.45),
+              side: BorderSide(color: AppColors.cardBorder),
+              backgroundColor: AppColors.chip,
               padding: const EdgeInsets.symmetric(vertical: 11),
             ),
             child: Text(
@@ -963,8 +1017,7 @@ class _NotificationAvatar extends StatelessWidget {
     return Container(
       width: 40,
       height: 40,
-      decoration: const BoxDecoration(
-        color: Color(0xFFF1EEEE),
+      decoration: BoxDecoration(color: AppColors.chip,
         shape: BoxShape.circle,
       ),
       child: ClipOval(
@@ -983,7 +1036,7 @@ class _NotificationAvatar extends StatelessWidget {
                   fit: BoxFit.contain,
                 ),
               )
-            : const AppHeroIconData(
+            : AppHeroIconData(
                 Icons.person_rounded,
                 color: AppColors.hintText,
               ),
@@ -1000,25 +1053,33 @@ class _ContestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const trophyGold = Color(0xFFE0B23A);
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1E1E1E), Color(0xFF2D2D2D)],
-        ),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+            spreadRadius: -10,
+          ),
+        ],
       ),
       child: Stack(
         children: [
           Positioned(
-            right: -10,
-            top: -10,
-            child: AppHeroIconData(
-              Icons.emoji_events_rounded,
-              size: 86,
-              color: const Color(0xFFF9CC61).withValues(alpha: 0.22),
+            right: -6,
+            top: -8,
+            child: IgnorePointer(
+              child: AppHeroIconData(
+                Icons.emoji_events_rounded,
+                size: 72,
+                color: trophyGold.withValues(alpha: 0.12),
+              ),
             ),
           ),
           Row(
@@ -1028,25 +1089,29 @@ class _ContestCard extends StatelessWidget {
                 clipBehavior: Clip.none,
                 children: [
                   Container(
-                    width: 40,
-                    height: 40,
+                    width: 42,
+                    height: 42,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF9CC61),
+                      color: trophyGold.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: trophyGold.withValues(alpha: 0.45),
+                      ),
                     ),
                     child: const AppHeroIconData(
                       Icons.emoji_events_rounded,
-                      color: Color(0xFF5B4400),
+                      color: trophyGold,
+                      size: 22,
                     ),
                   ),
                   if (item.unread)
-                    const Positioned(
+                    Positioned(
                       right: -1,
                       top: -1,
                       child: CircleAvatar(
                         radius: 5,
-                        backgroundColor: Color(0xFF2D2D2D),
-                        child: CircleAvatar(
+                        backgroundColor: AppColors.surface,
+                        child: const CircleAvatar(
                           radius: 4,
                           backgroundColor: Color(0xFFFB5151),
                         ),
@@ -1060,6 +1125,7 @@ class _ContestCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
                           child: Row(
@@ -1075,7 +1141,7 @@ class _ContestCard extends StatelessWidget {
                                   style: AppFonts.beVietnam(
                                     size: 14,
                                     weight: FontWeight.w700,
-                                    color: Colors.white,
+                                    color: AppColors.text,
                                   ),
                                 ),
                               ),
@@ -1083,43 +1149,50 @@ class _ContestCard extends StatelessWidget {
                                 username: item.username,
                                 fallback: item.isVerifiedBadge,
                                 size: 14,
-                                color: const Color(0xFF7CC4FF),
                               ),
                             ],
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Text(
                           item.timeAgo,
                           style: AppFonts.beVietnam(
                             size: 11,
                             weight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.55),
+                            color: AppColors.hintText,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Text(
                       item.message,
                       style: AppFonts.beVietnam(
                         size: 13,
                         weight: FontWeight.w500,
-                        color: Colors.white.withValues(alpha: 0.82),
+                        color: AppColors.hintText,
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    ElevatedButton(
-                      onPressed: onTap,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF2D2D2D),
-                        textStyle: AppFonts.beVietnam(
-                          size: 12,
-                          weight: FontWeight.w700,
-                          letterSpacing: 0.8,
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 36,
+                      child: ElevatedButton(
+                        onPressed: onTap,
+                        style: ElevatedButton.styleFrom(
+                          elevation: 0,
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          textStyle: AppFonts.beVietnam(
+                            size: 12,
+                            weight: FontWeight.w700,
+                          ),
                         ),
+                        child: Text(item.contestActionLabel),
                       ),
-                      child: Text(item.primaryActionText ?? 'View Contest'),
                     ),
                   ],
                 ),

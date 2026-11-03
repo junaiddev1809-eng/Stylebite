@@ -41,6 +41,7 @@ class _FlashViewerScreenState extends State<FlashViewerScreen> {
   var _sending = false;
   String? _burst;
   int? _conversationId;
+  String? _conversationUsername;
 
   String get _me =>
       (LocalStorage.getUsername() ?? '').trim().replaceFirst('@', '').toLowerCase();
@@ -56,6 +57,12 @@ class _FlashViewerScreenState extends State<FlashViewerScreen> {
     super.initState();
     _index = widget.startIndex.clamp(0, _items.length - 1);
     unawaited(FlashController.ensure().markSeen(_current.id));
+    if (_canReact) {
+      final name = _current.username.trim().replaceFirst('@', '');
+      if (name.isNotEmpty) {
+        unawaited(_ensureConversation(name));
+      }
+    }
   }
 
   Future<void> _finish() async {
@@ -75,9 +82,14 @@ class _FlashViewerScreenState extends State<FlashViewerScreen> {
     setState(() {
       _index += 1;
       _burst = null;
-      _conversationId = null;
     });
     unawaited(FlashController.ensure().markSeen(_current.id));
+    if (_canReact) {
+      final name = _current.username.trim().replaceFirst('@', '');
+      if (name.isNotEmpty) {
+        unawaited(_ensureConversation(name));
+      }
+    }
   }
 
   Future<void> _goPrevious() async {
@@ -88,8 +100,13 @@ class _FlashViewerScreenState extends State<FlashViewerScreen> {
     setState(() {
       _index -= 1;
       _burst = null;
-      _conversationId = null;
     });
+    if (_canReact) {
+      final name = _current.username.trim().replaceFirst('@', '');
+      if (name.isNotEmpty) {
+        unawaited(_ensureConversation(name));
+      }
+    }
   }
 
   bool _isLocalFile(FlashItem item) {
@@ -101,40 +118,69 @@ class _FlashViewerScreenState extends State<FlashViewerScreen> {
     return item.mediaUrl.trim().isNotEmpty ? item.mediaUrl : item.mediaPath;
   }
 
+  void _showBurst(String emoji) {
+    setState(() => _burst = emoji);
+    Future<void>.delayed(const Duration(milliseconds: 260), () {
+      if (!mounted || _burst != emoji) {
+        return;
+      }
+      setState(() => _burst = null);
+    });
+  }
+
   Future<void> _react(String emoji) async {
-    if (!_canReact || _sending) return;
+    if (!_canReact) return;
     final username = _current.username.trim().replaceFirst('@', '');
     if (username.isEmpty) return;
-    setState(() => _sending = true);
+    // Instant feedback; send in the background so taps never feel blocked.
+    _showBurst(emoji);
     try {
       final conversationId = await _ensureConversation(username);
       if (conversationId == null) return;
       final note =
           'Reacted $emoji to your ${flashSingularLabel(widget.kind).toLowerCase()}';
       await const ChatApiService().sendMessage(conversationId, note);
-      if (!mounted) return;
-      setState(() => _burst = emoji);
-      await Future<void>.delayed(const Duration(milliseconds: 650));
-      if (mounted) setState(() => _burst = null);
     } on ChatApiException catch (error) {
       errorSnackBar(message: error.message);
     } catch (_) {
       errorSnackBar(message: 'Could not send reaction.');
-    } finally {
-      if (mounted) setState(() => _sending = false);
     }
   }
 
   Future<int?> _ensureConversation(String username) async {
     final cached = _conversationId;
-    if (cached != null && cached > 0) return cached;
-    final chat = await const ChatApiService().initializeChat(username);
-    if (chat.isBlocked || chat.isMessagingStopped || chat.conversationId <= 0) {
-      errorSnackBar(message: 'You cannot react to this account.');
-      return null;
+    if (cached != null &&
+        cached > 0 &&
+        _conversationUsername == username) {
+      return cached;
     }
-    _conversationId = chat.conversationId;
-    return chat.conversationId;
+    // Avoid stacking parallel initialize calls for the same open.
+    if (_sending) {
+      for (var i = 0; i < 40; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        if (_conversationId != null &&
+            _conversationId! > 0 &&
+            _conversationUsername == username) {
+          return _conversationId;
+        }
+        if (!_sending) {
+          break;
+        }
+      }
+    }
+    _sending = true;
+    try {
+      final chat = await const ChatApiService().initializeChat(username);
+      if (chat.isBlocked || chat.isMessagingStopped || chat.conversationId <= 0) {
+        errorSnackBar(message: 'You cannot react to this account.');
+        return null;
+      }
+      _conversationId = chat.conversationId;
+      _conversationUsername = username;
+      return chat.conversationId;
+    } finally {
+      _sending = false;
+    }
   }
 
   Future<void> _deleteCurrent() async {
@@ -330,7 +376,7 @@ class _FlashViewerScreenState extends State<FlashViewerScreen> {
                         for (final reaction in _reactions)
                           Expanded(
                             child: GestureDetector(
-                              onTap: () => _react(reaction),
+                              onTap: () => unawaited(_react(reaction)),
                               child: Center(
                                 child: Text(
                                   reaction,

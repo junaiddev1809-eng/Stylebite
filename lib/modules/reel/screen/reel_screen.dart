@@ -55,6 +55,7 @@ class ReelScreen extends StatefulWidget {
 class _ReelScreenState extends State<ReelScreen> with RouteAware {
   late final ReelController _controller;
   ModalRoute<dynamic>? _route;
+  Worker? _landingTabWorker;
 
   @override
   void initState() {
@@ -73,6 +74,19 @@ class _ReelScreenState extends State<ReelScreen> with RouteAware {
       }
       _controller.setFeedVisible(_shouldPlayReels);
     });
+    // PageView tab changes do not fire RouteAware — keep playback tied to
+    // the landing index for the mounted (kept-alive) reels tab.
+    if (!widget.viewerMode && Get.isRegistered<LandingController>()) {
+      _landingTabWorker = ever(
+        Get.find<LandingController>().currentIndex,
+        (_) {
+          if (!mounted) {
+            return;
+          }
+          _controller.setFeedVisible(_shouldPlayReels);
+        },
+      );
+    }
   }
 
   /// Playback belongs to this screen only while it is the screen the user is
@@ -102,6 +116,7 @@ class _ReelScreenState extends State<ReelScreen> with RouteAware {
 
   @override
   void dispose() {
+    _landingTabWorker?.dispose();
     appRouteObserver.unsubscribe(this);
     _controller.setFeedVisible(false);
     final tag = widget.controllerTag;
@@ -180,6 +195,10 @@ class _ReelScreenState extends State<ReelScreen> with RouteAware {
                   controller: _controller.pageController,
                   scrollDirection: Axis.vertical,
                   allowImplicitScrolling: true,
+                  // Freeze vertical paging while scrubbing the seek bar.
+                  physics: _controller.isSeekScrubbing.value
+                      ? const NeverScrollableScrollPhysics()
+                      : null,
                   onPageChanged: _controller.onReelChanged,
                   itemCount: _controller.pagerItemCount.value,
                   itemBuilder: (context, index) {
@@ -281,7 +300,7 @@ class _ReelScreenState extends State<ReelScreen> with RouteAware {
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.of(context).size.height * 0.76,
               ),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: Color(0xFF18181D),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
               ),
@@ -671,8 +690,8 @@ class _ReelSlideState extends State<_ReelSlide>
     final item = widget.item;
     final onTapProfile = widget.onTapProfile;
     final seekBottom = _seekBarBottom(context);
-    // Captions + right actions sit just above the seek line (IG/TikTok rail).
-    final metaBottom = seekBottom + 32;
+    // Captions + right actions sit just above the tall seek hit zone.
+    final metaBottom = seekBottom + 58;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -782,16 +801,20 @@ class _ReelSlideState extends State<_ReelSlide>
         // Kept clear of the floating LandingBottomNav so scrubbing and tab
         // taps do not fight each other.
         Positioned(
-          left: 12,
-          right: 12,
+          left: 10,
+          right: 10,
           bottom: seekBottom,
           child: AppVideoSeekBar(
             controller: _videoController,
+            height: 56,
+            onInteractionStart: _lockSeekGestures,
+            onInteractionEnd: _unlockSeekGestures,
             onScrubbingChanged: (scrubbing) {
               if (!mounted) {
                 return;
               }
               setState(() => _isScrubbing = scrubbing);
+              widget.controller.isSeekScrubbing.value = scrubbing;
             },
           ),
         ),
@@ -799,17 +822,31 @@ class _ReelSlideState extends State<_ReelSlide>
     );
   }
 
-  /// Seek line: above home indicator when bar is gone; above dock when reserved.
+  void _lockSeekGestures() {
+    widget.controller.isSeekScrubbing.value = true;
+    if (Get.isRegistered<LandingController>()) {
+      Get.find<LandingController>().lockHorizontalPage();
+    }
+  }
+
+  void _unlockSeekGestures() {
+    widget.controller.isSeekScrubbing.value = false;
+    if (Get.isRegistered<LandingController>()) {
+      Get.find<LandingController>().unlockHorizontalPage();
+    }
+  }
+
+  /// Seek line sits clear of the iOS/Android system gesture / home indicator.
   double _seekBarBottom(BuildContext context) {
     final safeBottom = MediaQuery.paddingOf(context).bottom;
     if (!widget.reserveBottomNav) {
-      // Sit professionally low — just clear the system gesture/home area.
-      return safeBottom + 10;
+      // Leave room above home-indicator so scrubbing does not trigger app switch.
+      return (safeBottom > 0 ? safeBottom : 8) + 22;
     }
     final navBottomPad = safeBottom > 0
         ? safeBottom + kBottomNavVerticalMargin
         : kBottomNavVerticalMargin + 8;
-    return navBottomPad + kBottomNavHeight + 4;
+    return navBottomPad + kBottomNavHeight + 8;
   }
 }
 
@@ -1687,7 +1724,7 @@ class _ReelActions extends StatelessWidget {
           top: false,
           child: Container(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: Color(0xFF18181D),
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
@@ -1876,7 +1913,7 @@ class _ReelCommentsSheetState extends State<_ReelCommentsSheet> {
         child: Container(
           height: MediaQuery.sizeOf(context).height * 0.38,
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppColors.background,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
@@ -1891,7 +1928,7 @@ class _ReelCommentsSheetState extends State<_ReelCommentsSheet> {
                       width: 48,
                       height: 5,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE7E2E0),
+                        color: AppColors.chip,
                         borderRadius: BorderRadius.circular(999),
                       ),
                     ),
@@ -2033,7 +2070,7 @@ class _ReelCommentsSheetState extends State<_ReelCommentsSheet> {
                                       child: Container(
                                         padding: const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFF3F0EF),
+                                          color: AppColors.chip,
                                           borderRadius:
                                               BorderRadius.circular(12),
                                         ),
@@ -2128,7 +2165,7 @@ class _ReelCommentsSheetState extends State<_ReelCommentsSheet> {
                           color: AppColors.hintText,
                         ),
                         filled: true,
-                        fillColor: const Color(0xFFF3F0EF),
+                        fillColor: AppColors.chip,
                         border: OutlineInputBorder(
                           borderSide: BorderSide.none,
                           borderRadius: BorderRadius.circular(999),
@@ -2150,7 +2187,7 @@ class _ReelCommentsSheetState extends State<_ReelCommentsSheet> {
                       child: Container(
                         width: 44,
                         height: 44,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: LinearGradient(
                             colors: [AppColors.primary, AppColors.secondary],

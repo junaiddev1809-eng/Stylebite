@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:stylebite/core/utils/api_helper.dart';
 import 'package:stylebite/core/utils/app_device_service.dart';
 import 'package:stylebite/core/utils/app_session.dart';
+import 'package:stylebite/core/utils/force_update_gate.dart';
 import 'package:stylebite/core/utils/local_storage.dart';
 import 'package:stylebite/core/utils/deep_link_service.dart';
 import 'package:stylebite/core/utils/push_notification_service.dart';
@@ -33,7 +34,13 @@ class SplashController extends GetxController {
   }
 
   void enterNow() {
-    unawaited(_finish(immediate: true));
+    unawaited(() async {
+      final blocked = await ForceUpdateGate.blockIfRequired();
+      if (blocked || _hasNavigated) {
+        return;
+      }
+      await _finish(immediate: true);
+    }());
   }
 
   Future<void> navigateToIntro() async {
@@ -46,11 +53,19 @@ class SplashController extends GetxController {
     }
 
     _setProgress(0.4, model.subtitle);
-    // Show the logo briefly, then leave. The feed loads on the next screen.
-    await Future<void>.delayed(const Duration(milliseconds: 450));
+    // Let the logo fade+scale settle before leaving (~720ms enter + hold).
+    await Future<void>.delayed(const Duration(milliseconds: 1350));
     if (_hasNavigated) {
       return;
     }
+
+    _setProgress(0.72, 'Checking for updates...');
+    final blocked = await ForceUpdateGate.blockIfRequired();
+    if (blocked || _hasNavigated) {
+      // Non-dismissible update dialog is up — do not enter the app.
+      return;
+    }
+
     _setProgress(1, 'Ready');
     await _finish(immediate: false);
   }

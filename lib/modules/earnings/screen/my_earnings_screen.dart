@@ -73,12 +73,12 @@ class MyEarningsScreen extends StatelessWidget {
                               vertical: 12,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF3F0EF),
+                              color: AppColors.chip,
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: Row(
                               children: [
-                                const HeroIcon(
+                                HeroIcon(
                                   HeroIcons.lockClosed,
                                   size: 18,
                                   color: AppColors.hintText,
@@ -197,7 +197,7 @@ class _MyEarningsShimmer extends StatelessWidget {
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF3F0EF),
+                    color: AppColors.chip,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Row(
@@ -222,7 +222,7 @@ class _MyEarningsShimmer extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.fromLTRB(18, 24, 18, 18),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(22),
                     boxShadow: const [
                       BoxShadow(
@@ -287,7 +287,7 @@ class _StatCardShimmer extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F0EF),
+        color: AppColors.chip,
         borderRadius: BorderRadius.circular(16),
       ),
       child: const Column(
@@ -367,7 +367,7 @@ class _BreakdownTileShimmer extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: const Row(
@@ -427,7 +427,7 @@ class _WithdrawalTileShimmer extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F0EF),
+        color: AppColors.chip,
         borderRadius: BorderRadius.circular(18),
       ),
       child: const Row(
@@ -531,7 +531,7 @@ class _BalanceHero extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 24, 18, 18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(22),
         boxShadow: const [
           BoxShadow(
@@ -675,7 +675,7 @@ class _StatCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F0EF),
+        color: AppColors.chip,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -713,7 +713,7 @@ class _AdsToggleSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -953,7 +953,7 @@ class _WithdrawalSection extends StatelessWidget {
         else
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF3F0EF),
+              color: AppColors.chip,
               borderRadius: BorderRadius.circular(18),
             ),
             child: Column(

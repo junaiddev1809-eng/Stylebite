@@ -38,7 +38,7 @@ class _UploadScreenState extends State<UploadScreen> {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: const BoxDecoration(color: AppColors.background),
+      decoration: BoxDecoration(color: AppColors.background),
       child: SafeArea(
         bottom: false,
         child: CustomScrollView(
@@ -138,7 +138,7 @@ class _UploadScreenState extends State<UploadScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: DecoratedBox(
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             gradient: LinearGradient(
                               begin: Alignment.centerLeft,
                               end: Alignment.centerRight,
@@ -260,12 +260,12 @@ class _UploadScreenState extends State<UploadScreen> {
       hintStyle: AppFonts.beVietnam(
         size: 13,
         weight: FontWeight.w500,
-        color: const Color(0xFF9A8F8A),
+        color: AppColors.hintText,
       ),
       prefixIcon: icon == null
           ? null
           : AppHeroIconData(icon,
-              color: const Color(0xFF9A8F8A),
+              color: AppColors.hintText,
               size: 18,
             ),
       suffixIcon: suffix,
@@ -273,7 +273,7 @@ class _UploadScreenState extends State<UploadScreen> {
           ? null
           : const BoxConstraints(minWidth: 0, minHeight: 48),
       filled: true,
-      fillColor: const Color(0xFFF3F0EF),
+      fillColor: AppColors.chip,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(radius),
         borderSide: BorderSide.none,

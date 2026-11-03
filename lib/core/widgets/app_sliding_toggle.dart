@@ -47,8 +47,9 @@ class AppSlidingToggle extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: trackColor ?? Colors.white.withValues(alpha: 0.86),
+        color: trackColor ?? AppColors.chip,
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.cardBorder),
       ),
       child: Stack(
         alignment: Alignment.center,

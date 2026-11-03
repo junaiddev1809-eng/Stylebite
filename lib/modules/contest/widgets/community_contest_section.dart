@@ -75,7 +75,7 @@ class _CommunityCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F0EF),
+        color: AppColors.chip,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -104,7 +104,7 @@ class _CommunityCard extends StatelessWidget {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: AppColors.surface,
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
@@ -112,6 +112,7 @@ class _CommunityCard extends StatelessWidget {
                           style: AppFonts.beVietnam(
                             size: 10,
                             weight: FontWeight.w700,
+                            color: AppColors.text,
                           ),
                         ),
                       ),
@@ -132,7 +133,7 @@ class _CommunityCard extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.star_rounded,
                               size: 11,
                               color: AppColors.text,

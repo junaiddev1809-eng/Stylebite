@@ -33,7 +33,7 @@ class SettingsController extends GetxController {
   Future<void> showLogoutConfirmation(BuildContext context) async {
     final shouldLogout = await showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/widgets/app_hero_icon.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
+import '../../../core/widgets/app_hero_icon.dart';
 
 class SettingsRowTile extends StatelessWidget {
   const SettingsRowTile({
@@ -34,7 +35,7 @@ class SettingsRowTile extends StatelessWidget {
                   style: AppFonts.beVietnam(
                     size: 14,
                     weight: FontWeight.w500,
-                    color: const Color(0xFF2F2F2E),
+                    color: AppColors.textThemed,
                   ),
                 ),
               ),
@@ -44,12 +45,13 @@ class SettingsRowTile extends StatelessWidget {
                   style: AppFonts.beVietnam(
                     size: 12,
                     weight: FontWeight.w700,
-                    color: const Color(0xFF5C5B5B),
+                    color: AppColors.hintTextThemed,
                   ),
                 ),
               if (trailingIcon != null)
-                AppHeroIconData(trailingIcon!,
-                  color: const Color(0xFF5C5B5B),
+                AppHeroIconData(
+                  trailingIcon!,
+                  color: AppColors.hintTextThemed,
                   size: 20,
                 ),
             ],

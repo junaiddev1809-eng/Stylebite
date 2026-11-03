@@ -119,7 +119,7 @@ class SuggestedReelsStripPlaceholder extends StatelessWidget {
               width: 132,
               height: 16,
               decoration: BoxDecoration(
-                color: const Color(0xFFE8E2E0),
+                color: AppColors.chip,
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
@@ -134,7 +134,7 @@ class SuggestedReelsStripPlaceholder extends StatelessWidget {
                 itemBuilder: (_, __) => Container(
                   width: 124,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8E2E0),
+                    color: AppColors.chip,
                     borderRadius: BorderRadius.circular(18),
                   ),
                 ),
@@ -355,15 +355,14 @@ class _SeeMoreCard extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: ColoredBox(
-            color: const Color(0xFFE8E4E3),
+            color: AppColors.chip,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
                   width: 44,
                   height: 44,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
+                  decoration: BoxDecoration(color: AppColors.primary,
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -422,7 +421,7 @@ class _SuggestedReelCard extends StatelessWidget {
                   fit: StackFit.expand,
                   children: [
                     cover.isEmpty
-                        ? const ColoredBox(color: Color(0xFFE8E4E3))
+                        ? ColoredBox(color: AppColors.chip)
                         : AppCachedImage(
                             imageUrl: cover,
                             fit: BoxFit.cover,

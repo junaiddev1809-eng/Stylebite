@@ -36,8 +36,7 @@ class MemoryListCard extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 170),
           padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.white,
+          decoration: BoxDecoration(color: AppColors.surface,
             borderRadius: BorderRadius.circular(22),
             border: Border.all(
               color: selected
@@ -142,7 +141,7 @@ class MemoryListCard extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  const AppHeroIconData(
+                  AppHeroIconData(
                     Icons.chevron_right_rounded,
                     size: 18,
                     color: AppColors.hintText,

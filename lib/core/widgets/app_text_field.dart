@@ -102,18 +102,14 @@ class _AppTextFieldState extends State<AppTextField> {
                   )
                 : null,
             filled: true,
-            fillColor: Colors.white,
+            fillColor: AppColors.inputFill,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(
-                color: AppColors.hintText.withValues(alpha: 0.18),
-              ),
+              borderSide: BorderSide(color: AppColors.cardBorder),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(
-                color: AppColors.hintText.withValues(alpha: 0.18),
-              ),
+              borderSide: BorderSide(color: AppColors.cardBorder),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),

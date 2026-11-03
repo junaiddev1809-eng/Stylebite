@@ -66,13 +66,13 @@ class _TypeCard extends StatelessWidget {
         duration: const Duration(milliseconds: 220),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 24),
         decoration: BoxDecoration(
-          color: selected ? Colors.white : const Color(0xFFF3F0EF),
+          color: selected ? AppColors.surface : AppColors.chip,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: selected
-                ? AppColors.primary.withValues(alpha: 0.2)
-                : Colors.transparent,
-            width: 2,
+                ? AppColors.primary.withValues(alpha: 0.45)
+                : AppColors.cardBorder,
+            width: 1.5,
           ),
           boxShadow: selected
               ? const [

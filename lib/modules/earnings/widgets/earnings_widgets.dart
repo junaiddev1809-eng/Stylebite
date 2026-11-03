@@ -148,7 +148,7 @@ class EarningsBreakdownTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -251,7 +251,7 @@ class EarningsWithdrawalTile extends StatelessWidget {
       decoration: BoxDecoration(
         border: withDivider
             ? Border(
-                bottom: BorderSide(color: Colors.black.withValues(alpha: 0.06)),
+                bottom: BorderSide(color: AppColors.cardBorder),
               )
             : null,
       ),
@@ -261,10 +261,10 @@ class EarningsWithdrawalTile extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: const Color(0xFFDFDCDC),
+              color: AppColors.chip,
               borderRadius: BorderRadius.circular(999),
             ),
-            child: const HeroIcon(
+            child: HeroIcon(
               HeroIcons.wallet,
               size: 18,
               color: AppColors.hintText,
@@ -332,7 +332,7 @@ class EarningsEmptyCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F0EF),
+        color: AppColors.chip,
         borderRadius: BorderRadius.circular(18),
       ),
       child: Text(

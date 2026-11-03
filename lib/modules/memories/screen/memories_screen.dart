@@ -72,7 +72,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
                 color: AppColors.background.withValues(alpha: 0.92),
                 border: Border(
                   bottom: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: AppColors.divider,
                   ),
                 ),
               ),
@@ -376,7 +376,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
           builder: (context, setModalState) {
             return SafeArea(
               child: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: AppColors.background,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
                 ),
@@ -420,7 +420,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
                                                 imageUrl: images[index].fileUrl ?? '',
                                                 fit: BoxFit.cover,
                                                 placeholder: (context, url) => Container(
-                                                  color: const Color(0xFFF3F0EF),
+                                                  color: AppColors.chip,
                                                   child: const Center(
                                                     child: CircularProgressIndicator(
                                                       strokeWidth: 2,
@@ -502,7 +502,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
                             offset: const Offset(0, -20),
                             child: Container(
                               width: double.infinity,
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 color: AppColors.background,
                                 borderRadius: BorderRadius.vertical(
                                   top: Radius.circular(24),
@@ -690,7 +690,7 @@ class _MemoriesScreenState extends State<MemoriesScreen> {
     Get.bottomSheet(
       Container(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.background,
           borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),

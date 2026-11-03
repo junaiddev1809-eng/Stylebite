@@ -83,7 +83,7 @@ class _YoursButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
-            color: Colors.white,
+            color: AppColors.surface,
             border: Border.all(
               color: accent.withValues(alpha: count > 0 ? 0.55 : 0.25),
             ),
@@ -177,7 +177,7 @@ class _GlowEntryState extends State<_GlowEntry>
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(999),
-              color: Colors.white,
+              color: AppColors.surface,
               border: Border.all(
                 color: Color.lerp(
                       widget.accent.withValues(alpha: 0.4),

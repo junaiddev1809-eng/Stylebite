@@ -229,7 +229,7 @@ class _ExplorePinCard extends StatelessWidget {
         width: double.infinity,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: const Color(0xFFE8E4E3),
+            color: AppColors.chip,
             borderRadius: radius,
             boxShadow: const [
               BoxShadow(
@@ -246,8 +246,8 @@ class _ExplorePinCard extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 cover.isEmpty
-                    ? const ColoredBox(
-                        color: Color(0xFFE8E4E3),
+                    ? ColoredBox(
+                        color: AppColors.chip,
                         child: Center(
                           child: AppHeroIconData(
                             Icons.image_outlined,

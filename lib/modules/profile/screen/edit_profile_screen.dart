@@ -153,7 +153,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               controller: _controller.birthDateController,
                               readOnly: true,
                               onTap: () => _controller.pickBirthDate(context),
-                              suffixIcon: const AppHeroIconData(Icons.chevron_right_rounded,
+                              suffixIcon: AppHeroIconData(Icons.chevron_right_rounded,
                                 color: AppColors.hintText,
                                 size: 18,
                               ),
@@ -201,7 +201,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: DecoratedBox(
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
                                   AppColors.primary,
@@ -269,7 +269,7 @@ class _TopBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.background.withValues(alpha: 0.88),
         border: Border(
-          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.8)),
+          bottom: BorderSide(color: AppColors.divider),
         ),
       ),
       child: Row(
@@ -346,8 +346,7 @@ class _VerificationCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
@@ -514,7 +513,7 @@ class _FormField extends StatelessWidget {
             ),
             decoration: InputDecoration(
               filled: true,
-              fillColor: const Color(0xFFF3F0EF),
+              fillColor: AppColors.chip,
               suffixIcon: suffixIcon,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -593,7 +592,7 @@ class _DropdownField extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF3F0EF),
+              color: AppColors.chip,
               borderRadius: BorderRadius.circular(14),
             ),
             child: DropdownButtonHideUnderline(
@@ -654,7 +653,7 @@ class _SwitchField extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F0EF),
+        color: AppColors.chip,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(

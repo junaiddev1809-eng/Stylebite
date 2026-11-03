@@ -117,6 +117,7 @@ class HomePostModel {
     this.longitude,
     this.contestId = 0,
     this.contestTitle = '',
+    this.contestStatus = '',
     this.isContestWinner = false,
     this.visibility = '',
     this.publishedAt,
@@ -176,6 +177,9 @@ class HomePostModel {
   /// Contest this post is entered in (0 / empty when not in a contest).
   final int contestId;
   final String contestTitle;
+
+  /// Contest lifecycle status from the API badge (`active`, `completed`, …).
+  final String contestStatus;
   final bool isContestWinner;
 
   /// `public`, `followers_only` or `private`; empty when the payload did
@@ -186,6 +190,13 @@ class HomePostModel {
   final DateTime? publishedAt;
 
   bool get isInContest => contestId > 0 || contestTitle.trim().isNotEmpty;
+
+  /// Contest finished — feed should keep the trophy only (no vote UI / name).
+  bool get isContestEnded =>
+      _isContestVotingClosed(contestStatus) || (isInContest && !ratingEnabled);
+
+  /// Score badge, contest name tag, and 1–5 bar while voting is open.
+  bool get showContestVotingChrome => isInContest && ratingEnabled && !isContestEnded;
 
   bool get hasAvatar => avatarUrl.isNotEmpty;
   bool get isFoodPost => contentType == HomeContentType.food;
@@ -345,6 +356,7 @@ class HomePostModel {
     double? longitude,
     int? contestId,
     String? contestTitle,
+    String? contestStatus,
     bool? isContestWinner,
     String? visibility,
     DateTime? publishedAt,
@@ -394,6 +406,7 @@ class HomePostModel {
       longitude: longitude ?? this.longitude,
       contestId: contestId ?? this.contestId,
       contestTitle: contestTitle ?? this.contestTitle,
+      contestStatus: contestStatus ?? this.contestStatus,
       isContestWinner: isContestWinner ?? this.isContestWinner,
       visibility: visibility ?? this.visibility,
       publishedAt: publishedAt ?? this.publishedAt,
@@ -438,6 +451,29 @@ class HomePostModel {
     final contestTitle = contestJson != null
         ? (contestJson['title'] ?? '').toString().trim()
         : (storedEnrollment?.contestTitle ?? '');
+    final contestStatus = contestJson != null
+        ? (contestJson['status'] ?? '').toString().trim()
+        : '';
+    final contestVotingEndAt = contestJson != null
+        ? (contestJson['voting_end_at'] ?? '').toString().trim()
+        : '';
+    final badgeSaysNoVote = contestJson != null &&
+        contestJson.containsKey('can_vote') &&
+        !_asBool(contestJson['can_vote']);
+    final contestVotingClosed = badgeSaysNoVote ||
+        _isContestVotingClosed(
+          contestStatus,
+          votingEndAt: contestVotingEndAt,
+        );
+    // `in_contest` stays true after voting ends (trophy). Only rating/can_vote
+    // mean the 1–5 bar is open.
+    final apiCanVote = _asBool(json['rating_enabled'], fallback: false) ||
+        _asBool(json['can_vote'], fallback: false) ||
+        _asBool(viewerStateJson?['can_vote'], fallback: false);
+    // Enrollment store fills gaps when feed omits contest fields — never when
+    // the contest badge already says voting is over.
+    final ratingEnabled = !contestVotingClosed &&
+        (apiCanVote || (storedEnrollment != null && contestStatus.isEmpty));
 
     final media = parsePostMedia(json);
 
@@ -510,8 +546,7 @@ class HomePostModel {
       allowComments: _asBool(json['allow_comments'], fallback: true),
       allowShares: _asBool(json['allow_shares'], fallback: true),
       // Contest voting only — never trust legacy rating_enabled on normal posts.
-      ratingEnabled: _asBool(json['in_contest'], fallback: false) ||
-          storedEnrollment != null,
+      ratingEnabled: ratingEnabled,
       dishName: (json['dish_name'] ??
               json['dish'] ??
               foodJson?['dish_name'] ??
@@ -567,6 +602,7 @@ class HomePostModel {
       ),
       contestId: contestId,
       contestTitle: contestTitle,
+      contestStatus: contestStatus,
       isContestWinner: _asBool(json['is_contest_winner']),
       visibility: (json['visibility'] ?? '').toString().trim().toLowerCase(),
       publishedAt: AppTimeFormatter.parse(
@@ -1002,6 +1038,24 @@ String _formatCount(int value) {
     return '${(value / 1000).toStringAsFixed(value % 1000 == 0 ? 0 : 1)}k';
   }
   return value.toString();
+}
+
+bool _isContestVotingClosed(String status, {String votingEndAt = ''}) {
+  switch (status.trim().toLowerCase()) {
+    case 'completed':
+    case 'ended':
+    case 'closed':
+    case 'cancelled':
+    case 'canceled':
+      return true;
+    default:
+      break;
+  }
+  final end = DateTime.tryParse(votingEndAt.trim());
+  if (end == null) {
+    return false;
+  }
+  return DateTime.now().toUtc().isAfter(end.toUtc());
 }
 
 int _asInt(dynamic value, {int fallback = 0}) {

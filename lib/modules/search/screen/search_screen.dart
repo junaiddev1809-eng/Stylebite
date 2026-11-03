@@ -832,7 +832,7 @@ class _SearchTopBar extends StatelessWidget {
             children: [
               IconButton(
                 onPressed: AppBackNavigation.handleBack,
-                icon: const AppHeroIconData(
+                icon: AppHeroIconData(
                   Icons.arrow_back_rounded,
                   color: AppColors.text,
                 ),
@@ -938,7 +938,7 @@ class _SearchBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.82),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
       ),
@@ -970,7 +970,7 @@ class _SearchBox extends StatelessWidget {
                       controller.searchTextController.clear();
                       controller.onQueryChanged('');
                     },
-                    icon: const AppHeroIconData(Icons.close_rounded,
+                    icon: AppHeroIconData(Icons.close_rounded,
                       color: AppColors.hintText,
                     ),
                   ),
@@ -1000,7 +1000,7 @@ class _RestaurantSearchBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.82),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
       ),
@@ -1035,7 +1035,7 @@ class _RestaurantSearchBox extends StatelessWidget {
                       controller.searchTextController.clear();
                       controller.onQueryChanged('');
                     },
-                    icon: const AppHeroIconData(
+                    icon: AppHeroIconData(
                       Icons.close_rounded,
                       color: AppColors.hintText,
                     ),
@@ -1083,7 +1083,7 @@ class _RestaurantPostCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.78),
+          color: AppColors.card,
           borderRadius: BorderRadius.circular(18),
           boxShadow: const [
             BoxShadow(
@@ -1102,8 +1102,7 @@ class _RestaurantPostCard extends StatelessWidget {
                 width: 72,
                 height: 72,
                 child: imageUrl.trim().isEmpty
-                    ? const ColoredBox(
-                        color: Color(0xFFF1EEEE),
+                    ? ColoredBox(color: AppColors.chip,
                         child: AppHeroIconData(Icons.restaurant_rounded),
                       )
                     : AppCachedImage(
@@ -1154,7 +1153,7 @@ class _RestaurantPostCard extends StatelessWidget {
                 ],
               ),
             ),
-            const AppHeroIconData(
+            AppHeroIconData(
               Icons.chevron_right_rounded,
               color: AppColors.hintText,
             ),
@@ -1182,7 +1181,7 @@ class _UserResultCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.78),
+          color: AppColors.card,
           borderRadius: BorderRadius.circular(18),
           boxShadow: const [
             BoxShadow(
@@ -1201,7 +1200,7 @@ class _UserResultCard extends StatelessWidget {
                   ? Container(
                       width: 54,
                       height: 54,
-                      color: const Color(0xFFF1EEEE),
+                      color: AppColors.chip,
                       alignment: Alignment.center,
                       child: const AppHeroIconData(Icons.person_rounded),
                     )
@@ -1331,7 +1330,7 @@ class _MetaChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF4F0EF),
+        color: AppColors.chip,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(

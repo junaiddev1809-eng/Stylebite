@@ -133,7 +133,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
     return SafeArea(
       top: false,
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.background,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
@@ -150,7 +150,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                     width: 48,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE7E2E0),
+                      color: AppColors.chip,
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
@@ -285,8 +285,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                 16,
                 10 + MediaQuery.of(context).viewInsets.bottom,
               ),
-              decoration: BoxDecoration(
-                color: Colors.white,
+              decoration: BoxDecoration(color: AppColors.surface,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.05),
@@ -356,7 +355,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                               color: AppColors.hintText,
                             ),
                             filled: true,
-                            fillColor: const Color(0xFFF3F0EF),
+                            fillColor: AppColors.chip,
                             border: OutlineInputBorder(
                               borderSide: BorderSide.none,
                               borderRadius: BorderRadius.circular(999),
@@ -380,7 +379,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                       child: Container(
                         width: 44,
                         height: 44,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: LinearGradient(
                             colors: [AppColors.primary, AppColors.secondary],

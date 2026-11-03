@@ -67,7 +67,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF1EFEF),
+      backgroundColor: AppColors.background,
       body: Obx(() {
         if (_controller.isInitialLoading.value &&
             _controller.user.value == null) {
@@ -206,7 +206,7 @@ class _PublicTopBar extends StatelessWidget {
         InkWell(
           onTap: () => _shareProfile(controller.username),
           borderRadius: BorderRadius.circular(999),
-          child: const Padding(
+          child: Padding(
             padding: EdgeInsets.all(2),
             child: AppHeroIconData(Icons.share_outlined,
               color: AppColors.hintText,
@@ -218,7 +218,7 @@ class _PublicTopBar extends StatelessWidget {
           InkWell(
             onTap: () => _reportUser(context, controller),
             borderRadius: BorderRadius.circular(999),
-            child: const Padding(
+            child: Padding(
               padding: EdgeInsets.all(2),
               child: AppHeroIconData(Icons.flag_outlined,
                 color: AppColors.hintText,
@@ -292,7 +292,7 @@ class _PublicHeaderSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const AppHeroIconData(Icons.location_on_outlined,
+              AppHeroIconData(Icons.location_on_outlined,
                 size: 14,
                 color: AppColors.hintText,
               ),
@@ -337,8 +337,9 @@ class _PublicHeaderSection extends StatelessWidget {
                             : controller.openChat,
                         style: ElevatedButton.styleFrom(
                           elevation: 0,
-                          backgroundColor: const Color(0xFFECE7E5),
+                          backgroundColor: AppColors.chip,
                           foregroundColor: AppColors.text,
+                          side: BorderSide(color: AppColors.cardBorder),
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(999),
@@ -352,7 +353,7 @@ class _PublicHeaderSection extends StatelessWidget {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const AppHeroIconData(Icons.chat_bubble_outline_rounded,
+                            : AppHeroIconData(Icons.chat_bubble_outline_rounded,
                                 size: 18,
                                 color: AppColors.text,
                               ),
@@ -539,7 +540,7 @@ class _PublicAchievementSection extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFFE8E6E7),
+          color: AppColors.chip,
           borderRadius: BorderRadius.circular(22),
         ),
         child: IntrinsicHeight(
@@ -624,7 +625,7 @@ class _PublicAchievementSection extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const AppHeroIconData(
+                        AppHeroIconData(
                           HeroIcons.bolt,
                           color: AppColors.text,
                           size: 13,

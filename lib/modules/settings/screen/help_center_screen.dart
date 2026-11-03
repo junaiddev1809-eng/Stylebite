@@ -24,7 +24,7 @@ class HelpCenterScreen extends StatelessWidget {
                 color: AppColors.background.withValues(alpha: 0.88),
                 border: Border(
                   bottom: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: AppColors.divider,
                   ),
                 ),
               ),
@@ -173,7 +173,7 @@ class _HelpCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
@@ -289,7 +289,7 @@ class _ContactCard extends StatelessWidget {
             style: AppFonts.beVietnam(
               size: 14,
               weight: FontWeight.w500,
-              color: Colors.white.withValues(alpha: 0.92),
+              color: AppColors.surface,
               height: 1.5,
             ),
           ),
@@ -300,7 +300,7 @@ class _ContactCard extends StatelessWidget {
               onPressed: () =>
                   Get.to<int>(() => const NewSupportTicketScreen()),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
+                backgroundColor: AppColors.surface,
                 foregroundColor: const Color(0xFF2D2D2D),
                 minimumSize: const Size.fromHeight(44),
                 shape: RoundedRectangleBorder(

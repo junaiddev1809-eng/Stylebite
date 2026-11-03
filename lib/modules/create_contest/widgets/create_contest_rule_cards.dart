@@ -64,7 +64,7 @@ class _RuleCard extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(14),
             ),
             child: AppHeroIconData(_iconFor(item.icon), color: AppColors.primary),

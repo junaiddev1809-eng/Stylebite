@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
@@ -11,24 +12,35 @@ import '../theme/app_fonts.dart';
 /// Scrubbable reel progress line — TikTok/IG style.
 ///
 /// Idle: thin glowing track. Drag: bar thickens, thumb pops, time chip shows.
+/// Uses a tall opaque hit zone + eager horizontal drag so scrubbing wins over
+/// tab swipes and does not fight the iOS home-indicator gesture as easily.
 class AppVideoSeekBar extends StatefulWidget {
   const AppVideoSeekBar({
     super.key,
     required this.controller,
-    this.height = 36,
+    this.height = 56,
     this.lineHeight = 3,
-    this.activeLineHeight = 7,
+    this.activeLineHeight = 8,
     this.padding = EdgeInsets.zero,
     this.onScrubbingChanged,
+    this.onInteractionStart,
+    this.onInteractionEnd,
     this.showTimeWhileScrubbing = true,
   });
 
   final VideoPlayerController? controller;
+
+  /// Full vertical hit target (not just the thin painted line).
   final double height;
   final double lineHeight;
   final double activeLineHeight;
   final EdgeInsets padding;
   final ValueChanged<bool>? onScrubbingChanged;
+
+  /// Fired on pointer-down in the seek zone (before drag starts) so parents
+  /// can lock tab / page gestures immediately.
+  final VoidCallback? onInteractionStart;
+  final VoidCallback? onInteractionEnd;
   final bool showTimeWhileScrubbing;
 
   @override
@@ -40,6 +52,8 @@ class _AppVideoSeekBarState extends State<AppVideoSeekBar>
   bool _scrubbing = false;
   double? _dragValue;
   bool _wasPlaying = false;
+  bool _interactionHeld = false;
+  int? _activePointer;
   late final AnimationController _pulse;
 
   VideoPlayerController? get _controller => widget.controller;
@@ -62,6 +76,7 @@ class _AppVideoSeekBarState extends State<AppVideoSeekBar>
       widget.controller?.addListener(_onTick);
       _dragValue = null;
       _scrubbing = false;
+      _releaseInteraction();
     }
   }
 
@@ -69,6 +84,7 @@ class _AppVideoSeekBarState extends State<AppVideoSeekBar>
   void dispose() {
     _controller?.removeListener(_onTick);
     _pulse.dispose();
+    _releaseInteraction();
     super.dispose();
   }
 
@@ -110,11 +126,28 @@ class _AppVideoSeekBarState extends State<AppVideoSeekBar>
     await controller.seekTo(target);
   }
 
+  void _holdInteraction() {
+    if (_interactionHeld) {
+      return;
+    }
+    _interactionHeld = true;
+    widget.onInteractionStart?.call();
+  }
+
+  void _releaseInteraction() {
+    if (!_interactionHeld) {
+      return;
+    }
+    _interactionHeld = false;
+    widget.onInteractionEnd?.call();
+  }
+
   void _beginScrub(Offset local, double width) {
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized || width <= 0) {
       return;
     }
+    _holdInteraction();
     HapticFeedback.selectionClick();
     _wasPlaying = controller.value.isPlaying;
     if (_wasPlaying) {
@@ -138,7 +171,9 @@ class _AppVideoSeekBarState extends State<AppVideoSeekBar>
   }
 
   Future<void> _endScrub() async {
+    _activePointer = null;
     if (!_scrubbing) {
+      _releaseInteraction();
       return;
     }
     final value = _dragValue ?? 0;
@@ -148,6 +183,7 @@ class _AppVideoSeekBarState extends State<AppVideoSeekBar>
       await controller.play();
     }
     if (!mounted) {
+      _releaseInteraction();
       return;
     }
     setState(() {
@@ -155,6 +191,7 @@ class _AppVideoSeekBarState extends State<AppVideoSeekBar>
       _dragValue = null;
     });
     widget.onScrubbingChanged?.call(false);
+    _releaseInteraction();
   }
 
   @override
@@ -165,7 +202,7 @@ class _AppVideoSeekBarState extends State<AppVideoSeekBar>
     final duration = ready ? controller.value.duration : Duration.zero;
     final position = duration * progress;
     final lineHeight = _scrubbing ? widget.activeLineHeight : widget.lineHeight;
-    final thumbSize = _scrubbing ? 16.0 : 8.0;
+    final thumbSize = _scrubbing ? 18.0 : 10.0;
 
     return Padding(
       padding: widget.padding,
@@ -209,126 +246,179 @@ class _AppVideoSeekBarState extends State<AppVideoSeekBar>
                 ),
                 const SizedBox(height: 8),
               ],
-              GestureDetector(
+              // Eager horizontal drag (tiny slop) so scrubbing beats tab swipes.
+              RawGestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTapDown: ready
-                    ? (details) async {
+                gestures: <Type, GestureRecognizerFactory>{
+                  _EagerHorizontalDragGestureRecognizer:
+                      GestureRecognizerFactoryWithHandlers<
+                          _EagerHorizontalDragGestureRecognizer>(
+                    () => _EagerHorizontalDragGestureRecognizer(
+                      supportedDevices: {
+                        PointerDeviceKind.touch,
+                        PointerDeviceKind.stylus,
+                        PointerDeviceKind.invertedStylus,
+                      },
+                    ),
+                    (instance) {
+                      instance
+                        ..onStart = ready
+                            ? (details) {
+                                _beginScrub(details.localPosition, width);
+                              }
+                            : null
+                        ..onUpdate = ready
+                            ? (details) {
+                                _updateScrub(details.localPosition, width);
+                              }
+                            : null
+                        ..onEnd = ready
+                            ? (_) {
+                                unawaited(_endScrub());
+                              }
+                            : null
+                        ..onCancel = ready
+                            ? () {
+                                unawaited(_endScrub());
+                              }
+                            : null;
+                    },
+                  ),
+                },
+                child: Listener(
+                  behavior: HitTestBehavior.opaque,
+                  onPointerDown: ready
+                      ? (event) {
+                          // Lock parents on contact — before drag arena resolves.
+                          _holdInteraction();
+                          _activePointer = event.pointer;
+                        }
+                      : null,
+                  onPointerUp: (event) {
+                    if (_activePointer == event.pointer && !_scrubbing) {
+                      // Tap-to-seek without a drag.
+                      final box = context.findRenderObject() as RenderBox?;
+                      if (box != null) {
+                        final local = box.globalToLocal(event.position);
                         final fraction =
-                            (details.localPosition.dx / width).clamp(0.0, 1.0);
+                            (local.dx / width).clamp(0.0, 1.0);
                         HapticFeedback.selectionClick();
                         setState(() => _dragValue = fraction);
-                        await _seekToFraction(fraction);
-                        if (mounted) {
-                          setState(() => _dragValue = null);
-                        }
+                        unawaited(() async {
+                          await _seekToFraction(fraction);
+                          if (mounted) {
+                            setState(() => _dragValue = null);
+                          }
+                          _releaseInteraction();
+                        }());
+                      } else {
+                        _releaseInteraction();
                       }
-                    : null,
-                onHorizontalDragStart: ready
-                    ? (details) => _beginScrub(details.localPosition, width)
-                    : null,
-                onHorizontalDragUpdate: ready
-                    ? (details) => _updateScrub(details.localPosition, width)
-                    : null,
-                onHorizontalDragEnd:
-                    ready ? (_) => unawaited(_endScrub()) : null,
-                onHorizontalDragCancel:
-                    ready ? () => unawaited(_endScrub()) : null,
-                child: SizedBox(
-                  height: widget.height,
-                  width: width,
-                  child: Stack(
-                    alignment: Alignment.centerLeft,
-                    clipBehavior: Clip.none,
-                    children: [
-                      Center(
-                        child: AnimatedBuilder(
-                          animation: _pulse,
-                          builder: (context, child) {
-                            final glow = 0.18 + (_pulse.value * 0.12);
-                            return AnimatedContainer(
-                              duration: const Duration(milliseconds: 140),
-                              curve: Curves.easeOutCubic,
-                              height: lineHeight,
-                              width: width,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(999),
-                                color: Colors.white.withValues(alpha: 0.16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primary.withValues(
-                                      alpha: _scrubbing ? 0.28 : glow * 0.55,
-                                    ),
-                                    blurRadius: _scrubbing ? 14 : 8,
-                                    spreadRadius: _scrubbing ? 0.5 : 0,
-                                  ),
-                                ],
-                              ),
-                              clipBehavior: Clip.hardEdge,
-                              child: child,
-                            );
-                          },
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: FractionallySizedBox(
-                              widthFactor: progress <= 0 ? 0.001 : progress,
-                              heightFactor: 1,
-                              child: DecoratedBox(
+                      _activePointer = null;
+                    }
+                  },
+                  onPointerCancel: (event) {
+                    if (_activePointer == event.pointer) {
+                      unawaited(_endScrub());
+                    }
+                  },
+                  child: SizedBox(
+                    height: widget.height,
+                    width: width,
+                    child: Stack(
+                      alignment: Alignment.centerLeft,
+                      clipBehavior: Clip.none,
+                      children: [
+                        Center(
+                          child: AnimatedBuilder(
+                            animation: _pulse,
+                            builder: (context, child) {
+                              final glow = 0.18 + (_pulse.value * 0.12);
+                              return AnimatedContainer(
+                                duration: const Duration(milliseconds: 140),
+                                curve: Curves.easeOutCubic,
+                                height: lineHeight,
+                                width: width,
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(999),
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0xFFFF8A5B),
-                                      AppColors.primary,
-                                      Color(0xFFFF4D6D),
-                                    ],
-                                  ),
+                                  color: Colors.white.withValues(alpha: 0.16),
                                   boxShadow: [
                                     BoxShadow(
                                       color: AppColors.primary.withValues(
-                                        alpha: 0.45,
+                                        alpha: _scrubbing ? 0.28 : glow * 0.55,
                                       ),
-                                      blurRadius: 8,
+                                      blurRadius: _scrubbing ? 14 : 8,
+                                      spreadRadius: _scrubbing ? 0.5 : 0,
                                     ),
                                   ],
                                 ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      if (ready)
-                        AnimatedPositioned(
-                          duration: Duration(
-                            milliseconds: _scrubbing ? 0 : 90,
-                          ),
-                          curve: Curves.easeOut,
-                          left: thumbLeft,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 140),
-                            width: thumbSize,
-                            height: thumbSize,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white,
-                              border: Border.all(
-                                color: AppColors.primary.withValues(
-                                  alpha: _scrubbing ? 0.95 : 0.7,
-                                ),
-                                width: _scrubbing ? 2.2 : 1.4,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primary.withValues(
-                                    alpha: _scrubbing ? 0.55 : 0.28,
+                                clipBehavior: Clip.hardEdge,
+                                child: child,
+                              );
+                            },
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: FractionallySizedBox(
+                                widthFactor: progress <= 0 ? 0.001 : progress,
+                                heightFactor: 1,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(999),
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFFFF8A5B),
+                                        AppColors.primary,
+                                        Color(0xFFFF4D6D),
+                                      ],
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppColors.primary.withValues(
+                                          alpha: 0.45,
+                                        ),
+                                        blurRadius: 8,
+                                      ),
+                                    ],
                                   ),
-                                  blurRadius: _scrubbing ? 12 : 6,
-                                  spreadRadius: _scrubbing ? 1 : 0,
                                 ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
-                    ],
+                        if (ready)
+                          AnimatedPositioned(
+                            duration: Duration(
+                              milliseconds: _scrubbing ? 0 : 90,
+                            ),
+                            curve: Curves.easeOut,
+                            left: thumbLeft,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 140),
+                              width: thumbSize,
+                              height: thumbSize,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white,
+                                border: Border.all(
+                                  color: AppColors.primary.withValues(
+                                    alpha: _scrubbing ? 0.95 : 0.7,
+                                  ),
+                                  width: _scrubbing ? 2.2 : 1.4,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primary.withValues(
+                                      alpha: _scrubbing ? 0.55 : 0.28,
+                                    ),
+                                    blurRadius: _scrubbing ? 12 : 6,
+                                    spreadRadius: _scrubbing ? 1 : 0,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -337,5 +427,16 @@ class _AppVideoSeekBarState extends State<AppVideoSeekBar>
         },
       ),
     );
+  }
+}
+
+/// Tiny touch-slop so scrubbing claims the arena before the landing tab swipe.
+class _EagerHorizontalDragGestureRecognizer
+    extends HorizontalDragGestureRecognizer {
+  _EagerHorizontalDragGestureRecognizer({
+    super.debugOwner,
+    super.supportedDevices,
+  }) {
+    gestureSettings = const DeviceGestureSettings(touchSlop: 2);
   }
 }

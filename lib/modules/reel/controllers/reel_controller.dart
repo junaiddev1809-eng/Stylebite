@@ -127,6 +127,10 @@ class ReelController extends GetxController {
   Timer? _watchTimeTicker;
   Timer? _watchBatchTimer;
   final RxBool isFeedVisible = false.obs;
+
+  /// True while the user is scrubbing the bottom seek bar — freezes vertical
+  /// reel paging so the drag cannot flip to the next video.
+  final RxBool isSeekScrubbing = false.obs;
   static const int _viewCreditSeconds = 3;
   final RxMap<String, int> sessionViewCredits = <String, int>{}.obs;
 

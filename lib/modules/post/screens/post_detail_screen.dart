@@ -25,9 +25,11 @@ import '../screens/edit_post_screen.dart';
 import '../utils/in_app_share.dart';
 import '../widgets/in_app_share_sheet.dart';
 import '../widgets/food_post_details.dart';
+import '../widgets/contest_post_badge.dart';
 import '../widgets/post_action_bar.dart';
 import '../widgets/post_hashtag_chips.dart';
 import '../widgets/post_media_carousel.dart';
+import '../widgets/post_raters_sheet.dart';
 import '../widgets/restaurant_review_sheet.dart';
 import '../widgets/post_options_sheet.dart';
 import '../../SelectLocationScreen/restaurant_map_screen.dart';
@@ -126,8 +128,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                               fit: BoxFit.cover,
                               memCacheWidth: 120,
                             )
-                          : const ColoredBox(
-                              color: Color(0xFFE9E3E1),
+                          : ColoredBox(color: AppColors.chip,
                               child: Center(
                                 child: AppHeroIconData(Icons.person_rounded),
                               ),
@@ -329,39 +330,49 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                               ),
                             ),
                     ),
-                    if (post.ratingEnabled && _controller.canVote.value) ...[
+                    if (post.isInContest)
                       Positioned(
                         right: 14,
                         top: 14,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 7,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Row(
-                            children: [
-                              const AppHeroIconData(
-                                Icons.star_rounded,
-                                size: 16,
-                                color: AppColors.primary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                post.displayRating.toStringAsFixed(1),
-                                style: AppFonts.beVietnam(
-                                  size: 13,
-                                  weight: FontWeight.w700,
-                                  color: AppColors.text,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (post.showContestVotingChrome) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 7,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const AppHeroIconData(
+                                      Icons.star_rounded,
+                                      size: 16,
+                                      color: AppColors.primary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      post.displayRating.toStringAsFixed(1),
+                                      style: AppFonts.beVietnam(
+                                        size: 13,
+                                        weight: FontWeight.w700,
+                                        color: AppColors.text,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
+                              const SizedBox(width: 6),
                             ],
-                          ),
+                            const ContestTrophyBadge(),
+                          ],
                         ),
                       ),
+                    if (post.ratingEnabled && _controller.canVote.value) ...[
                       Positioned(
                         left: 20,
                         right: 20,
@@ -454,6 +465,20 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               onSave: _controller.toggleSave,
               onShare: _showShareSheet,
               onComment: _openComments,
+              onRatersTap: post.isInContest
+                  ? () => showPostRatersSheet(
+                        context,
+                        postId: post.id,
+                        isReel:
+                            post.resolvedMediaType == AppMediaType.video,
+                        ratingCountLabel: post.ratingCount > 0
+                            ? '${post.ratingCount}'
+                            : null,
+                        ratingAvg: post.displayRating > 0
+                            ? post.displayRating
+                            : null,
+                      )
+                  : null,
             ),
             const SizedBox(height: 14),
             Text(

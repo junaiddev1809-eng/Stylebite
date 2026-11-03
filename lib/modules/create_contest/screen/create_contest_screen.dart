@@ -63,7 +63,7 @@ class _CreateContestScreenState extends State<CreateContestScreen> {
         var temp = initial;
         return Container(
           height: 320,
-          color: Colors.white,
+          color: AppColors.surface,
           child: Column(
             children: [
               Row(
@@ -107,7 +107,7 @@ class _CreateContestScreenState extends State<CreateContestScreen> {
         var temp = initial;
         return Container(
           height: 320,
-          color: Colors.white,
+          color: AppColors.surface,
           child: Column(
             children: [
               Row(
@@ -205,10 +205,10 @@ class _CreateContestScreenState extends State<CreateContestScreen> {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(999),
             ),
-            child: const AppHeroIconData(Icons.arrow_back_rounded, color: AppColors.text),
+            child: AppHeroIconData(Icons.arrow_back_rounded, color: AppColors.text),
           ),
         ),
         const SizedBox(width: 10),
@@ -264,7 +264,7 @@ class _CreateContestScreenState extends State<CreateContestScreen> {
           margin: const EdgeInsets.symmetric(horizontal: 4),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: active || done ? AppColors.primary : Colors.white,
+            color: active || done ? AppColors.primary : AppColors.chip,
             borderRadius: BorderRadius.circular(14),
           ),
           child: Center(
@@ -288,7 +288,7 @@ class _CreateContestScreenState extends State<CreateContestScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
           BoxShadow(
@@ -390,11 +390,11 @@ class _CreateContestScreenState extends State<CreateContestScreen> {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: active
-                ? AppColors.primary.withValues(alpha: 0.09)
-                : const Color(0xFFF7F4F3),
+                ? AppColors.primary.withValues(alpha: 0.14)
+                : AppColors.chip,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: active ? AppColors.primary : Colors.transparent,
+              color: active ? AppColors.primary : AppColors.cardBorder,
               width: 1.4,
             ),
           ),
@@ -404,7 +404,7 @@ class _CreateContestScreenState extends State<CreateContestScreen> {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: active ? AppColors.primary : Colors.white,
+                  color: active ? AppColors.primary : AppColors.surface,
                   shape: BoxShape.circle,
                 ),
                 child: AppHeroIconData(
@@ -580,7 +580,7 @@ class _CreateContestScreenState extends State<CreateContestScreen> {
                     _controller.enrollmentEndAt.value == null
                         ? 'Enrollment end at'
                         : _formatDateTime(_controller.enrollmentEndAt.value!),
-                    suffixIcon: const AppHeroIconData(
+                    suffixIcon: AppHeroIconData(
                       Icons.calendar_month_rounded,
                       color: AppColors.hintText,
                     ),
@@ -608,7 +608,7 @@ class _CreateContestScreenState extends State<CreateContestScreen> {
                   _controller.votingEndAt.value == null
                       ? 'Voting end at'
                       : _formatDateTime(_controller.votingEndAt.value!),
-                  suffixIcon: const AppHeroIconData(
+                  suffixIcon: AppHeroIconData(
                     Icons.calendar_month_rounded,
                     color: AppColors.hintText,
                   ),
@@ -668,7 +668,7 @@ class _CreateContestScreenState extends State<CreateContestScreen> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFFF4F1F0),
+          color: AppColors.chip,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
         ),
@@ -723,7 +723,7 @@ class _CreateContestScreenState extends State<CreateContestScreen> {
         width: double.infinity,
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: const Color(0xFFF4F1F0),
+          color: AppColors.chip,
           borderRadius: BorderRadius.circular(12),
         ),
         child: const Text('Video selected'),
@@ -745,7 +745,7 @@ class _CreateContestScreenState extends State<CreateContestScreen> {
       hintText: hint,
       hintStyle: AppFonts.beVietnam(color: AppColors.hintText),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: AppColors.inputFill,
       suffixIcon: suffixIcon,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(

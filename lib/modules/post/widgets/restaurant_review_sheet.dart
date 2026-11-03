@@ -152,7 +152,7 @@ class _ReviewersSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFFF7F4F2),
+      color: AppColors.chip,
       borderRadius: BorderRadius.circular(14),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -308,7 +308,7 @@ class _ReviewerAvatar extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 1.5),
+          border: Border.all(color: AppColors.surface, width: 1.5),
         ),
         child: ClipOval(
           child: AppCachedImage(
@@ -352,7 +352,7 @@ class _InitialBubble extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 1.5),
+        border: Border.all(color: AppColors.surface, width: 1.5),
       ),
       child: Text(
         label,
@@ -430,7 +430,7 @@ class _RestaurantReviewersSheet {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -447,7 +447,7 @@ class _RestaurantReviewersSheet {
                   width: 48,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE7E2E0),
+                    color: AppColors.chip,
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -554,7 +554,7 @@ class RestaurantReviewSheet {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -617,7 +617,7 @@ class _RestaurantReviewSheetBodyState extends State<_RestaurantReviewSheetBody> 
               width: 48,
               height: 5,
               decoration: BoxDecoration(
-                color: const Color(0xFFE7E2E0),
+                color: AppColors.chip,
                 borderRadius: BorderRadius.circular(999),
               ),
             ),

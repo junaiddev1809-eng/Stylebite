@@ -17,7 +17,7 @@ class CommonSearchableDropDown extends StatelessWidget {
     this.selectedItems = const <String>[],
     this.onChangeMultiValue,
     this.fontsize = 14,
-    this.dropdownTileColor = Colors.white,
+    this.dropdownTileColor,
   });
 
   final List<String> itemList;
@@ -29,7 +29,7 @@ class CommonSearchableDropDown extends StatelessWidget {
   final List<String> selectedItems;
   final Function(List<String>)? onChangeMultiValue;
   final double fontsize;
-  final Color dropdownTileColor;
+  final Color? dropdownTileColor;
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +59,7 @@ class CommonSearchableDropDown extends StatelessWidget {
     return PopupProps.menu(
       showSelectedItems: true,
       showSearchBox: true,
-      menuProps: MenuProps(backgroundColor: dropdownTileColor),
+      menuProps: MenuProps(backgroundColor: dropdownTileColor ?? AppColors.surface),
       searchFieldProps: TextFieldProps(
         style: AppFonts.beVietnam(size: fontsize, color: AppColors.text),
         decoration: InputDecoration(
@@ -76,12 +76,12 @@ class CommonSearchableDropDown extends StatelessWidget {
           ),
           contentPadding: const EdgeInsets.only(left: 20),
           filled: true,
-          fillColor: const Color(0xFFF4F1F0),
+          fillColor: AppColors.chip,
         ),
       ),
       itemBuilder: (context, item, isSelected) {
         return Container(
-          color: dropdownTileColor,
+          color: dropdownTileColor ?? AppColors.surface,
           child: ListTile(
             title: Text(
               item,
@@ -100,7 +100,7 @@ class CommonSearchableDropDown extends StatelessWidget {
     return PopupPropsMultiSelection.menu(
       showSelectedItems: true,
       showSearchBox: true,
-      menuProps: MenuProps(backgroundColor: dropdownTileColor),
+      menuProps: MenuProps(backgroundColor: dropdownTileColor ?? AppColors.surface),
       searchFieldProps: TextFieldProps(
         style: AppFonts.beVietnam(size: fontsize, color: AppColors.text),
         decoration: InputDecoration(
@@ -117,12 +117,12 @@ class CommonSearchableDropDown extends StatelessWidget {
           ),
           contentPadding: const EdgeInsets.only(left: 20),
           filled: true,
-          fillColor: const Color(0xFFF4F1F0),
+          fillColor: AppColors.chip,
         ),
       ),
       itemBuilder: (context, item, isSelected) {
         return Container(
-          color: dropdownTileColor,
+          color: dropdownTileColor ?? AppColors.surface,
           child: ListTile(
             title: Text(
               item,
@@ -154,13 +154,13 @@ class CommonSearchableDropDown extends StatelessWidget {
         ),
         contentPadding: const EdgeInsets.only(left: 20),
         filled: true,
-        fillColor: const Color(0xFFF4F1F0),
+        fillColor: AppColors.chip,
       ),
     );
   }
 
   DropdownButtonProps _buttonProps() {
-    return const DropdownButtonProps(
+    return DropdownButtonProps(
       icon: AppHeroIconData(
         Icons.keyboard_arrow_down_rounded,
         color: AppColors.hintText,

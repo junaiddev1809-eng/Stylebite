@@ -18,10 +18,13 @@ import 'package:stylebite/core/utils/app_session.dart';
 import 'package:stylebite/modules/messages/services/chat_presence_service.dart';
 import 'app/routes/app_pages.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/app_theme_controller.dart';
+import 'core/theme/app_theme_rebuild.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LocalStorage.initStorage();
+  Get.put(AppThemeController(), permanent: true);
   // Warm feed fonts before first paint so text metrics don't reflow later.
   try {
     await GoogleFonts.pendingFonts([
@@ -37,14 +40,6 @@ void main() async {
   unawaited(SystemChrome.setPreferredOrientations(const [
     DeviceOrientation.portraitUp,
   ]));
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-      systemNavigationBarColor: Color(0xFFF9F6F5),
-      systemNavigationBarIconBrightness: Brightness.dark,
-    ),
-  );
   unawaited(_initBackgroundServices());
 }
 
@@ -117,32 +112,40 @@ class _StyleBiteAppState extends State<StyleBiteApp>
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
-      title: 'StyleBite',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      defaultTransition: Transition.cupertino,
-      transitionDuration: const Duration(milliseconds: 220),
-      enableLog: false,
-      navigatorObservers: [appRouteObserver],
-      scrollBehavior: const AppScrollBehavior(),
-      initialRoute: AppPages.initial,
-      getPages: AppPages.routes,
-      builder: (context, child) {
-        // Single app-wide back gate. canPop:false stops the engine from also
-        // popping while we handle it — AppBackNavigation locks duplicates
-        // from predictive-back / PopScope double invokes.
-        return PopScope(
-          canPop: false,
-          onPopInvokedWithResult: (didPop, result) {
-            if (didPop) {
-              return;
-            }
-            AppBackNavigation.handleBack();
-          },
-          child: child ?? const SizedBox.shrink(),
-        );
-      },
-    );
+    final themeController = Get.find<AppThemeController>();
+    return Obx(() {
+      final mode = themeController.themeMode.value;
+      return GetMaterialApp(
+        title: 'StyleBite',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: mode,
+        defaultTransition: Transition.cupertino,
+        transitionDuration: const Duration(milliseconds: 220),
+        enableLog: false,
+        navigatorObservers: [appRouteObserver],
+        scrollBehavior: const AppScrollBehavior(),
+        initialRoute: AppPages.initial,
+        getPages: AppPages.routes,
+        builder: (context, child) {
+          // Single app-wide back gate. canPop:false stops the engine from also
+          // popping while we handle it — AppBackNavigation locks duplicates
+          // from predictive-back / PopScope double invokes.
+          return PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, result) {
+              if (didPop) {
+                return;
+              }
+              AppBackNavigation.handleBack();
+            },
+            child: AppThemeRebuild(
+              builder: (_) => child ?? const SizedBox.shrink(),
+            ),
+          );
+        },
+      );
+    });
   }
 }

@@ -13,6 +13,7 @@ import '../../modules/contest/screen/contest_invitations_screen.dart';
 import '../../modules/contest/screen/contest_ranking_screen.dart';
 import '../../modules/contest/screen/profile_contest_results_screen.dart';
 import '../../modules/explore/screen/explore_screen.dart';
+import '../../modules/force_update/screen/force_update_screen.dart';
 import '../../modules/home/screen/home_screen.dart';
 import '../../modules/intro/screen/intro_screen.dart';
 import '../../modules/landing/screen/landing_screen.dart';
@@ -63,6 +64,7 @@ class AppPages {
 
   static final List<GetPage<dynamic>> routes = [
     _fade(AppRoutes.splash, SplashScreen.new),
+    _fade(AppRoutes.forceUpdate, ForceUpdateScreen.new),
     _fade(AppRoutes.intro, IntroScreen.new),
     _fade(AppRoutes.login, LoginScreen.new),
     _slide(AppRoutes.signUp, SignUpScreen.new),

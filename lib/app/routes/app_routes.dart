@@ -2,6 +2,7 @@ abstract class AppRoutes {
   AppRoutes._();
 
   static const String splash = '/';
+  static const String forceUpdate = '/force-update';
   static const String intro = '/intro';
   static const String login = '/login';
   static const String signUp = '/sign-up';

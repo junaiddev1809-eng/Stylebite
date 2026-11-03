@@ -2,10 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:stylebite/core/utils/app_helper.dart';
 import 'package:stylebite/core/utils/config.dart';
+import 'package:stylebite/core/utils/force_update_gate.dart';
 import 'package:stylebite/core/utils/local_storage.dart';
 
 import '../../app/routes/app_routes.dart';
@@ -22,17 +25,51 @@ class ApiHelper {
 
   static bool _isHandlingSessionExpiry = false;
   static bool _isHandlingAccountRestriction = false;
+  static bool _isHandlingForceUpdate = false;
+  static String? _cachedAppVersion;
+  static String? _cachedAppPlatform;
   static const _restrictionCodes = <String>{
     'account_banned',
     'account_suspended',
     'account_inactive',
   };
 
-  static Map<String, String> _headers({bool withAuth = false}) {
+  static Future<void> _ensureAppIdentity() async {
+    if (_cachedAppVersion != null && _cachedAppPlatform != null) {
+      return;
+    }
+    try {
+      final info = await PackageInfo.fromPlatform();
+      _cachedAppVersion = info.version;
+    } catch (_) {
+      _cachedAppVersion = _cachedAppVersion ?? '';
+    }
+    if (kIsWeb) {
+      _cachedAppPlatform = 'web';
+    } else if (Platform.isIOS) {
+      _cachedAppPlatform = 'ios';
+    } else if (Platform.isAndroid) {
+      _cachedAppPlatform = 'android';
+    } else {
+      _cachedAppPlatform = 'web';
+    }
+  }
+
+  static Future<Map<String, String>> _headers({bool withAuth = false}) async {
+    await _ensureAppIdentity();
     final headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
+
+    final version = _cachedAppVersion;
+    if (version != null && version.isNotEmpty) {
+      headers['X-App-Version'] = version;
+    }
+    final platform = _cachedAppPlatform;
+    if (platform != null && platform.isNotEmpty) {
+      headers['X-App-Platform'] = platform;
+    }
 
     if (withAuth) {
       final accessKey = LocalStorage.getAccessKey();
@@ -68,6 +105,9 @@ class ApiHelper {
     if (_isLocalUpdatedHost(response.request?.url)) {
       return;
     }
+    if (await _handleForceUpdate(response)) {
+      return;
+    }
     if (response.statusCode == 401) {
       await _handleSessionExpired(response);
       return;
@@ -76,6 +116,46 @@ class ApiHelper {
     if (response.statusCode == 403) {
       await _handleAccountRestricted(response);
     }
+  }
+
+  static Future<bool> _handleForceUpdate(http.Response response) async {
+    Map<String, dynamic>? payload;
+    try {
+      final decoded = json.decode(response.body);
+      payload = decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      payload = null;
+    }
+
+    final code = (payload?['code'] ?? '').toString().trim();
+    final flagged = response.statusCode == 426 ||
+        code == 'force_update' ||
+        payload?['update_required'] == true ||
+        payload?['update_required'] == 1 ||
+        payload?['update_required'] == '1';
+    if (!flagged || payload == null) {
+      return false;
+    }
+    // Only treat as force-update when the server explicitly says so.
+    final explicit = code == 'force_update' ||
+        response.statusCode == 426 ||
+        payload['force_update'] == true ||
+        payload['force_update'] == 1 ||
+        payload['force_update'] == '1';
+    if (!explicit) {
+      return false;
+    }
+
+    if (_isHandlingForceUpdate) {
+      return true;
+    }
+    _isHandlingForceUpdate = true;
+    try {
+      await ForceUpdateGate.showFromPayload(payload);
+    } finally {
+      _isHandlingForceUpdate = true;
+    }
+    return true;
   }
 
   static Future<void> _handleSessionExpired(http.Response response) async {
@@ -163,7 +243,7 @@ class ApiHelper {
 
     try {
       final http.Response response = await http
-          .post(url, headers: _headers(), body: json.encode(body))
+          .post(url, headers: await _headers(), body: json.encode(body))
           .timeout(_requestTimeout);
 
       await _interceptAuthFailure(response);
@@ -193,7 +273,7 @@ class ApiHelper {
       final http.Response response = await http
           .post(
             url,
-            headers: _headers(withAuth: true),
+            headers: await _headers(withAuth: true),
             body: body == null ? null : json.encode(body),
           )
           .timeout(_requestTimeout);
@@ -224,7 +304,7 @@ class ApiHelper {
 
     try {
       final http.Response response = await http
-          .get(url, headers: _headers(withAuth: withAuth))
+          .get(url, headers: await _headers(withAuth: withAuth))
           .timeout(_requestTimeout);
       await _interceptAuthFailure(response);
       return response;
@@ -250,7 +330,7 @@ class ApiHelper {
 
     try {
       final http.Response response = await http
-          .get(url, headers: _headers(withAuth: true))
+          .get(url, headers: await _headers(withAuth: true))
           .timeout(_requestTimeout);
 
       if (interceptAuthFailure) {
@@ -281,7 +361,7 @@ class ApiHelper {
       final http.Response response = await http
           .delete(
             url,
-            headers: _headers(withAuth: true),
+            headers: await _headers(withAuth: true),
             body: body == null ? null : json.encode(body),
           )
           .timeout(_requestTimeout);
@@ -312,7 +392,7 @@ class ApiHelper {
       final http.Response response = await http
           .patch(
             url,
-            headers: _headers(withAuth: true),
+            headers: await _headers(withAuth: true),
             body: body == null ? null : json.encode(body),
           )
           .timeout(_requestTimeout);
@@ -346,7 +426,7 @@ class ApiHelper {
 
     try {
       final multipartHeaders = Map<String, String>.from(
-        _headers(withAuth: withAuth),
+        await _headers(withAuth: withAuth),
       )..remove('Content-Type');
       final request = http.MultipartRequest(method, url)
         ..headers.addAll(multipartHeaders)

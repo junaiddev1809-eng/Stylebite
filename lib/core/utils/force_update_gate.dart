@@ -3,68 +3,79 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-import '../theme/app_colors.dart';
-import '../theme/app_fonts.dart';
-import 'api_helper.dart';
+import '../../app/routes/app_routes.dart';
+import 'config.dart';
 
 class ForceUpdateResult {
   const ForceUpdateResult({
-    required this.required,
+    required this.requiredUpdate,
     this.storeUrl = '',
     this.title = 'Update required',
     this.body =
         'A new version of StyleBite is available. Please update to continue.',
   });
 
-  final bool required;
+  final bool requiredUpdate;
   final String storeUrl;
   final String title;
   final String body;
 }
 
 /// Blocks the app when admin enables force update and this build is below
-/// the configured minimum. Fail-open on network errors so offline users
-/// are not locked out.
+/// the configured minimum. Uses a dedicated full-screen route (not a dialog)
+/// so splash dispose cannot dismiss it.
 class ForceUpdateGate {
   ForceUpdateGate._();
+
+  static bool _showing = false;
 
   static Future<ForceUpdateResult> check() async {
     try {
       final info = await PackageInfo.fromPlatform();
       final platform = _platformKey();
       if (platform == null) {
-        return const ForceUpdateResult(required: false);
+        return const ForceUpdateResult(requiredUpdate: false);
       }
 
-      final response = await ApiHelper.getRequest(
-        'app/version-check?platform=$platform&app_version=${Uri.encodeQueryComponent(info.version)}',
-      ).timeout(const Duration(seconds: 8));
+      final uri = Uri.parse(
+        '${kcBaseAPIUrl}app/version-check'
+        '?platform=$platform'
+        '&app_version=${Uri.encodeQueryComponent(info.version)}',
+      );
 
-      if (response == null ||
-          response.statusCode < 200 ||
-          response.statusCode >= 300) {
-        return const ForceUpdateResult(required: false);
+      final response = await http
+          .get(
+            uri,
+            headers: const {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 8));
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return const ForceUpdateResult(requiredUpdate: false);
       }
 
       final payload = jsonDecode(response.body);
       if (payload is! Map) {
-        return const ForceUpdateResult(required: false);
+        return const ForceUpdateResult(requiredUpdate: false);
       }
 
-      final required = payload['update_required'] == true ||
+      final needsUpdate = payload['update_required'] == true ||
           payload['update_required'] == 1 ||
-          payload['update_required'] == '1';
-      if (!required) {
-        return const ForceUpdateResult(required: false);
+          payload['update_required'] == '1' ||
+          payload['update_required'] == 'true';
+      if (!needsUpdate) {
+        return const ForceUpdateResult(requiredUpdate: false);
       }
 
       return ForceUpdateResult(
-        required: true,
+        requiredUpdate: true,
         storeUrl: (payload['store_url'] ?? '').toString().trim(),
         title: (payload['title'] ?? 'Update required').toString(),
         body: (payload['body'] ??
@@ -72,27 +83,52 @@ class ForceUpdateGate {
             .toString(),
       );
     } catch (_) {
-      return const ForceUpdateResult(required: false);
+      return const ForceUpdateResult(requiredUpdate: false);
     }
   }
 
-  /// Non-dismissible full-screen gate. Returns only if the check says no
-  /// update is required (or the check failed open).
+  /// Replaces the navigation stack with the non-dismissible update screen.
+  /// Returns true when the app is blocked.
   static Future<bool> blockIfRequired() async {
     final result = await check();
-    if (!result.required) {
+    if (!result.requiredUpdate) {
       return false;
     }
-
-    await Get.dialog<void>(
-      PopScope(
-        canPop: false,
-        child: _ForceUpdateDialog(result: result),
-      ),
-      barrierDismissible: false,
-      barrierColor: Colors.black.withValues(alpha: 0.72),
-    );
+    await show(result);
     return true;
+  }
+
+  static Future<void> show(ForceUpdateResult result) async {
+    if (_showing) {
+      return;
+    }
+    _showing = true;
+    try {
+      await Get.offAllNamed(
+        AppRoutes.forceUpdate,
+        arguments: {
+          'title': result.title,
+          'body': result.body,
+          'storeUrl': result.storeUrl,
+        },
+      );
+    } finally {
+      // Keep locked — screen has no back navigation.
+      _showing = true;
+    }
+  }
+
+  static Future<void> showFromPayload(Map<String, dynamic> payload) async {
+    await show(
+      ForceUpdateResult(
+        requiredUpdate: true,
+        storeUrl: (payload['store_url'] ?? '').toString().trim(),
+        title: (payload['title'] ?? 'Update required').toString(),
+        body: (payload['body'] ??
+                'A new version of StyleBite is available. Please update to continue.')
+            .toString(),
+      ),
+    );
   }
 
   static String? _platformKey() {
@@ -106,98 +142,5 @@ class ForceUpdateGate {
       return 'android';
     }
     return null;
-  }
-}
-
-class _ForceUpdateDialog extends StatelessWidget {
-  const _ForceUpdateDialog({required this.result});
-
-  final ForceUpdateResult result;
-
-  Future<void> _openStore() async {
-    final raw = result.storeUrl.trim();
-    if (raw.isEmpty) {
-      return;
-    }
-    final uri = Uri.tryParse(raw);
-    if (uri == null) {
-      return;
-    }
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 28),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(22, 24, 22, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.system_update_rounded,
-                color: AppColors.primary,
-                size: 28,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              result.title,
-              textAlign: TextAlign.center,
-              style: AppFonts.plusJakarta(
-                size: 20,
-                weight: FontWeight.w800,
-                color: AppColors.text,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              result.body,
-              textAlign: TextAlign.center,
-              style: AppFonts.beVietnam(
-                size: 14,
-                weight: FontWeight.w500,
-                color: AppColors.hintText,
-                height: 1.45,
-              ),
-            ),
-            const SizedBox(height: 22),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: () => unawaited(_openStore()),
-                style: ElevatedButton.styleFrom(
-                  elevation: 0,
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                child: Text(
-                  'Update now',
-                  style: AppFonts.beVietnam(
-                    size: 15,
-                    weight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

@@ -132,15 +132,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   return AppTextField(
                     controller: _controller.emailController,
                     label: 'Email',
-                    hintText: 'you@gmail.com',
+                    hintText: 'you@gmail.com or iCloud',
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     onChanged: _controller.onEmailChanged,
                     borderColor: ok ? Colors.green : null,
-                    helperText: ok ? 'Email is available.' : null,
-                    helperColor: Colors.green.shade700,
+                    helperText: ok
+                        ? 'Email is available.'
+                        : 'Gmail or iCloud only',
+                    helperColor: ok ? Colors.green.shade700 : null,
                     validator: (value) {
-                      final validatorError = AppValidators.email(value);
+                      final validatorError = AppValidators.signupEmail(value);
                       if (validatorError != null) return validatorError;
                       if (_controller.emailAvailable.value == false) {
                         return _controller.emailError.value ??

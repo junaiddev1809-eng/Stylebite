@@ -5,7 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import 'chat_reaction_picker_sheet.dart';
 
-enum ChatMessageOptionAction { report, react, moreEmojis }
+enum ChatMessageOptionAction { report, react, moreEmojis, saveToGallery }
 
 class ChatMessageOptionsResult {
   const ChatMessageOptionsResult({
@@ -20,6 +20,8 @@ class ChatMessageOptionsResult {
 Future<ChatMessageOptionsResult?> showChatMessageOptionsSheet(
   BuildContext context, {
   bool canReport = true,
+  bool canSaveToGallery = false,
+  bool isVideo = false,
   String currentReaction = '',
 }) {
   return showModalBottomSheet<ChatMessageOptionsResult>(
@@ -114,6 +116,45 @@ Future<ChatMessageOptionsResult?> showChatMessageOptionsSheet(
                   },
                 ),
               ),
+              if (canSaveToGallery) ...[
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: () => Navigator.of(context).pop(
+                    const ChatMessageOptionsResult(
+                      action: ChatMessageOptionAction.saveToGallery,
+                    ),
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.chip,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.download_rounded,
+                          color: AppColors.text,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          isVideo ? 'Save Video to Gallery' : 'Save Photo to Gallery',
+                          style: AppFonts.beVietnam(
+                            size: 14,
+                            weight: FontWeight.w700,
+                            color: AppColors.text,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               if (canReport) ...[
                 const SizedBox(height: 16),
                 InkWell(

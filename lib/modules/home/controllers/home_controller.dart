@@ -536,23 +536,34 @@ class HomeController extends GetxController {
     final next = <HomePostModel>[];
     for (final post in visiblePosts) {
       final info = ContestEnrollmentStore.instance.infoFor(post.id);
-      // Never revive the 1–5 bar when the API already closed voting (ended
-      // contest keeps trophy via contestId/title + status).
-      if (info == null ||
-          post.ratingEnabled ||
-          post.isContestEnded ||
-          (post.isInContest && !post.ratingEnabled)) {
+      if (info == null) {
         next.add(post);
         continue;
       }
+
+      // Never revive the 1–5 bar from the enrollment store. Only lock it off
+      // when voting is closed, and fill contest badge metadata.
+      final shouldLock = info.votingClosed &&
+          (post.ratingEnabled || !post.isContestEnded);
+      final needsMeta = post.contestId <= 0 ||
+          post.contestTitle.trim().isEmpty ||
+          post.contestStatus.trim().isEmpty;
+      if (!shouldLock && !needsMeta) {
+        next.add(post);
+        continue;
+      }
+
       changed = true;
       next.add(
         post.copyWith(
-          ratingEnabled: true,
+          ratingEnabled: info.votingClosed ? false : post.ratingEnabled,
           contestId: info.contestId > 0 ? info.contestId : post.contestId,
           contestTitle: info.contestTitle.trim().isNotEmpty
               ? info.contestTitle
               : post.contestTitle,
+          contestStatus: info.contestStatus.trim().isNotEmpty
+              ? info.contestStatus
+              : post.contestStatus,
         ),
       );
     }

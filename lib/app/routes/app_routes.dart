@@ -2,6 +2,7 @@ abstract class AppRoutes {
   AppRoutes._();
 
   static const String splash = '/';
+  static const String forceUpdate = '/force-update';
   static const String intro = '/intro';
   static const String login = '/login';
   static const String signUp = '/sign-up';
@@ -16,6 +17,7 @@ abstract class AppRoutes {
   static const String messages = '/messages';
   static const String editProfile = '/edit-profile';
   static const String myEarnings = '/my-earnings';
+  static const String monetization = '/settings/monetization';
   static const String createContest = '/create-contest';
   static const String contestDetail = '/contest-detail';
   static const String contestRanking = '/contest-ranking';

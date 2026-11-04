@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:stylebite/core/widgets/app_hero_icon.dart';
-
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/verified_flag.dart';
+import '../../../core/widgets/app_user_avatar.dart';
 import '../../../core/widgets/app_verified_badge.dart';
 import '../models/post_comment_model.dart';
 import '../../profile/utils/profile_open_helper.dart';
@@ -51,15 +50,7 @@ class PostCommentTile extends StatelessWidget {
             children: [
               GestureDetector(
                 onTap: _openCommentProfile,
-                child: CircleAvatar(
-                  radius: 16,
-                  backgroundImage: comment.hasAvatar
-                      ? NetworkImage(comment.avatar)
-                      : null,
-                  child: comment.hasAvatar
-                      ? null
-                      : const AppHeroIconData(Icons.person_rounded, size: 16),
-                ),
+                child: AppUserAvatar(imageUrl: comment.avatar, size: 32),
               ),
               const SizedBox(width: 10),
               Expanded(

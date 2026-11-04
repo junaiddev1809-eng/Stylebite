@@ -11,6 +11,7 @@ import '../../../core/utils/app_back_navigation.dart';
 import '../../../core/widgets/app_cached_image.dart';
 import '../../../core/widgets/app_cached_video_player.dart';
 import '../../../core/widgets/app_hero_icon.dart';
+import '../../../core/widgets/app_user_avatar.dart';
 import '../../../core/widgets/app_verified_badge.dart';
 import '../../../core/widgets/states/app_empty_state.dart';
 import '../../../core/widgets/states/app_error_state.dart';
@@ -35,7 +36,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   late final NotificationsController _controller;
   final ScrollController _scrollController = ScrollController();
   final Map<int, String> _vibeResultById = <int, String>{};
+  final Map<String, GlobalKey> _itemKeys = <String, GlobalKey>{};
   String? _openSwipeKey;
+  String? _scrolledToHighlightId;
+  Worker? _highlightWorker;
 
   @override
   void initState() {
@@ -47,14 +51,57 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (_controller.notifications.isEmpty) {
       _controller.fetchNotifications();
     }
+    _highlightWorker = ever<String?>(_controller.highlightNotificationId, (_) {
+      _scrolledToHighlightId = null;
+      _scheduleHighlightScroll();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scheduleHighlightScroll();
+    });
   }
 
   @override
   void dispose() {
+    _highlightWorker?.dispose();
     _scrollController
       ..removeListener(_onScroll)
       ..dispose();
     super.dispose();
+  }
+
+  void _scheduleHighlightScroll() {
+    final target = _controller.highlightNotificationId.value?.trim() ?? '';
+    if (target.isEmpty || target == _scrolledToHighlightId) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      NotificationItemModel? match;
+      for (final item in _controller.notifications) {
+        if (_controller.matchesHighlight(item)) {
+          match = item;
+          break;
+        }
+      }
+      if (match == null) {
+        return;
+      }
+      final keyId =
+          match.remoteId.isNotEmpty ? match.remoteId : match.id.toString();
+      final ctx = _itemKeys[keyId]?.currentContext;
+      if (ctx == null) {
+        return;
+      }
+      _scrolledToHighlightId = target;
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutCubic,
+        alignment: 0.18,
+      );
+    });
   }
 
   @override
@@ -223,30 +270,42 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildNotificationListItem(NotificationItemModel item) {
+    final keyId = item.remoteId.isNotEmpty ? item.remoteId : item.id.toString();
+    final itemKey = _itemKeys.putIfAbsent(keyId, GlobalKey.new);
     final swipeKey =
-        'notification-${item.remoteId.isNotEmpty ? item.remoteId : item.id}-${item.createdAt}-${item.username}-${item.entityId}';
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: _SwipeRevealDelete(
-        key: ValueKey<String>(swipeKey),
-        isOpen: _openSwipeKey == swipeKey,
-        onOpenChanged: (open) {
-          setState(() {
-            _openSwipeKey = open ? swipeKey : null;
-          });
-        },
-        onDelete: () => _deleteNotification(item),
-        child: item.kind == NotificationKind.contest
-            ? _ContestCard(item: item, onTap: () => _handleActionTap(item))
-            : _NotificationCard(
-                item: item,
-                resolvedVibeAction: _vibeResultById[item.id],
-                onTapVibeAction: (label) => _handleVibeTap(item, label),
-                onTapPrimary: () => _handleActionTap(item),
-                onTapProfile: () => _openActorProfile(item),
-              ),
-      ),
-    );
+        'notification-$keyId-${item.createdAt}-${item.username}-${item.entityId}';
+    return Obx(() {
+      final highlighted = _controller.matchesHighlight(item);
+      if (highlighted) {
+        _scheduleHighlightScroll();
+      }
+      return Padding(
+        key: itemKey,
+        padding: const EdgeInsets.only(bottom: 12),
+        child: _SwipeRevealDelete(
+          key: ValueKey<String>(swipeKey),
+          isOpen: _openSwipeKey == swipeKey,
+          onOpenChanged: (open) {
+            setState(() {
+              _openSwipeKey = open ? swipeKey : null;
+            });
+          },
+          onDelete: () => _deleteNotification(item),
+          child: _NotificationGlow(
+            glowing: highlighted,
+            child: item.kind == NotificationKind.contest
+                ? _ContestCard(item: item, onTap: () => _handleActionTap(item))
+                : _NotificationCard(
+                    item: item,
+                    resolvedVibeAction: _vibeResultById[item.id],
+                    onTapVibeAction: (label) => _handleVibeTap(item, label),
+                    onTapPrimary: () => _handleActionTap(item),
+                    onTapProfile: () => _openActorProfile(item),
+                  ),
+          ),
+        ),
+      );
+    });
   }
 
   void _openActorProfile(NotificationItemModel item) {
@@ -302,7 +361,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         _openContestNotification(item);
         break;
       case NotificationKind.message:
-        Get.to<void>(() => const MessagesScreen());
+        if (_openFromActionUrl(item.actionUrl)) {
+          break;
+        }
+        Get.to<void>(
+          () => MessagesScreen(
+            initialUsername: item.actorUsername.trim().isNotEmpty
+                ? item.actorUsername.trim()
+                : null,
+            initialConversationId: item.entityId > 0 ? item.entityId : null,
+          ),
+        );
         break;
       case NotificationKind.support:
         if (item.entityType == 'support_ticket' && item.entityId > 0) {
@@ -339,9 +408,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       );
       return;
     }
+    final postId = _postIdFromActionUrl(item.actionUrl);
     Get.toNamed(
       AppRoutes.contestDetail,
-      arguments: {'contestId': contestId},
+      arguments: <String, dynamic>{
+        'contestId': contestId,
+        if (postId > 0) 'postId': postId,
+      },
     );
   }
 
@@ -360,6 +433,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return int.tryParse(segments[1]) ?? 0;
   }
 
+  int _postIdFromActionUrl(String actionUrl) {
+    final uri = Uri.tryParse(actionUrl.trim());
+    final raw = uri?.queryParameters['post_id']?.trim() ?? '';
+    return int.tryParse(raw) ?? 0;
+  }
+
   bool _openFromActionUrl(String actionUrl) {
     final uri = Uri.tryParse(actionUrl.trim());
     final segments =
@@ -375,6 +454,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         case 'earnings':
           Get.toNamed(AppRoutes.myEarnings);
           return true;
+        case 'monetization':
+          Get.toNamed(AppRoutes.monetization);
+          return true;
         default:
           return false;
       }
@@ -383,13 +465,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final resource = segments[0].toLowerCase();
     final identifier = segments[1];
 
+    if (resource == 'settings' && identifier.toLowerCase() == 'monetization') {
+      Get.toNamed(AppRoutes.monetization);
+      return true;
+    }
+
     switch (resource) {
       case 'my-earnings':
       case 'earnings':
         Get.toNamed(AppRoutes.myEarnings);
         return true;
+      case 'monetization':
+        Get.toNamed(AppRoutes.monetization);
+        return true;
       case 'posts':
       case 'post':
+      case 'reels':
+      case 'reel':
         PostDetailOpenHelper.openById(identifier);
         return true;
       case 'contests':
@@ -399,18 +491,38 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           final hasResults = (uri?.queryParameters['results'] ?? '')
               .trim()
               .isNotEmpty;
+          final postId =
+              int.tryParse((uri?.queryParameters['post_id'] ?? '').trim()) ??
+                  0;
           Get.toNamed(
             hasResults ? AppRoutes.contestRanking : AppRoutes.contestDetail,
-            arguments: {'contestId': contestId},
+            arguments: <String, dynamic>{
+              'contestId': contestId,
+              if (!hasResults && postId > 0) 'postId': postId,
+            },
           );
           return true;
         }
         return false;
       case 'chats':
       case 'chat':
+        final conversationId = int.tryParse(identifier) ??
+            int.tryParse(
+              (uri?.queryParameters['conversation_id'] ?? '').trim(),
+            ) ??
+            0;
+        final usernameFromPath =
+            int.tryParse(identifier) == null ? identifier.replaceFirst('@', '') : '';
+        final username = ((uri?.queryParameters['username'] ??
+                    uri?.queryParameters['chat_username'] ??
+                    usernameFromPath)
+                .toString())
+            .trim()
+            .replaceFirst('@', '');
         Get.to<void>(
           () => MessagesScreen(
-            initialUsername: identifier.replaceFirst('@', ''),
+            initialUsername: username.isNotEmpty ? username : null,
+            initialConversationId: conversationId > 0 ? conversationId : null,
           ),
         );
         return true;
@@ -680,19 +792,9 @@ class _TopBar extends StatelessWidget {
                           width: 1.8,
                         ),
                       ),
-                      child: ClipOval(
-                        child:
-                            profileController.avatarImageUrl.value
-                                .trim()
-                                .isNotEmpty
-                            ? AppCachedImage(
-                                imageUrl:
-                                    profileController.avatarImageUrl.value,
-                                width: 40,
-                                height: 40,
-                                fit: BoxFit.cover,
-                              )
-                            : const AppHeroIconData(Icons.person_rounded),
+                      child: AppUserAvatar(
+                        imageUrl: profileController.avatarImageUrl.value,
+                        size: 40,
                       ),
                     ),
                   ),
@@ -702,6 +804,85 @@ class _TopBar extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _NotificationGlow extends StatefulWidget {
+  const _NotificationGlow({
+    required this.glowing,
+    required this.child,
+  });
+
+  final bool glowing;
+  final Widget child;
+
+  @override
+  State<_NotificationGlow> createState() => _NotificationGlowState();
+}
+
+class _NotificationGlowState extends State<_NotificationGlow>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    if (widget.glowing) {
+      _pulse.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _NotificationGlow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.glowing && !_pulse.isAnimating) {
+      _pulse.repeat(reverse: true);
+    } else if (!widget.glowing && _pulse.isAnimating) {
+      _pulse
+        ..stop()
+        ..value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.glowing) {
+      return widget.child;
+    }
+    return AnimatedBuilder(
+      animation: _pulse,
+      builder: (context, child) {
+        final t = _pulse.value;
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.22 + t * 0.38),
+                blurRadius: 16 + t * 18,
+                spreadRadius: 0.5 + t * 2.5,
+              ),
+            ],
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.45 + t * 0.45),
+              width: 1.6,
+            ),
+          ),
+          child: child,
+        );
+      },
+      child: widget.child,
     );
   }
 }
@@ -1021,14 +1202,7 @@ class _NotificationAvatar extends StatelessWidget {
         shape: BoxShape.circle,
       ),
       child: ClipOval(
-        child: imageUrl.trim().isNotEmpty
-            ? AppCachedImage(
-                imageUrl: imageUrl,
-                width: 40,
-                height: 40,
-                fit: BoxFit.cover,
-              )
-            : isSystem
+        child: isSystem && imageUrl.trim().isEmpty
             ? const Padding(
                 padding: EdgeInsets.all(7),
                 child: Image(
@@ -1036,10 +1210,7 @@ class _NotificationAvatar extends StatelessWidget {
                   fit: BoxFit.contain,
                 ),
               )
-            : AppHeroIconData(
-                Icons.person_rounded,
-                color: AppColors.hintText,
-              ),
+            : AppUserAvatar(imageUrl: imageUrl, size: 40),
       ),
     );
   }

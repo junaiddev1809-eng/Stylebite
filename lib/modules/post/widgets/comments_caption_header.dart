@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
-import '../../../core/widgets/app_cached_image.dart';
-import '../../../core/widgets/app_hero_icon.dart';
+import '../../../core/widgets/app_user_avatar.dart';
 import '../../../core/widgets/app_verified_badge.dart';
 import 'post_hashtag_chips.dart';
 
@@ -38,29 +37,10 @@ class CommentsCaptionHeader extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipOval(
-              child: avatarUrl.trim().isNotEmpty
-                  ? AppCachedImage(
-                      imageUrl: avatarUrl,
-                      width: 36,
-                      height: 36,
-                      fit: BoxFit.cover,
-                      memCacheWidth: 108,
-                    )
-                  : ColoredBox(
-                      color: AppColors.chip,
-                      child: SizedBox(
-                        width: 36,
-                        height: 36,
-                        child: Center(
-                          child: AppHeroIconData(
-                            Icons.person_rounded,
-                            size: 18,
-                            color: AppColors.hintText,
-                          ),
-                        ),
-                      ),
-                    ),
+            AppUserAvatar(
+              imageUrl: avatarUrl,
+              size: 36,
+              memCacheWidth: 108,
             ),
             const SizedBox(width: 10),
             Expanded(

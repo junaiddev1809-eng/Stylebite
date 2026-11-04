@@ -8,6 +8,7 @@ import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/app_back_navigation.dart';
 import '../../../core/widgets/app_cached_image.dart';
 import '../../../core/widgets/app_hero_icon.dart';
+import '../../../core/widgets/app_user_avatar.dart';
 import '../../../core/widgets/app_verified_badge.dart';
 import '../../../core/widgets/states/app_empty_state.dart';
 import '../../../core/widgets/states/app_error_state.dart';
@@ -46,11 +47,13 @@ class _MessagesScreenState extends State<MessagesScreen> {
     _searchFocusNode = FocusNode();
 
     final initialUsername = widget.initialUsername?.trim();
-    if (initialUsername != null && initialUsername.isNotEmpty) {
+    final initialConversationId = widget.initialConversationId;
+    if ((initialUsername != null && initialUsername.isNotEmpty) ||
+        (initialConversationId != null && initialConversationId > 0)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _controller.openFromPayload(
-          username: initialUsername,
-          conversationId: widget.initialConversationId,
+          username: initialUsername ?? '',
+          conversationId: initialConversationId,
         );
       });
     }
@@ -577,28 +580,9 @@ class _MessagesTopBar extends StatelessWidget {
                   ),
                   borderRadius: BorderRadius.circular(999),
                   child: Obx(
-                    () => SizedBox(
-                      width: 42,
-                      height: 42,
-                      child: ClipOval(
-                        child:
-                            profileController.avatarImageUrl.value
-                                .trim()
-                                .isNotEmpty
-                            ? AppCachedImage(
-                                imageUrl:
-                                    profileController.avatarImageUrl.value,
-                                width: 42,
-                                height: 42,
-                              )
-                            : CircleAvatar(
-                                backgroundColor: AppColors.chip,
-                                child: AppHeroIconData(
-                                  Icons.person_rounded,
-                                  color: AppColors.hintText,
-                                ),
-                              ),
-                      ),
+                    () => AppUserAvatar(
+                      imageUrl: profileController.avatarImageUrl.value,
+                      size: 42,
                     ),
                   ),
                 ),
@@ -834,22 +818,9 @@ class _Avatar extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: AppColors.surface,
                 ),
-                child: ClipOval(
-                  child: thread.user.imageUrl.trim().isNotEmpty
-                      ? AppCachedImage(
-                          imageUrl: thread.user.imageUrl,
-                          width: 50,
-                          height: 50,
-                        )
-                      : Container(
-                          color: AppColors.chip,
-                          alignment: Alignment.center,
-                          child: AppHeroIconData(
-                            Icons.person_rounded,
-                            color: AppColors.hintText,
-                            size: 22,
-                          ),
-                        ),
+                child: AppUserAvatar(
+                  imageUrl: thread.user.imageUrl,
+                  size: 50,
                 ),
               ),
             ),

@@ -137,11 +137,8 @@ class AppDeviceService {
   }
 
   static Future<String> _ensureAppVersion() async {
-    final savedVersion = LocalStorage.getAppVersion();
-    if (savedVersion != null && savedVersion.isNotEmpty) {
-      return savedVersion;
-    }
-
+    // Always re-read from the binary so an upgraded install cannot keep
+    // reporting the previous version from SharedPreferences.
     final packageInfo = await PackageInfo.fromPlatform();
     final version = packageInfo.version;
     LocalStorage.setAppVersion(appVersion: version);

@@ -5,8 +5,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/app_helper.dart';
 import '../../../core/utils/local_storage.dart';
-import '../../../core/widgets/app_cached_image.dart';
 import '../../../core/widgets/app_hero_icon.dart';
+import '../../../core/widgets/app_user_avatar.dart';
 import '../../home/models/home_post_model.dart';
 import '../../profile/utils/profile_open_helper.dart';
 import '../controllers/restaurant_review_store.dart';
@@ -302,30 +302,18 @@ class _ReviewerAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (review.avatarUrl.trim().isNotEmpty) {
-      return Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: AppColors.surface, width: 1.5),
-        ),
-        child: ClipOval(
-          child: AppCachedImage(
-            imageUrl: review.avatarUrl,
-            width: size,
-            height: size,
-            memCacheWidth: 84,
-            memCacheHeight: 84,
-          ),
-        ),
-      );
-    }
-
-    return _InitialBubble(
-      label: _initial(review.username),
-      color: _avatarColor(review.userKey.hashCode),
-      size: size,
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.surface, width: 1.5),
+      ),
+      child: AppUserAvatar(
+        imageUrl: review.avatarUrl,
+        size: size - 3,
+        memCacheWidth: 84,
+      ),
     );
   }
 }
@@ -528,25 +516,6 @@ String _handle(String username) {
     return '@user';
   }
   return trimmed.startsWith('@') ? trimmed : '@$trimmed';
-}
-
-String _initial(String username) {
-  final cleaned = username.trim().replaceFirst(RegExp(r'^@'), '');
-  if (cleaned.isEmpty) {
-    return '?';
-  }
-  return cleaned[0].toUpperCase();
-}
-
-Color _avatarColor(int seed) {
-  const colors = <Color>[
-    Color(0xFFB85B24),
-    Color(0xFFFF7A59),
-    Color(0xFF8B5CF6),
-    Color(0xFFF59E0B),
-    Color(0xFFFF4D6D),
-  ];
-  return colors[seed.abs() % colors.length];
 }
 
 class RestaurantReviewSheet {

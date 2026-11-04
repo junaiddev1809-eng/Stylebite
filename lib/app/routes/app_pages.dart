@@ -13,6 +13,7 @@ import '../../modules/contest/screen/contest_invitations_screen.dart';
 import '../../modules/contest/screen/contest_ranking_screen.dart';
 import '../../modules/contest/screen/profile_contest_results_screen.dart';
 import '../../modules/explore/screen/explore_screen.dart';
+import '../../modules/force_update/screen/force_update_screen.dart';
 import '../../modules/home/screen/home_screen.dart';
 import '../../modules/intro/screen/intro_screen.dart';
 import '../../modules/landing/screen/landing_screen.dart';
@@ -22,6 +23,7 @@ import '../../modules/post/screens/hashtag_feed_screen.dart';
 import '../../modules/search/screen/search_screen.dart';
 import '../../modules/settings/screen/about_stylebite_screen.dart';
 import '../../modules/settings/screen/help_center_screen.dart';
+import '../../modules/settings/screen/monetization_screen.dart';
 import '../../modules/settings/screen/privacy_policy_screen.dart';
 import '../../modules/splash/screen/splash_screen.dart';
 import '../../modules/support/screen/new_support_ticket_screen.dart';
@@ -62,6 +64,7 @@ class AppPages {
 
   static final List<GetPage<dynamic>> routes = [
     _fade(AppRoutes.splash, SplashScreen.new),
+    _fade(AppRoutes.forceUpdate, ForceUpdateScreen.new),
     _fade(AppRoutes.intro, IntroScreen.new),
     _fade(AppRoutes.login, LoginScreen.new),
     _slide(AppRoutes.signUp, SignUpScreen.new),
@@ -82,6 +85,7 @@ class AppPages {
     _slide(AppRoutes.messages, MessagesScreen.new),
     _slide(AppRoutes.editProfile, EditProfileScreen.new),
     _slide(AppRoutes.myEarnings, MyEarningsScreen.new),
+    _slide(AppRoutes.monetization, MonetizationScreen.new),
     _slide(AppRoutes.createContest, CreateContestScreen.new),
     _slide(AppRoutes.contestDetail, ContestDetailScreen.new),
     _slide(AppRoutes.contestRanking, ContestRankingScreen.new),

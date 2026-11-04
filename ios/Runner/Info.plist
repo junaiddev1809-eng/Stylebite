@@ -60,9 +60,9 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>StyleBite needs microphone access when recording videos with audio.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>StyleBite needs permission to save edited media to your photo library when required.</string>
+	<string>StyleBite needs permission to save photos and videos from chat and edits to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>StyleBite needs photo library access so you can select media for your posts.</string>
+	<string>StyleBite needs photo library access so you can select photos and videos for posts and chat.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
-import '../../../core/widgets/app_cached_image.dart';
+import '../../../core/widgets/app_user_avatar.dart';
 import '../../../core/widgets/app_verified_badge.dart';
 import '../controllers/follower_sheet_controller.dart';
 import '../models/follower_model.dart';
@@ -153,12 +153,7 @@ class _UserTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
         child: Row(
           children: [
-            AppCachedImage(
-              imageUrl: user.avatarUrl,
-              width: 48,
-              height: 48,
-              borderRadius: BorderRadius.circular(999),
-            ),
+            AppUserAvatar(imageUrl: user.avatarUrl, size: 48),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

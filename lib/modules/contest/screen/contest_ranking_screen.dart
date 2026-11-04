@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:stylebite/core/widgets/app_hero_icon.dart';
+import 'package:stylebite/core/widgets/app_user_avatar.dart';
 import 'package:get/get.dart';
 
 import '../../../core/theme/app_colors.dart';
@@ -503,19 +504,11 @@ class _ContestRankingScreenState extends State<ContestRankingScreen> {
     final score = item.score.toStringAsFixed(1);
     final isOpening = _openingPostUserIds.contains(item.userId);
 
-    final avatar = CircleAvatar(
-      radius: 24,
+    final avatar = AppUserAvatar(
+      imageUrl: avatarUrl,
+      size: 48,
       backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-      backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
-      child: avatarUrl.isEmpty
-          ? Text(
-              username.isNotEmpty ? username[0].toUpperCase() : '?',
-              style: AppFonts.plusJakarta(
-                weight: FontWeight.w800,
-                color: AppColors.primary,
-              ),
-            )
-          : null,
+      iconColor: AppColors.primary,
     );
 
     return Container(

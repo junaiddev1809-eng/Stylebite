@@ -6,6 +6,7 @@ import '../../../core/constants/app_assets.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../../../core/widgets/app_hero_icon.dart';
+import '../../../core/widgets/app_user_avatar.dart';
 import '../controllers/contest_controller.dart';
 import '../models/contest_model.dart';
 import '../widgets/admin_contest_section.dart';
@@ -169,6 +170,7 @@ class _ContestScreenState extends State<ContestScreen> {
                                           contests:
                                               _controller.communityContests,
                                           onOpenContest: _openContestDetail,
+                                          onViewLeaderboard: _openLeaderboard,
                                         ),
                                 if (_controller.isLoadingMore.value) ...[
                                   const SizedBox(height: 16),
@@ -497,15 +499,15 @@ class _RewardHighlightCard extends StatelessWidget {
                         Positioned(
                           left: i * 20,
                           child: Container(
-                            width: 28,
-                            height: 28,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.white, width: 2),
-                              image: DecorationImage(
-                                image: NetworkImage(joinedAvatars[i]),
-                                fit: BoxFit.cover,
-                              ),
+                            ),
+                            child: AppUserAvatar(
+                              imageUrl: joinedAvatars[i],
+                              size: 24,
+                              backgroundColor: Colors.white24,
+                              iconColor: Colors.white,
                             ),
                           ),
                         ),

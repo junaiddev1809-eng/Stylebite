@@ -453,7 +453,7 @@ class HomePostModel {
         : (storedEnrollment?.contestTitle ?? '');
     final contestStatus = contestJson != null
         ? (contestJson['status'] ?? '').toString().trim()
-        : '';
+        : (storedEnrollment?.contestStatus ?? '');
     final contestVotingEndAt = contestJson != null
         ? (contestJson['voting_end_at'] ?? '').toString().trim()
         : '';
@@ -461,19 +461,33 @@ class HomePostModel {
         contestJson.containsKey('can_vote') &&
         !_asBool(contestJson['can_vote']);
     final contestVotingClosed = badgeSaysNoVote ||
+        (storedEnrollment?.votingClosed ?? false) ||
         _isContestVotingClosed(
           contestStatus,
           votingEndAt: contestVotingEndAt,
         );
     // `in_contest` stays true after voting ends (trophy). Only rating/can_vote
     // mean the 1–5 bar is open.
+    final hasExplicitVoteFlag = json.containsKey('rating_enabled') ||
+        json.containsKey('can_vote') ||
+        (viewerStateJson?.containsKey('can_vote') ?? false);
     final apiCanVote = _asBool(json['rating_enabled'], fallback: false) ||
         _asBool(json['can_vote'], fallback: false) ||
         _asBool(viewerStateJson?['can_vote'], fallback: false);
-    // Enrollment store fills gaps when feed omits contest fields — never when
-    // the contest badge already says voting is over.
+    final enrollmentStatus =
+        (storedEnrollment?.contestStatus ?? contestStatus).trim().toLowerCase();
+    final enrollmentAllowsVote = enrollmentStatus == 'active' ||
+        enrollmentStatus == 'upcoming' ||
+        enrollmentStatus == 'voting' ||
+        enrollmentStatus == 'live';
+    // Trust explicit API flags. Enrollment only fills gaps when the payload
+    // omitted them — and only for contests still marked open.
     final ratingEnabled = !contestVotingClosed &&
-        (apiCanVote || (storedEnrollment != null && contestStatus.isEmpty));
+        (hasExplicitVoteFlag
+            ? apiCanVote
+            : (storedEnrollment != null &&
+                !storedEnrollment.votingClosed &&
+                enrollmentAllowsVote));
 
     final media = parsePostMedia(json);
 

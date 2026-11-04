@@ -260,7 +260,20 @@ class MessagesController extends GetxController {
     required String username,
     int? conversationId,
   }) async {
-    final normalizedUsername = username.trim().replaceFirst('@', '');
+    var normalizedUsername = username.trim().replaceFirst('@', '');
+
+    if (normalizedUsername.isEmpty &&
+        conversationId != null &&
+        conversationId > 0) {
+      await fetchChats(reset: true, silent: true);
+      for (final thread in chats) {
+        if (thread.conversationId == conversationId) {
+          normalizedUsername = thread.user.username.trim().replaceFirst('@', '');
+          break;
+        }
+      }
+    }
+
     if (normalizedUsername.isEmpty) {
       return;
     }

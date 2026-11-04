@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:stylebite/core/widgets/app_hero_icon.dart';
+import 'package:stylebite/core/widgets/app_user_avatar.dart';
 import 'package:get/get.dart';
 
 import '../../../app/routes/app_routes.dart';
@@ -411,7 +412,10 @@ class _Podium extends StatelessWidget {
               width: 3,
             ),
           ),
-          child: ClipOval(child: Image.network(e.avatar, fit: BoxFit.cover)),
+          child: AppUserAvatar(
+            imageUrl: e.avatar,
+            size: winner ? 90 : 70,
+          ),
         ),
         const SizedBox(height: 8),
         Text(
@@ -504,10 +508,7 @@ class _Table extends StatelessWidget {
                   Expanded(
                     child: Row(
                       children: [
-                        CircleAvatar(
-                          backgroundImage: NetworkImage(e.avatar),
-                          radius: 18,
-                        ),
+                        AppUserAvatar(imageUrl: e.avatar, size: 36),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Column(

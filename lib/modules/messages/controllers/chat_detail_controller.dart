@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'dart:async';
 
+import '../../../core/media/media_gallery_saver.dart';
+import '../../../core/media/media_picker_service.dart';
+import '../../../core/media/media_type_resolver.dart';
 import '../../../core/utils/app_helper.dart';
 import '../../../core/utils/local_storage.dart';
 import '../../reports/api/reports_api.dart';
@@ -86,6 +89,8 @@ class ChatDetailController extends GetxController {
       !isSending.value &&
       !isComposerDisabled &&
       inputText.value.trim().isNotEmpty;
+
+  bool get canAttachMedia => !isSending.value && !isComposerDisabled;
 
   @override
   void onInit() {
@@ -658,6 +663,126 @@ class ChatDetailController extends GetxController {
       isSending.value = false;
     }
   }
+
+  static const int _maxChatImageBytes = 12 * 1024 * 1024;
+  static const int _maxChatVideoBytes = 80 * 1024 * 1024;
+
+  Future<void> sendGalleryMedia() async {
+    if (!canAttachMedia || conversationId <= 0) {
+      return;
+    }
+
+    final picked = await MediaPickerService.pickFromGallery();
+    if (picked == null) {
+      return;
+    }
+    if (picked.type != AppMediaType.image &&
+        picked.type != AppMediaType.video) {
+      infoSnackBar(message: 'Choose a photo or video from your gallery.');
+      return;
+    }
+
+    final size = await picked.file.length();
+    final maxAllowed = picked.type == AppMediaType.video
+        ? _maxChatVideoBytes
+        : _maxChatImageBytes;
+    if (size > maxAllowed) {
+      errorSnackBar(
+        message: picked.type == AppMediaType.video
+            ? 'Video is too large. Keep it under 80MB.'
+            : 'Photo must be under 12MB.',
+      );
+      return;
+    }
+
+    isSending.value = true;
+    try {
+      final caption = messageController.text.trim();
+      final response = await _apiService.sendMediaMessage(
+        conversationId: conversationId,
+        mediaPath: picked.path,
+        body: caption,
+      );
+      isMessagingStopped.value = response.isMessagingStopped;
+      final nextMessage = response.chatMessage;
+      final fallbackType =
+          picked.type == AppMediaType.video ? 'video' : 'image';
+      if (nextMessage != null) {
+        _insertOrReconcile(nextMessage.copyWith(isMine: true));
+      } else {
+        _insertOrReconcile(
+          ChatMessageModel(
+            id: DateTime.now().millisecondsSinceEpoch,
+            body: caption,
+            senderUsername: '',
+            isMine: true,
+            createdAt: DateTime.now().toIso8601String(),
+            timeLabel: 'Now',
+            status: 'sent',
+            isSeen: false,
+            messageType: fallbackType,
+            mediaUrl: picked.path,
+            thumbnailUrl: picked.type == AppMediaType.image ? picked.path : '',
+          ),
+        );
+      }
+
+      if (caption.isNotEmpty) {
+        messageController.clear();
+        _typingStopTimer?.cancel();
+        ChatSocketService.instance.sendTyping(conversationId, false);
+      }
+      stoppedBannerText.value = '';
+      _checkChatRequestState();
+      _jumpToBottom();
+    } on ChatApiException catch (error) {
+      if (error.httpStatusCode == 403) {
+        isMessagingStopped.value = true;
+        _applyBlockBanner(
+          isBlockedByMe: error.isBlockedByMe,
+          isBlockedByOther: error.isBlockedByOther,
+        );
+        ChatSocketService.instance.unsubscribeFromConversation(conversationId);
+        return;
+      }
+
+      if (error.httpStatusCode == 422 &&
+          (error.message.toLowerCase().contains('wait') ||
+              error.message.toLowerCase().contains('limit') ||
+              error.message.toLowerCase().contains('chat request'))) {
+        isWaitingForReply.value = true;
+        infoSnackBar(message: error.message);
+        return;
+      }
+
+      if (error.httpStatusCode == 422 &&
+          error.message == 'Messaging has been stopped for this chat.') {
+        isMessagingStopped.value = true;
+        stoppedBannerText.value = error.message;
+        errorSnackBar(message: error.message);
+        return;
+      }
+
+      errorSnackBar(message: error.message);
+    } catch (_) {
+      errorSnackBar(message: 'Unable to send media right now.');
+    } finally {
+      isSending.value = false;
+    }
+  }
+
+  Future<void> saveMessageMedia(ChatMessageModel message) async {
+    if (!message.hasMedia) {
+      return;
+    }
+    await MediaGallerySaver.saveFromUrl(
+      url: message.mediaUrl,
+      isVideo: message.isVideo,
+    );
+  }
+
+  /// Kept for older call sites; prefer [sendGalleryMedia].
+  Future<void> sendGalleryImage() => sendGalleryMedia();
 
   void _checkChatRequestState({
     bool apiIsPending = false,

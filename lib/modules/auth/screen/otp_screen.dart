@@ -42,9 +42,13 @@ class _OtpScreenState extends State<OtpScreen> {
               children: [
                 Obx(
                   () => AuthHeader(
-                    title: 'Verify OTP',
+                    title: _controller.isLoginTwoFactor
+                        ? 'Confirm login'
+                        : 'Verify OTP',
                     subtitle: _controller.debugOtp.value == null
-                        ? 'Enter the 6-digit code sent to your email.'
+                        ? (_controller.isLoginTwoFactor
+                            ? 'We emailed a 6-digit code to your Gmail. Enter it to finish signing in.'
+                            : 'Enter the 6-digit code sent to your email.')
                         : 'Local backend — use this code: ${_controller.debugOtp.value}',
                   ),
                 ),
@@ -90,10 +94,20 @@ class _OtpScreenState extends State<OtpScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text("Back to "),
+                    Text(
+                      _controller.isLoginTwoFactor
+                          ? 'Back to '
+                          : "Don't have an account? ",
+                    ),
                     TextButton(
-                      onPressed: () => Get.offAllNamed(AppRoutes.signUp),
-                      child: const Text('Sign Up'),
+                      onPressed: () => Get.offAllNamed(
+                        _controller.isLoginTwoFactor
+                            ? AppRoutes.login
+                            : AppRoutes.signUp,
+                      ),
+                      child: Text(
+                        _controller.isLoginTwoFactor ? 'Log In' : 'Sign Up',
+                      ),
                     ),
                   ],
                 ),

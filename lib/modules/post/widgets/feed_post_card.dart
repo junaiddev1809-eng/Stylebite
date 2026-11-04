@@ -12,6 +12,7 @@ import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/app_helper.dart';
 import '../../../core/utils/local_storage.dart';
 import '../../../core/widgets/app_cached_image.dart';
+import '../../../core/widgets/app_user_avatar.dart';
 import '../../../core/widgets/double_tap_zoom.dart';
 import '../../../core/widgets/like_heart_burst.dart';
 import '../../../core/widgets/app_cached_video_player.dart';
@@ -171,29 +172,10 @@ class _FeedPostCardState extends State<FeedPostCard> {
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: _openAuthorProfile,
-                  child: SizedBox(
-                    width: 40,
-                    height: 40,
-                    child: ClipOval(
-                      child: post.avatarUrl.trim().isEmpty
-                          ? ColoredBox(
-                              color: AppColors.chip,
-                              child: Center(
-                                child: AppHeroIconData(
-                                  Icons.person_rounded,
-                                  color: AppColors.hintText,
-                                  size: 22,
-                                ),
-                              ),
-                            )
-                          : AppCachedImage(
-                              imageUrl: post.avatarUrl,
-                              width: 40,
-                              height: 40,
-                              fit: BoxFit.cover,
-                              memCacheWidth: 120,
-                            ),
-                    ),
+                  child: AppUserAvatar(
+                    imageUrl: post.avatarUrl,
+                    size: 40,
+                    memCacheWidth: 120,
                   ),
                 ),
                 const SizedBox(width: 10),

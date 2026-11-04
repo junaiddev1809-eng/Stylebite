@@ -6,7 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/app_back_navigation.dart';
 import '../../../core/utils/app_helper.dart';
-import '../../../core/widgets/app_cached_image.dart';
+import '../../../core/widgets/app_user_avatar.dart';
 import '../../../core/widgets/app_verified_badge.dart';
 import '../../../core/widgets/states/app_shimmer_box.dart';
 import '../../profile/utils/profile_open_helper.dart';
@@ -215,22 +215,7 @@ class _BlockedUserCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              ClipOval(
-                child: SizedBox(
-                  width: 56,
-                  height: 56,
-                  child: user.avatarUrl.trim().isEmpty
-                      ? Container(
-                          color: AppColors.chip,
-                          alignment: Alignment.center,
-                          child: HeroIcon(
-                            HeroIcons.user,
-                            color: AppColors.hintText,
-                          ),
-                        )
-                      : AppCachedImage(imageUrl: user.avatarUrl),
-                ),
-              ),
+              AppUserAvatar(imageUrl: user.avatarUrl, size: 56),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(

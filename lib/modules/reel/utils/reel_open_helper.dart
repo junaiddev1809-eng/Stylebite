@@ -184,6 +184,8 @@ class ReelOpenHelper {
       isFollowingAuthor: post.isFollowingAuthor,
       isVerifiedBadge: post.isVerifiedBadge,
       ratingEnabled: post.ratingEnabled,
+      contestVotingClosed: post.isContestEnded ||
+          (post.isInContest && !post.ratingEnabled),
       publishedAt: post.publishedAt,
     );
   }

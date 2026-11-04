@@ -3,8 +3,8 @@ import 'package:get/get.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
-import '../../../core/widgets/app_cached_image.dart';
 import '../../../core/widgets/app_hero_icon.dart';
+import '../../../core/widgets/app_user_avatar.dart';
 import '../controllers/story_controller.dart';
 import '../models/story_model.dart';
 
@@ -99,25 +99,10 @@ class _StoryRing extends StatelessWidget {
                         color: AppColors.surface,
                         shape: BoxShape.circle,
                       ),
-                      child: ClipOval(
-                        child: bucket.avatarUrl.trim().isNotEmpty
-                            ? AppCachedImage(
-                                imageUrl: bucket.avatarUrl,
-                                width: 58,
-                                height: 58,
-                                fit: BoxFit.cover,
-                                memCacheWidth: 160,
-                              )
-                            : ColoredBox(
-                                color: AppColors.chip,
-                                child: Center(
-                                  child: AppHeroIconData(
-                                    Icons.person_rounded,
-                                    size: 26,
-                                    color: AppColors.hintText,
-                                  ),
-                                ),
-                              ),
+                      child: AppUserAvatar(
+                        imageUrl: bucket.avatarUrl,
+                        size: 58,
+                        memCacheWidth: 160,
                       ),
                     ),
                   ),

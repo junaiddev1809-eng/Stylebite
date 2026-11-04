@@ -8,6 +8,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/app_helper.dart';
 import '../../../core/widgets/app_cached_image.dart';
+import '../../../core/widgets/app_user_avatar.dart';
 import '../../../core/widgets/app_cached_video_player.dart';
 import '../../messages/models/chat_models.dart';
 import '../../messages/services/chat_api_service.dart';
@@ -636,19 +637,12 @@ class _StoryRingAvatar extends StatelessWidget {
           shape: BoxShape.circle,
           color: Colors.black,
         ),
-        child: ClipOval(
-          child: imageUrl.trim().isNotEmpty
-              ? AppCachedImage(
-                  imageUrl: imageUrl,
-                  width: 28,
-                  height: 28,
-                  fit: BoxFit.cover,
-                  memCacheWidth: 96,
-                )
-              : const ColoredBox(
-                  color: Colors.white24,
-                  child: SizedBox(width: 28, height: 28),
-                ),
+        child: AppUserAvatar(
+          imageUrl: imageUrl,
+          size: 28,
+          memCacheWidth: 96,
+          backgroundColor: Colors.white24,
+          iconColor: Colors.white70,
         ),
       ),
     );

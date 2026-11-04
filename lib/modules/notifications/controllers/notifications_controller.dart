@@ -26,9 +26,13 @@ class NotificationsController extends GetxController {
   final RxString errorMessage = ''.obs;
   final RxInt unreadCount = 0.obs;
 
+  /// Remote notification id to pulse/glow in the list after a push tap.
+  final RxnString highlightNotificationId = RxnString();
+
   int _currentPage = 0;
   StreamSubscription<ChatPushEvent>? _pushSubscription;
   int _localLikeId = 0;
+  Timer? _highlightClearTimer;
 
   @override
   void onInit() {
@@ -40,6 +44,32 @@ class NotificationsController extends GetxController {
       }
       fetchNotifications();
     });
+  }
+
+  void highlightFromPush(String? notificationId) {
+    final trimmed = (notificationId ?? '').trim();
+    if (trimmed.isEmpty || trimmed == 'null' || trimmed == '0') {
+      highlightNotificationId.value = null;
+      return;
+    }
+    highlightNotificationId.value = trimmed;
+    _highlightClearTimer?.cancel();
+    _highlightClearTimer = Timer(const Duration(seconds: 4), () {
+      if (highlightNotificationId.value == trimmed) {
+        highlightNotificationId.value = null;
+      }
+    });
+  }
+
+  bool matchesHighlight(NotificationItemModel item) {
+    final target = highlightNotificationId.value?.trim() ?? '';
+    if (target.isEmpty) {
+      return false;
+    }
+    if (item.remoteId.trim() == target) {
+      return true;
+    }
+    return item.id.toString() == target;
   }
 
   Future<void> fetchNotifications({bool reset = true}) async {
@@ -510,6 +540,7 @@ class NotificationsController extends GetxController {
 
   @override
   void onClose() {
+    _highlightClearTimer?.cancel();
     _pushSubscription?.cancel();
     super.onClose();
   }

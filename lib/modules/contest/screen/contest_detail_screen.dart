@@ -416,6 +416,65 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
                               ),
                             ),
                           ],
+                          if (contest.rules.isNotEmpty ||
+                              contest.winningRules != null) ...[
+                            const SizedBox(height: 16),
+                            _sectionTitle('Rules'),
+                            const SizedBox(height: 8),
+                            _surface(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (contest.winningRules != null) ...[
+                                    Text(
+                                      contest.winningRules!.scoreFormulaLabel,
+                                      style: AppFonts.beVietnam(
+                                        size: 13,
+                                        color: AppColors.text,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Need at least ${contest.winningRules!.minRatingVoters} active ratings to win a prize place.',
+                                      style: AppFonts.beVietnam(
+                                        size: 13,
+                                        color: AppColors.hintText,
+                                      ),
+                                    ),
+                                    if (contest.rules.isNotEmpty)
+                                      const SizedBox(height: 12),
+                                  ],
+                                  for (var i = 0; i < contest.rules.length; i++) ...[
+                                    if (i > 0) const SizedBox(height: 8),
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${i + 1}.',
+                                          style: AppFonts.plusJakarta(
+                                            size: 13,
+                                            weight: FontWeight.w700,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            contest.rules[i],
+                                            style: AppFonts.beVietnam(
+                                              size: 13,
+                                              color: AppColors.text,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 16),
                           if (contest.teamRanking.isNotEmpty) ...[
                             _sectionTitle('Team Ranking'),

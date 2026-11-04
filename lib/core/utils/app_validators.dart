@@ -14,6 +14,9 @@ class AppValidators {
     'icloud.com',
     'me.com',
     'mac.com',
+    // Apple Sign In "Hide My Email"
+    'privaterelay.appleid.com',
+    'appleid.com',
   };
 
   static String? email(String? value) {

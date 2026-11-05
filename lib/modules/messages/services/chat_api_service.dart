@@ -65,11 +65,16 @@ class ChatApiService {
 
   Future<ChatSendMessageResponseModel> sendMessage(
     int conversationId,
-    String body,
-  ) async {
+    String body, {
+    int? replyToMessageId,
+  }) async {
     final response = await ApiHelper.postRequestWithAuthorization(
       'chats/$conversationId/messages',
-      body: <String, dynamic>{'body': body},
+      body: <String, dynamic>{
+        'body': body,
+        if (replyToMessageId != null && replyToMessageId > 0)
+          'reply_to_message_id': replyToMessageId,
+      },
     );
 
     final payload = _decodeResponse(response);
@@ -83,11 +88,14 @@ class ChatApiService {
     required int conversationId,
     required String mediaPath,
     String body = '',
+    int? replyToMessageId,
   }) async {
     final response = await ApiHelper.multipartRequest(
       'chats/$conversationId/messages',
       fields: <String, String>{
         if (body.trim().isNotEmpty) 'body': body.trim(),
+        if (replyToMessageId != null && replyToMessageId > 0)
+          'reply_to_message_id': '$replyToMessageId',
       },
       fileFieldName: 'media',
       filePath: mediaPath,
@@ -182,6 +190,36 @@ class ChatApiService {
 
     final payload = _decodeResponse(response);
     return ChatMessagingToggleResponseModel.fromJson(payload);
+  }
+
+  Future<void> deleteChat(int conversationId) async {
+    final response = await ApiHelper.deleteRequestWithAuthorization(
+      'chats/$conversationId',
+    );
+    _decodeResponse(response);
+  }
+
+  Future<List<int>> deleteChats(List<int> conversationIds) async {
+    final ids = conversationIds.where((id) => id > 0).toSet().toList();
+    if (ids.isEmpty) {
+      return const [];
+    }
+    if (ids.length == 1) {
+      await deleteChat(ids.first);
+      return ids;
+    }
+    final response = await ApiHelper.postRequestWithAuthorization(
+      'chats/bulk-delete',
+      body: <String, dynamic>{'conversation_ids': ids},
+    );
+    final payload = _decodeResponse(response);
+    final raw = payload['deleted_ids'];
+    if (raw is List) {
+      return [
+        for (final id in raw) _readInt(id),
+      ].where((id) => id > 0).toList(growable: false);
+    }
+    return ids;
   }
 
   Future<void> acceptChatRequest(int conversationId) async {

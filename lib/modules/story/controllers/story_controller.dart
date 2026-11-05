@@ -177,11 +177,46 @@ class StoryController extends GetxController {
   }
 
   Future<void> markSeen(String storyId) async {
-    final items = [
+    StoryItem? target;
+    for (final bucket in buckets) {
+      for (final item in bucket.items) {
+        if (item.id == storyId || item.remoteId == storyId) {
+          target = item;
+          break;
+        }
+      }
+      if (target != null) {
+        break;
+      }
+    }
+    final marked = [
       for (final bucket in buckets)
         for (final item in bucket.items)
           item.id == storyId || item.remoteId == storyId
               ? item.copyWith(seen: true)
+              : item,
+    ];
+    buckets.assignAll(_group(marked));
+    await _persist(marked);
+
+    final remoteId = target?.remoteId.trim() ?? '';
+    final isMine =
+        (target?.username ?? '').trim().toLowerCase() == _me.toLowerCase();
+    if (!isMine && remoteId.isNotEmpty) {
+      unawaited(StorySyncService.recordView(remoteId: remoteId));
+    }
+  }
+
+  Future<void> setViewCount(String remoteId, int viewCount) async {
+    final id = remoteId.trim();
+    if (id.isEmpty) {
+      return;
+    }
+    final items = [
+      for (final bucket in buckets)
+        for (final item in bucket.items)
+          item.remoteId == id
+              ? item.copyWith(viewCount: viewCount)
               : item,
     ];
     buckets.assignAll(_group(items));
@@ -224,6 +259,53 @@ class StoryController extends GetxController {
         startIndex: startIndex,
       ),
     );
+  }
+
+  /// Opens a specific story item (used by story-reply notifications).
+  /// Prefers the owner's own ring so the recipient sees the story that
+  /// was replied to; falls back to any matching bucket if needed.
+  Future<bool> openStoryByRemoteId(String remoteId) async {
+    final target = remoteId.trim();
+    if (target.isEmpty) {
+      return false;
+    }
+
+    if (buckets.isEmpty) {
+      await load();
+    } else {
+      // Refresh so a just-published story is present when opening from a push.
+      unawaited(load());
+    }
+
+    int matchIndex(StoryBucket bucket) {
+      return bucket.items.indexWhere((item) {
+        final remote = item.remoteId.trim();
+        final local = item.id.trim();
+        return remote == target ||
+            local == target ||
+            local == 'p$target' ||
+            remote.replaceFirst(RegExp(r'^p'), '') == target;
+      });
+    }
+
+    final own = mine;
+    if (own != null) {
+      final index = matchIndex(own);
+      if (index >= 0) {
+        openBucket(own, startIndex: index);
+        return true;
+      }
+    }
+
+    for (final bucket in buckets) {
+      final index = matchIndex(bucket);
+      if (index >= 0) {
+        openBucket(bucket, startIndex: index);
+        return true;
+      }
+    }
+
+    return false;
   }
 
   List<StoryItem> _readLocal() {
@@ -300,11 +382,16 @@ class StoryController extends GetxController {
             ? existing.mediaPath
             : item.mediaPath,
         mediaUrl: existing.mediaUrl.isNotEmpty ? existing.mediaUrl : item.mediaUrl,
+        posterUrl:
+            existing.posterUrl.isNotEmpty ? existing.posterUrl : item.posterUrl,
         remoteId: existing.remoteId.isNotEmpty ? existing.remoteId : item.remoteId,
         avatarUrl:
             existing.avatarUrl.isNotEmpty ? existing.avatarUrl : item.avatarUrl,
         seen: existing.seen || seen,
         kind: item.isPublished ? item.kind : existing.kind,
+        viewCount: item.viewCount > existing.viewCount
+            ? item.viewCount
+            : existing.viewCount,
       );
     }
 

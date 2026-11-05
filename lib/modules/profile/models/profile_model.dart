@@ -103,6 +103,8 @@ class ProfileUserModel {
     required this.verificationStatus,
     required this.isSelf,
     required this.isFollowing,
+    required this.followRequestPending,
+    required this.contentLocked,
     required this.followsYou,
     required this.isMutualFollow,
     required this.emailVerifiedAt,
@@ -147,6 +149,8 @@ class ProfileUserModel {
   final String verificationStatus;
   final bool isSelf;
   final bool isFollowing;
+  final bool followRequestPending;
+  final bool contentLocked;
   final bool followsYou;
   final bool isMutualFollow;
   final String emailVerifiedAt;
@@ -201,6 +205,24 @@ class ProfileUserModel {
       ).trim().toLowerCase(),
       isSelf: _asBool(map['is_self']),
       isFollowing: _asBool(relationship['is_following'] ?? map['is_following']),
+      followRequestPending: _asBool(
+        relationship['follow_request_pending'] ??
+            map['follow_request_pending'],
+      ),
+      contentLocked: () {
+        final lockedFlag = _asBool(
+          map['content_locked'] ?? relationship['content_locked'],
+        );
+        if (lockedFlag) {
+          return true;
+        }
+        final isSelf = _asBool(map['is_self']);
+        final isPrivate = _asBool(map['is_private']);
+        final isFollowing = _asBool(
+          relationship['is_following'] ?? map['is_following'],
+        );
+        return !isSelf && isPrivate && !isFollowing;
+      }(),
       followsYou: _asBool(relationship['follows_you'] ?? map['follows_you']),
       isMutualFollow: _asBool(
         relationship['is_mutual_follow'] ?? map['is_mutual_follow'],

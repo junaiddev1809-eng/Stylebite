@@ -7,15 +7,18 @@ import 'package:get/get.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/app_helper.dart';
+import '../../../core/utils/app_time_formatter.dart';
 import '../../../core/widgets/app_cached_image.dart';
 import '../../../core/widgets/app_user_avatar.dart';
 import '../../../core/widgets/app_cached_video_player.dart';
 import '../../messages/models/chat_models.dart';
 import '../../messages/services/chat_api_service.dart';
+import '../../post/utils/in_app_share.dart';
 import '../../profile/screen/user_profile_cover_screen.dart';
 import '../../profile/utils/profile_open_helper.dart';
 import '../controllers/story_controller.dart';
 import '../models/story_model.dart';
+import '../services/story_sync_service.dart';
 
 class StoryViewerScreen extends StatefulWidget {
   const StoryViewerScreen({
@@ -45,6 +48,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
   var _inputPaused = false;
   var _sending = false;
   var _advancing = false;
+  var _viewCount = 0;
   String? _burst;
   int? _conversationId;
 
@@ -55,6 +59,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
   StoryItem get _current => _items[_index];
   bool get _paused => _holdPaused || _inputPaused;
   bool get _canReply => !widget.bucket.isMine;
+  bool get _isOwner => widget.bucket.isMine;
 
   @override
   void initState() {
@@ -113,7 +118,11 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     _holdPaused = false;
     _advancing = false;
     // Keep _conversationId across items in this bucket (same author).
+    _viewCount = _current.viewCount;
     unawaited(StoryController.ensure().markSeen(_current.id));
+    if (_isOwner && _current.remoteId.trim().isNotEmpty) {
+      unawaited(_refreshOwnerViews());
+    }
     // Videos only advance via playback progress; if init/network hangs they
     // used to sit forever. Fail-safe moves on after a few seconds.
     if (_current.isVideo) {
@@ -279,7 +288,15 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
       if (conversationId == null) {
         return;
       }
-      await const ChatApiService().sendMessage(conversationId, text);
+      final replyText = isReaction ? burst : text;
+      final payload = InAppSharePayload.fromStoryReply(
+        story: _current,
+        reply: replyText,
+      );
+      await const ChatApiService().sendMessage(
+        conversationId,
+        payload.encode(),
+      );
       if (!mounted) {
         return;
       }
@@ -316,15 +333,57 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
     return chat.conversationId;
   }
 
-  String _storyNote(String text) {
-    final caption = _current.caption.trim();
-    final quote = caption.isEmpty
-        ? ''
-        : ' “${caption.length > 40 ? '${caption.substring(0, 40)}…' : caption}”';
-    if (_reactions.contains(text)) {
-      return 'Reacted $text to your story$quote';
+  String _formatViews(int count) {
+    if (count >= 1000000) {
+      return '${(count / 1000000).toStringAsFixed(count % 1000000 == 0 ? 0 : 1)}M';
     }
-    return 'Replied to your story$quote: $text';
+    if (count >= 1000) {
+      return '${(count / 1000).toStringAsFixed(count % 1000 == 0 ? 0 : 1)}K';
+    }
+    return '$count';
+  }
+
+  Future<void> _refreshOwnerViews() async {
+    final remoteId = _current.remoteId.trim();
+    if (!_isOwner || remoteId.isEmpty) {
+      return;
+    }
+    final result = await StorySyncService.fetchViewers(remoteId);
+    if (!mounted || result == null) {
+      return;
+    }
+    setState(() => _viewCount = result.viewCount);
+    unawaited(StoryController.ensure().setViewCount(remoteId, result.viewCount));
+  }
+
+  Future<void> _openViewers() async {
+    if (!_isOwner) {
+      return;
+    }
+    final remoteId = _current.remoteId.trim();
+    if (remoteId.isEmpty) {
+      errorSnackBar(message: 'Views appear once this story finishes sharing.');
+      return;
+    }
+    _pauseHold();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _StoryViewersSheet(
+        remoteId: remoteId,
+        initialCount: _viewCount,
+        onLoaded: (count) {
+          if (mounted) {
+            setState(() => _viewCount = count);
+          }
+        },
+      ),
+    );
+    if (mounted) {
+      unawaited(_refreshOwnerViews());
+      _resumeHold();
+    }
   }
 
   @override
@@ -511,12 +570,59 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
                         ),
                       ),
                     ),
+                  if (_isOwner) _ownerViewsBar(),
                   if (_canReply) _replyBar(),
                 ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _ownerViewsBar() {
+    final count = _viewCount;
+    final label = count <= 0
+        ? 'No views yet'
+        : '${_formatViews(count)} ${count == 1 ? 'view' : 'views'}';
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: _openViewers,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.visibility_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: AppFonts.beVietnam(
+                    size: 13,
+                    weight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.keyboard_arrow_up_rounded,
+                  color: Colors.white70,
+                  size: 18,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -530,7 +636,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
           children: [
             for (final emoji in _reactions)
               GestureDetector(
-                onTap: () => unawaited(_send(_storyNote(emoji), burst: emoji)),
+                onTap: () => unawaited(_send(emoji, burst: emoji)),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
                   child: Text(emoji, style: const TextStyle(fontSize: 28)),
@@ -548,7 +654,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
                 style: AppFonts.beVietnam(size: 14, color: Colors.white),
                 cursorColor: Colors.white,
                 textInputAction: TextInputAction.send,
-                onSubmitted: (value) => _send(_storyNote(value)),
+                onSubmitted: _send,
                 decoration: InputDecoration(
                   hintText: 'Send message',
                   hintStyle: AppFonts.beVietnam(
@@ -585,7 +691,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> {
                 customBorder: const CircleBorder(),
                 onTap: _sending
                     ? null
-                    : () => _send(_storyNote(_replyController.text)),
+                    : () => _send(_replyController.text),
                 child: SizedBox(
                   width: 42,
                   height: 42,
@@ -644,6 +750,182 @@ class _StoryRingAvatar extends StatelessWidget {
           backgroundColor: Colors.white24,
           iconColor: Colors.white70,
         ),
+      ),
+    );
+  }
+}
+
+class _StoryViewersSheet extends StatefulWidget {
+  const _StoryViewersSheet({
+    required this.remoteId,
+    required this.initialCount,
+    this.onLoaded,
+  });
+
+  final String remoteId;
+  final int initialCount;
+  final ValueChanged<int>? onLoaded;
+
+  @override
+  State<_StoryViewersSheet> createState() => _StoryViewersSheetState();
+}
+
+class _StoryViewersSheetState extends State<_StoryViewersSheet> {
+  var _loading = true;
+  var _viewCount = 0;
+  List<StoryViewer> _viewers = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _viewCount = widget.initialCount;
+    unawaited(_load());
+  }
+
+  Future<void> _load() async {
+    final result = await StorySyncService.fetchViewers(widget.remoteId);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _loading = false;
+      if (result != null) {
+        _viewCount = result.viewCount;
+        _viewers = result.viewers;
+        widget.onLoaded?.call(result.viewCount);
+      }
+    });
+  }
+
+  Future<void> _openProfile(StoryViewer viewer) async {
+    final name = viewer.username.trim().replaceFirst('@', '');
+    if (name.isEmpty) {
+      return;
+    }
+    await ProfileOpenHelper.open(
+      username: name,
+      avatarUrl: viewer.avatarUrl,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.72,
+      ),
+      decoration: const BoxDecoration(
+        color: Color(0xFF141414),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 10),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _viewCount <= 0
+                        ? 'Viewers'
+                        : '$_viewCount ${_viewCount == 1 ? 'view' : 'views'}',
+                    style: AppFonts.plusJakarta(
+                      size: 17,
+                      weight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: Colors.white12),
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 48),
+              child: CircularProgressIndicator(color: Colors.white),
+            )
+          else if (_viewers.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+              child: Text(
+                'No views yet. When people open your story, they show up here.',
+                textAlign: TextAlign.center,
+                style: AppFonts.beVietnam(
+                  size: 14,
+                  weight: FontWeight.w500,
+                  color: Colors.white60,
+                ),
+              ),
+            )
+          else
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                padding: EdgeInsets.fromLTRB(12, 8, 12, 16 + bottom),
+                itemCount: _viewers.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 4),
+                itemBuilder: (context, index) {
+                  final viewer = _viewers[index];
+                  final subtitle = viewer.viewedAt == null
+                      ? ''
+                      : AppTimeFormatter.formatPostTimeValue(viewer.viewedAt!);
+                  return ListTile(
+                    onTap: () => unawaited(_openProfile(viewer)),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    leading: AppUserAvatar(
+                      imageUrl: viewer.avatarUrl,
+                      size: 44,
+                      memCacheWidth: 128,
+                    ),
+                    title: Text(
+                      '@${viewer.username}',
+                      style: AppFonts.plusJakarta(
+                        size: 14,
+                        weight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    subtitle: viewer.fullName.isEmpty && subtitle.isEmpty
+                        ? null
+                        : Text(
+                            [
+                              if (viewer.fullName.isNotEmpty) viewer.fullName,
+                              if (subtitle.isNotEmpty) subtitle,
+                            ].join(' · '),
+                            style: AppFonts.beVietnam(
+                              size: 12,
+                              weight: FontWeight.w500,
+                              color: Colors.white54,
+                            ),
+                          ),
+                    trailing: const Icon(
+                      Icons.chevron_right_rounded,
+                      color: Colors.white38,
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
       ),
     );
   }

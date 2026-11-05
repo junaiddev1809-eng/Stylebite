@@ -117,7 +117,7 @@ Future<bool?> showBlockUserConfirmationSheet(
               ),
               const SizedBox(height: 8),
               Text(
-                'They will no longer be able to interact with you normally.',
+                'You will unfollow each other and their posts, stories, and comments will be hidden from you.',
                 style: AppFonts.beVietnam(
                   size: 13,
                   weight: FontWeight.w500,

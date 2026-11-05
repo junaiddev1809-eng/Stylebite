@@ -5,8 +5,9 @@ import '../../messages/models/chat_models.dart';
 import '../../messages/services/chat_api_service.dart';
 import '../../reel/models/reel_item_model.dart';
 import '../../reel/utils/reel_open_helper.dart';
+import '../../story/models/story_model.dart';
 
-/// A post or reel sent through StyleBite chat.
+/// A post, reel, or story reply sent through StyleBite chat.
 class InAppSharePayload {
   const InAppSharePayload({
     required this.kind,
@@ -15,6 +16,8 @@ class InAppSharePayload {
     required this.previewUrl,
     required this.authorName,
     required this.username,
+    this.reply = '',
+    this.isVideo = false,
   });
 
   static const _prefix = 'sbshare:v1:';
@@ -25,10 +28,36 @@ class InAppSharePayload {
   final String previewUrl;
   final String authorName;
   final String username;
+  /// Story reply / reaction text (empty for plain post/reel shares).
+  final String reply;
+  final bool isVideo;
 
   bool get isReel => kind == 'reel';
 
-  String get listLabel => isReel ? 'Shared a reel' : 'Shared a post';
+  bool get isStory => kind == 'story';
+
+  bool get isStoryReaction {
+    if (!isStory || reply.trim().isEmpty) {
+      return false;
+    }
+    // Single emoji / short reaction cluster — matches story viewer reactions.
+    final text = reply.trim();
+    return text.runes.length <= 4 &&
+        !RegExp(r'[A-Za-z0-9]').hasMatch(text);
+  }
+
+  String get listLabel {
+    if (isStory) {
+      if (isStoryReaction) {
+        return 'Reacted to your story';
+      }
+      if (reply.trim().isNotEmpty) {
+        return 'Replied to your story';
+      }
+      return 'Story';
+    }
+    return isReel ? 'Shared a reel' : 'Shared a post';
+  }
 
   factory InAppSharePayload.fromPost(HomePostModel post) {
     final username = post.profileUsername.trim().isNotEmpty
@@ -58,6 +87,37 @@ class InAppSharePayload {
     );
   }
 
+  factory InAppSharePayload.fromStoryReply({
+    required StoryItem story,
+    required String reply,
+  }) {
+    // Prefer a still frame for video stories so the chat card isn't a blank video URL.
+    final preview = story.posterUrl.trim().isNotEmpty
+        ? story.posterUrl.trim()
+        : story.isVideo
+            ? ''
+            : (story.mediaUrl.trim().isNotEmpty
+                ? story.mediaUrl.trim()
+                : story.mediaPath.trim());
+    final id = story.remoteId.trim().isNotEmpty
+        ? story.remoteId.trim()
+        : story.id.replaceFirst(RegExp(r'^p'), '');
+    return InAppSharePayload(
+      kind: 'story',
+      id: id,
+      caption: _short(story.caption),
+      previewUrl: preview.isNotEmpty
+          ? preview
+          : (story.mediaUrl.trim().isNotEmpty
+              ? story.mediaUrl.trim()
+              : story.mediaPath.trim()),
+      authorName: '',
+      username: story.username.trim().replaceFirst('@', ''),
+      reply: reply.trim(),
+      isVideo: story.isVideo,
+    );
+  }
+
   String encode() {
     return '$_prefix${jsonEncode(<String, String>{
       'kind': kind,
@@ -66,6 +126,8 @@ class InAppSharePayload {
       'preview': previewUrl,
       'author': authorName,
       'username': username,
+      if (reply.trim().isNotEmpty) 'reply': reply.trim(),
+      if (isVideo) 'is_video': '1',
     })}';
   }
 
@@ -83,14 +145,22 @@ class InAppSharePayload {
       if (id.isEmpty) {
         return null;
       }
-      final kind = (decoded['kind'] ?? 'post').toString().trim();
+      final kindRaw = (decoded['kind'] ?? 'post').toString().trim().toLowerCase();
+      final kind = switch (kindRaw) {
+        'reel' => 'reel',
+        'story' => 'story',
+        _ => 'post',
+      };
       return InAppSharePayload(
-        kind: kind == 'reel' ? 'reel' : 'post',
+        kind: kind,
         id: id,
         caption: (decoded['caption'] ?? '').toString(),
         previewUrl: (decoded['preview'] ?? '').toString(),
         authorName: (decoded['author'] ?? '').toString(),
         username: (decoded['username'] ?? '').toString(),
+        reply: (decoded['reply'] ?? '').toString(),
+        isVideo: (decoded['is_video'] ?? '').toString() == '1' ||
+            decoded['is_video'] == true,
       );
     } catch (_) {
       return null;

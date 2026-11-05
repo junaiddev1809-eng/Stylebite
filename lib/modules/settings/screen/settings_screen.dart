@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../app/routes/app_routes.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../../../core/theme/app_theme_controller.dart';
@@ -111,7 +112,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         SettingsRowTile(
                           title: 'Change Password',
                           trailingIcon: Icons.chevron_right_rounded,
-                          onTap: () {},
+                          onTap: () =>
+                              Get.toNamed(AppRoutes.changePassword),
                         ),
                         SettingsRowTile(
                           title: 'Privacy Policy',

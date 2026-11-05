@@ -345,6 +345,80 @@ class ChatMessageReactionGroup {
   }
 }
 
+class ChatReplyPreview {
+  const ChatReplyPreview({
+    required this.id,
+    required this.body,
+    required this.senderUsername,
+    required this.isMine,
+    this.messageType = 'text',
+    this.thumbnailUrl = '',
+    this.mediaUrl = '',
+  });
+
+  final int id;
+  final String body;
+  final String senderUsername;
+  final bool isMine;
+  final String messageType;
+  final String thumbnailUrl;
+  final String mediaUrl;
+
+  bool get hasMedia =>
+      mediaUrl.trim().isNotEmpty || thumbnailUrl.trim().isNotEmpty;
+
+  bool get isVideo => messageType.trim().toLowerCase() == 'video';
+
+  String get displayBody {
+    final text = body.trim();
+    if (text.isNotEmpty) {
+      return text;
+    }
+    if (isVideo) {
+      return 'Video';
+    }
+    if (hasMedia) {
+      return 'Photo';
+    }
+    return 'Message';
+  }
+
+  factory ChatReplyPreview.fromJson(
+    Map<String, dynamic> json, {
+    required String currentUsername,
+  }) {
+    final senderUsername = _firstText(
+      json['sender_username'],
+      (json['sender'] is Map ? (json['sender'] as Map)['username'] : null),
+    );
+    return ChatReplyPreview(
+      id: _asInt(json['id']),
+      body: _firstText(json['body'], json['message']),
+      senderUsername: senderUsername,
+      isMine: _asBool(
+        json['is_mine'] ??
+            (senderUsername.trim().toLowerCase() ==
+                currentUsername.trim().toLowerCase()),
+      ),
+      messageType: _firstText(json['message_type'], json['type'], 'text'),
+      thumbnailUrl: _firstText(json['thumbnail_url'], json['media_url']),
+      mediaUrl: _firstText(json['media_url'], json['file_url']),
+    );
+  }
+
+  factory ChatReplyPreview.fromMessage(ChatMessageModel message) {
+    return ChatReplyPreview(
+      id: message.id,
+      body: message.body,
+      senderUsername: message.senderUsername,
+      isMine: message.isMine,
+      messageType: message.messageType,
+      thumbnailUrl: message.thumbnailUrl,
+      mediaUrl: message.mediaUrl,
+    );
+  }
+}
+
 class ChatMessageModel {
   const ChatMessageModel({
     required this.id,
@@ -360,6 +434,7 @@ class ChatMessageModel {
     this.thumbnailUrl = '',
     this.myReaction = '',
     this.reactions = const <ChatMessageReactionGroup>[],
+    this.replyTo,
   });
 
   final int id;
@@ -375,8 +450,13 @@ class ChatMessageModel {
   final String thumbnailUrl;
   final String myReaction;
   final List<ChatMessageReactionGroup> reactions;
+  final ChatReplyPreview? replyTo;
 
-  bool get hasMedia => mediaUrl.trim().isNotEmpty;
+  bool get hasMedia =>
+      mediaUrl.trim().isNotEmpty ||
+      thumbnailUrl.trim().isNotEmpty ||
+      messageType.trim().toLowerCase() == 'image' ||
+      messageType.trim().toLowerCase() == 'video';
 
   bool get isVideo =>
       messageType.trim().toLowerCase() == 'video' ||
@@ -401,6 +481,8 @@ class ChatMessageModel {
     String? messageType,
     String? mediaUrl,
     String? thumbnailUrl,
+    ChatReplyPreview? replyTo,
+    bool clearReplyTo = false,
   }) {
     return ChatMessageModel(
       id: id,
@@ -416,6 +498,7 @@ class ChatMessageModel {
       thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
       myReaction: myReaction ?? this.myReaction,
       reactions: reactions ?? this.reactions,
+      replyTo: clearReplyTo ? null : (replyTo ?? this.replyTo),
     );
   }
 
@@ -447,6 +530,14 @@ class ChatMessageModel {
           (key, value) => MapEntry(key.toString(), value),
         );
       }
+    }
+    ChatReplyPreview? replyTo;
+    final rawReply = json['reply_to'] ?? json['replyTo'];
+    if (rawReply is Map) {
+      replyTo = ChatReplyPreview.fromJson(
+        rawReply.map((key, value) => MapEntry(key.toString(), value)),
+        currentUsername: currentUsername,
+      );
     }
 
     return ChatMessageModel(
@@ -489,6 +580,7 @@ class ChatMessageModel {
                 ),
             ]
           : const <ChatMessageReactionGroup>[],
+      replyTo: replyTo,
     );
   }
 }
@@ -641,10 +733,14 @@ class ChatSendMessageResponseModel {
     Map<String, dynamic> json, {
     required String currentUsername,
   }) {
-    final message =
-        (json['message_data'] as Map<String, dynamic>?) ??
-        (json['chat_message'] as Map<String, dynamic>?) ??
-        (json['data'] as Map<String, dynamic>?);
+    Map<String, dynamic>? message;
+    for (final key in <String>['message_data', 'chat_message', 'data']) {
+      final raw = json[key];
+      if (raw is Map) {
+        message = raw.map((k, v) => MapEntry(k.toString(), v));
+        break;
+      }
+    }
 
     return ChatSendMessageResponseModel(
       statusCode: _asInt(json['status_code']),

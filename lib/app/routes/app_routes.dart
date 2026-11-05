@@ -24,6 +24,7 @@ abstract class AppRoutes {
   static const String contestInvitations = '/contest-invitations';
   static const String profileContestResults = '/profile-contest-results';
   static const String privacyPolicy = '/privacy-policy';
+  static const String changePassword = '/change-password';
   static const String helpCenter = '/help-center';
   static const String aboutStylebite = '/about-stylebite';
   static const String supportTickets = '/support-tickets';

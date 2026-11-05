@@ -35,14 +35,14 @@ class AppValidators {
 
   /// StyleBite signup is limited to Gmail and iCloud addresses.
   static String? signupEmail(String? value) {
-    final basic = email(value);
+    final basic = AppValidators.email(value);
     if (basic != null) {
       return basic;
     }
 
-    final email = value!.trim().toLowerCase();
-    final at = email.lastIndexOf('@');
-    final domain = at >= 0 ? email.substring(at + 1) : '';
+    final normalized = value!.trim().toLowerCase();
+    final at = normalized.lastIndexOf('@');
+    final domain = at >= 0 ? normalized.substring(at + 1) : '';
     if (!allowedEmailDomains.contains(domain)) {
       return 'Use a Gmail or iCloud email to register';
     }

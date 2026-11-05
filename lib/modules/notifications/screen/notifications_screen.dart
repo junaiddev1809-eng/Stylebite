@@ -1,13 +1,14 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../../app/routes/app_routes.dart';
 import '../../../core/media/media_type_resolver.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/app_back_navigation.dart';
+import '../../../core/utils/app_helper.dart';
 import '../../../core/widgets/app_cached_image.dart';
 import '../../../core/widgets/app_cached_video_player.dart';
 import '../../../core/widgets/app_hero_icon.dart';
@@ -18,12 +19,11 @@ import '../../../core/widgets/states/app_error_state.dart';
 import '../../landing/controllers/landing_controller.dart';
 import '../../landing/screen/landing_screen.dart';
 import '../../landing/widgets/landing_bottom_nav.dart';
-import '../../messages/screen/messages_screen.dart';
-import '../../post/utils/post_detail_open_helper.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../../profile/utils/profile_open_helper.dart';
 import '../controllers/notifications_controller.dart';
 import '../models/notification_item_model.dart';
+import '../utils/notification_navigator.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -36,6 +36,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   late final NotificationsController _controller;
   final ScrollController _scrollController = ScrollController();
   final Map<int, String> _vibeResultById = <int, String>{};
+  final Map<int, String> _followRequestResultById = <int, String>{};
   final Map<String, GlobalKey> _itemKeys = <String, GlobalKey>{};
   String? _openSwipeKey;
   String? _scrolledToHighlightId;
@@ -299,6 +300,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     item: item,
                     resolvedVibeAction: _vibeResultById[item.id],
                     onTapVibeAction: (label) => _handleVibeTap(item, label),
+                    resolvedFollowRequestAction:
+                        _followRequestResultById[item.id],
+                    onTapFollowRequestAction: (label) =>
+                        _handleFollowRequestTap(item, label),
                     onTapPrimary: () => _handleActionTap(item),
                     onTapProfile: () => _openActorProfile(item),
                   ),
@@ -329,224 +334,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     _controller.onVibeAction(item.id, actionLabel);
   }
 
-  void _handleActionTap(NotificationItemModel item) {
-    _controller.onNotificationAction(item.id);
-
-    switch (item.kind) {
-      case NotificationKind.like:
-      case NotificationKind.comment:
-        // For a comment notification, entity_id/entity_type refer to the
-        // COMMENT ("entity_type": "comment"), not the post — action_url
-        // ("/posts/{id}") is the only reliable source of the post id here.
-        // entity_id is only trustworthy as a post id when entity_type
-        // actually says "post" — except likes, where backends usually
-        // attach the post id directly.
-        if (_openFromActionUrl(item.actionUrl)) {
-          break;
-        }
-        if (item.entityId > 0 &&
-            (item.kind == NotificationKind.like || item.entityType == 'post')) {
-          PostDetailOpenHelper.openById(item.entityId.toString());
-        } else {
-          _openLandingTab(0);
-        }
-        break;
-      case NotificationKind.follow:
-        if (_openFromActionUrl(item.actionUrl)) {
-          break;
-        }
-        _openActorProfile(item);
-        break;
-      case NotificationKind.contest:
-        _openContestNotification(item);
-        break;
-      case NotificationKind.message:
-        if (_openFromActionUrl(item.actionUrl)) {
-          break;
-        }
-        Get.to<void>(
-          () => MessagesScreen(
-            initialUsername: item.actorUsername.trim().isNotEmpty
-                ? item.actorUsername.trim()
-                : null,
-            initialConversationId: item.entityId > 0 ? item.entityId : null,
-          ),
-        );
-        break;
-      case NotificationKind.support:
-        if (item.entityType == 'support_ticket' && item.entityId > 0) {
-          Get.toNamed(
-            AppRoutes.supportTicketDetail,
-            arguments: {'ticketId': item.entityId},
-          );
-        }
-        break;
-      case NotificationKind.vibeRequest:
-        break;
-      case NotificationKind.other:
-        // The backend sent a type string this client doesn't special-case
-        // (e.g. "post"), but action_url still tells us exactly where to
-        // go — e.g. "/posts/51" — so fall back to parsing that instead of
-        // silently doing nothing.
-        _openFromActionUrl(item.actionUrl);
-        break;
-    }
-  }
-
-  void _openContestNotification(NotificationItemModel item) {
-    final contestId = item.entityId > 0
-        ? item.entityId
-        : _contestIdFromActionUrl(item.actionUrl);
-    if (contestId <= 0) {
-      _openLandingTab(3);
-      return;
-    }
-    if (item.isContestResultsNotification) {
-      Get.toNamed(
-        AppRoutes.contestRanking,
-        arguments: {'contestId': contestId},
-      );
-      return;
-    }
-    final postId = _postIdFromActionUrl(item.actionUrl);
-    Get.toNamed(
-      AppRoutes.contestDetail,
-      arguments: <String, dynamic>{
-        'contestId': contestId,
-        if (postId > 0) 'postId': postId,
-      },
+  void _handleFollowRequestTap(NotificationItemModel item, String actionLabel) {
+    setState(() {
+      _followRequestResultById[item.id] = actionLabel;
+    });
+    _controller.onFollowRequestAction(
+      item,
+      approve: actionLabel.toLowerCase().contains('approv'),
     );
   }
 
-  int _contestIdFromActionUrl(String actionUrl) {
-    final uri = Uri.tryParse(actionUrl.trim());
-    final segments =
-        uri?.pathSegments.where((segment) => segment.isNotEmpty).toList() ??
-            const <String>[];
-    if (segments.length < 2) {
-      return 0;
-    }
-    final resource = segments[0].toLowerCase();
-    if (resource != 'contests' && resource != 'contest') {
-      return 0;
-    }
-    return int.tryParse(segments[1]) ?? 0;
-  }
-
-  int _postIdFromActionUrl(String actionUrl) {
-    final uri = Uri.tryParse(actionUrl.trim());
-    final raw = uri?.queryParameters['post_id']?.trim() ?? '';
-    return int.tryParse(raw) ?? 0;
-  }
-
-  bool _openFromActionUrl(String actionUrl) {
-    final uri = Uri.tryParse(actionUrl.trim());
-    final segments =
-        uri?.pathSegments.where((segment) => segment.isNotEmpty).toList() ??
-        const <String>[];
-    if (segments.isEmpty) {
-      return false;
-    }
-
-    if (segments.length == 1) {
-      switch (segments[0].toLowerCase()) {
-        case 'my-earnings':
-        case 'earnings':
-          Get.toNamed(AppRoutes.myEarnings);
-          return true;
-        case 'monetization':
-          Get.toNamed(AppRoutes.monetization);
-          return true;
-        default:
-          return false;
-      }
-    }
-
-    final resource = segments[0].toLowerCase();
-    final identifier = segments[1];
-
-    if (resource == 'settings' && identifier.toLowerCase() == 'monetization') {
-      Get.toNamed(AppRoutes.monetization);
-      return true;
-    }
-
-    switch (resource) {
-      case 'my-earnings':
-      case 'earnings':
-        Get.toNamed(AppRoutes.myEarnings);
-        return true;
-      case 'monetization':
-        Get.toNamed(AppRoutes.monetization);
-        return true;
-      case 'posts':
-      case 'post':
-      case 'reels':
-      case 'reel':
-        PostDetailOpenHelper.openById(identifier);
-        return true;
-      case 'contests':
-      case 'contest':
-        final contestId = int.tryParse(identifier);
-        if (contestId != null && contestId > 0) {
-          final hasResults = (uri?.queryParameters['results'] ?? '')
-              .trim()
-              .isNotEmpty;
-          final postId =
-              int.tryParse((uri?.queryParameters['post_id'] ?? '').trim()) ??
-                  0;
-          Get.toNamed(
-            hasResults ? AppRoutes.contestRanking : AppRoutes.contestDetail,
-            arguments: <String, dynamic>{
-              'contestId': contestId,
-              if (!hasResults && postId > 0) 'postId': postId,
-            },
-          );
-          return true;
-        }
-        return false;
-      case 'chats':
-      case 'chat':
-        final conversationId = int.tryParse(identifier) ??
-            int.tryParse(
-              (uri?.queryParameters['conversation_id'] ?? '').trim(),
-            ) ??
-            0;
-        final usernameFromPath =
-            int.tryParse(identifier) == null ? identifier.replaceFirst('@', '') : '';
-        final username = ((uri?.queryParameters['username'] ??
-                    uri?.queryParameters['chat_username'] ??
-                    usernameFromPath)
-                .toString())
-            .trim()
-            .replaceFirst('@', '');
-        Get.to<void>(
-          () => MessagesScreen(
-            initialUsername: username.isNotEmpty ? username : null,
-            initialConversationId: conversationId > 0 ? conversationId : null,
-          ),
-        );
-        return true;
-      case 'support-tickets':
-      case 'support_tickets':
-        final ticketId = int.tryParse(identifier);
-        if (ticketId != null && ticketId > 0) {
-          Get.toNamed(
-            AppRoutes.supportTicketDetail,
-            arguments: {'ticketId': ticketId},
-          );
-          return true;
-        }
-        return false;
-      case 'profiles':
-      case 'profile':
-      case 'users':
-      case 'user':
-      case 'u':
-        ProfileOpenHelper.open(username: identifier);
-        return true;
-      default:
-        return false;
-    }
+  void _handleActionTap(NotificationItemModel item) {
+    _controller.onNotificationAction(item.id);
+    unawaited(NotificationNavigator.openItem(item));
   }
 
   Future<void> _deleteNotification(NotificationItemModel item) async {
@@ -557,6 +357,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     setState(() {
       _vibeResultById.remove(item.id);
+      _followRequestResultById.remove(item.id);
       _openSwipeKey = null;
     });
 
@@ -892,6 +693,8 @@ class _NotificationCard extends StatelessWidget {
     required this.item,
     required this.resolvedVibeAction,
     required this.onTapVibeAction,
+    required this.resolvedFollowRequestAction,
+    required this.onTapFollowRequestAction,
     required this.onTapPrimary,
     required this.onTapProfile,
   });
@@ -899,6 +702,8 @@ class _NotificationCard extends StatelessWidget {
   final NotificationItemModel item;
   final String? resolvedVibeAction;
   final ValueChanged<String> onTapVibeAction;
+  final String? resolvedFollowRequestAction;
+  final ValueChanged<String> onTapFollowRequestAction;
   final VoidCallback onTapPrimary;
   final VoidCallback onTapProfile;
 
@@ -999,73 +804,93 @@ class _NotificationCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 2),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (item.kind == NotificationKind.like) ...[
-                          const Padding(
-                            padding: EdgeInsets.only(top: 2, right: 6),
-                            child: Icon(
-                              Icons.favorite_rounded,
-                              size: 14,
-                              color: Color(0xFFFF4D6D),
-                            ),
-                          ),
-                        ] else if (item.kind == NotificationKind.follow) ...[
-                          const Padding(
-                            padding: EdgeInsets.only(top: 2, right: 6),
-                            child: Icon(
-                              Icons.person_add_alt_1_rounded,
-                              size: 14,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ],
-                        Expanded(
-                          child: Text(
-                            item.message,
-                            style: AppFonts.beVietnam(
-                              size: 13,
-                              weight: FontWeight.w500,
-                              color: AppColors.hintText,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (item.kind == NotificationKind.vibeRequest) ...[
-                      const SizedBox(height: 10),
-                      _buildVibeActions(),
-                    ] else if (item.hasOpenAction) ...[
-                      const SizedBox(height: 10),
-                      InkWell(
-                        borderRadius: BorderRadius.circular(999),
-                        onTap: onTapPrimary,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 3),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                    // Tap body (not just the Open link) → content screen,
+                    // same as Instagram / TikTok notification rows.
+                    GestureDetector(
+                      onTap: onTapPrimary,
+                      behavior: HitTestBehavior.opaque,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                item.primaryActionText ?? 'Open',
-                                style: AppFonts.beVietnam(
-                                  size: 13,
-                                  weight: FontWeight.w700,
-                                  color: AppColors.primary,
+                              if (item.kind == NotificationKind.like) ...[
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 2, right: 6),
+                                  child: Icon(
+                                    Icons.favorite_rounded,
+                                    size: 14,
+                                    color: Color(0xFFFF4D6D),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 4),
-                              AppHeroIconData(
-                                item.kind == NotificationKind.message
-                                    ? Icons.chat_bubble_rounded
-                                    : Icons.chevron_right_rounded,
-                                color: AppColors.primary,
-                                size: 18,
+                              ] else if (item.kind == NotificationKind.follow) ...[
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 2, right: 6),
+                                  child: Icon(
+                                    Icons.person_add_alt_1_rounded,
+                                    size: 14,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ] else if (item.kind ==
+                                  NotificationKind.storyReply) ...[
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 2, right: 6),
+                                  child: Icon(
+                                    Icons.auto_stories_rounded,
+                                    size: 14,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ],
+                              Expanded(
+                                child: item.kind == NotificationKind.storyReply
+                                    ? _StoryReplyMessageBody(item: item)
+                                    : Text(
+                                        item.message,
+                                        style: AppFonts.beVietnam(
+                                          size: 13,
+                                          weight: FontWeight.w500,
+                                          color: AppColors.hintText,
+                                        ),
+                                      ),
                               ),
                             ],
                           ),
-                        ),
+                          if (item.hasOpenAction) ...[
+                            const SizedBox(height: 10),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  item.primaryActionText ?? 'Open',
+                                  style: AppFonts.beVietnam(
+                                    size: 13,
+                                    weight: FontWeight.w700,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                AppHeroIconData(
+                                  item.kind == NotificationKind.message
+                                      ? Icons.chat_bubble_rounded
+                                      : Icons.chevron_right_rounded,
+                                  color: AppColors.primary,
+                                  size: 18,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
                       ),
+                    ),
+                    if (item.kind == NotificationKind.followRequest) ...[
+                      const SizedBox(height: 10),
+                      _buildFollowRequestActions(),
+                    ] else if (item.kind == NotificationKind.vibeRequest) ...[
+                      const SizedBox(height: 10),
+                      _buildVibeActions(),
                     ],
                   ],
                 ),
@@ -1074,31 +899,50 @@ class _NotificationCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 GestureDetector(
                   onTap: onTapPrimary,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: SizedBox(
-                      width: 54,
-                      height: 54,
-                      // The notifications API only sends one url per item —
-                      // for a video post it's the raw video file, not a
-                      // thumbnail, and AppCachedImage can't decode that as an
-                      // image (shows a broken-image icon). Render the video's
-                      // own first frame instead when that's what we got.
-                      child:
-                          MediaTypeResolver.resolve(
-                                item.thumbnail!,
-                                fallback: AppMediaType.image,
-                              ) ==
-                              AppMediaType.video
-                          ? AppCachedVideoPlayer(
-                              videoUrl: item.thumbnail!,
-                              autoPlay: false,
-                              showControls: false,
-                            )
-                          : AppCachedImage(
-                              imageUrl: item.thumbnail!,
-                              fit: BoxFit.cover,
+                  child: Container(
+                    width: 54,
+                    height: 54,
+                    decoration: item.kind == NotificationKind.storyReply
+                        ? BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [AppColors.primary, AppColors.secondary],
                             ),
+                          )
+                        : null,
+                    padding: item.kind == NotificationKind.storyReply
+                        ? const EdgeInsets.all(2)
+                        : EdgeInsets.zero,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(
+                        item.kind == NotificationKind.storyReply ? 10 : 10,
+                      ),
+                      child: SizedBox(
+                        width: 54,
+                        height: 54,
+                        // The notifications API only sends one url per item —
+                        // for a video post it's the raw video file, not a
+                        // thumbnail, and AppCachedImage can't decode that as an
+                        // image (shows a broken-image icon). Render the video's
+                        // own first frame instead when that's what we got.
+                        child:
+                            MediaTypeResolver.resolve(
+                                  item.thumbnail!,
+                                  fallback: AppMediaType.image,
+                                ) ==
+                                AppMediaType.video
+                            ? AppCachedVideoPlayer(
+                                videoUrl: item.thumbnail!,
+                                autoPlay: false,
+                                showControls: false,
+                              )
+                            : AppCachedImage(
+                                imageUrl: item.thumbnail!,
+                                fit: BoxFit.cover,
+                              ),
+                      ),
                     ),
                   ),
                 ),
@@ -1107,6 +951,75 @@ class _NotificationCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFollowRequestActions() {
+    if (resolvedFollowRequestAction != null) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: null,
+          style: ElevatedButton.styleFrom(
+            disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.9),
+            disabledForegroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(vertical: 11),
+            textStyle: AppFonts.beVietnam(size: 13, weight: FontWeight.w700),
+          ),
+          child: Text(resolvedFollowRequestAction!),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [AppColors.primary, AppColors.secondary],
+              ),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: ElevatedButton(
+              onPressed: () => onTapFollowRequestAction('Approved'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 11),
+                textStyle: AppFonts.beVietnam(
+                  size: 13,
+                  weight: FontWeight.w700,
+                ),
+              ),
+              child: const Text('Approve'),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: OutlinedButton(
+            onPressed: () => onTapFollowRequestAction('Cancelled'),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: AppColors.cardBorder),
+              backgroundColor: AppColors.chip,
+              padding: const EdgeInsets.symmetric(vertical: 11),
+            ),
+            child: Text(
+              'Cancel',
+              style: AppFonts.beVietnam(
+                size: 13,
+                weight: FontWeight.w700,
+                color: AppColors.hintText,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1182,6 +1095,52 @@ class _NotificationCard extends StatelessWidget {
             ),
           ),
         ),
+      ],
+    );
+  }
+}
+
+class _StoryReplyMessageBody extends StatelessWidget {
+  const _StoryReplyMessageBody({required this.item});
+
+  final NotificationItemModel item;
+
+  bool get _isReaction {
+    final text = item.message.trim();
+    if (text.isEmpty) {
+      return false;
+    }
+    return text.runes.length <= 4 && !RegExp(r'[A-Za-z0-9]').hasMatch(text);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reply = item.message.trim();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _isReaction ? 'reacted to your story' : 'replied to your story',
+          style: AppFonts.beVietnam(
+            size: 13,
+            weight: FontWeight.w500,
+            color: AppColors.hintText,
+          ),
+        ),
+        if (reply.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            reply,
+            maxLines: _isReaction ? 1 : 4,
+            overflow: TextOverflow.ellipsis,
+            style: AppFonts.beVietnam(
+              size: _isReaction ? 22 : 13,
+              height: _isReaction ? 1.1 : 1.35,
+              weight: FontWeight.w600,
+              color: AppColors.text,
+            ),
+          ),
+        ],
       ],
     );
   }

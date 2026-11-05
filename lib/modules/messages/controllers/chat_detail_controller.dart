@@ -7,6 +7,8 @@ import '../../../core/media/media_picker_service.dart';
 import '../../../core/media/media_type_resolver.dart';
 import '../../../core/utils/app_helper.dart';
 import '../../../core/utils/local_storage.dart';
+import '../../home/controllers/home_controller.dart';
+import '../../profile/controllers/follow_state_controller.dart';
 import '../../reports/api/reports_api.dart';
 import '../models/chat_models.dart';
 import '../services/chat_api_service.dart';
@@ -35,6 +37,7 @@ class ChatDetailController extends GetxController {
   final bool _initialIsBlockedByOther;
 
   final TextEditingController messageController = TextEditingController();
+  final FocusNode messageFocusNode = FocusNode();
   final ScrollController scrollController = ScrollController();
 
   final RxList<ChatMessageModel> messages = <ChatMessageModel>[].obs;
@@ -62,6 +65,7 @@ class ChatDetailController extends GetxController {
   final RxBool isBlockedByMe = false.obs;
   final RxBool isBlocking = false.obs;
   final RxBool otherUserTyping = false.obs;
+  final Rxn<ChatMessageModel> replyTarget = Rxn<ChatMessageModel>();
 
   int _currentPage = 0;
   StreamSubscription<ChatPushEvent>? _pushSubscription;
@@ -132,6 +136,7 @@ class ChatDetailController extends GetxController {
     messageController
       ..removeListener(_handleInputChanged)
       ..dispose();
+    messageFocusNode.dispose();
     _pushSubscription?.cancel();
     _cancelSocketSubscriptions();
     scrollController
@@ -188,7 +193,25 @@ class ChatDetailController extends GetxController {
       (existing) => existing.id == message.id,
     );
     if (existingIndex >= 0) {
-      messages[existingIndex] = message;
+      final existing = messages[existingIndex];
+      // Never let a thinner payload (socket/reaction) wipe media we already have.
+      final merged = message.copyWith(
+        mediaUrl: message.mediaUrl.trim().isNotEmpty
+            ? message.mediaUrl
+            : existing.mediaUrl,
+        thumbnailUrl: message.thumbnailUrl.trim().isNotEmpty
+            ? message.thumbnailUrl
+            : existing.thumbnailUrl,
+        messageType: message.messageType.trim().isNotEmpty &&
+                message.messageType.trim().toLowerCase() != 'text'
+            ? message.messageType
+            : (existing.mediaUrl.trim().isNotEmpty ||
+                    existing.thumbnailUrl.trim().isNotEmpty
+                ? existing.messageType
+                : message.messageType),
+        replyTo: message.replyTo ?? existing.replyTo,
+      );
+      messages[existingIndex] = merged;
     } else {
       messages.insert(0, message);
     }
@@ -592,15 +615,32 @@ class ChatDetailController extends GetxController {
     }
   }
 
+  void setReplyTarget(ChatMessageModel message) {
+    if (message.id <= 0 || isComposerDisabled) {
+      return;
+    }
+    replyTarget.value = message;
+    messageFocusNode.requestFocus();
+  }
+
+  void clearReplyTarget() {
+    replyTarget.value = null;
+  }
+
   Future<void> sendCurrentMessage() async {
     final text = messageController.text.trim();
     if (text.isEmpty || isSending.value || isComposerDisabled) {
       return;
     }
 
+    final reply = replyTarget.value;
     isSending.value = true;
     try {
-      final response = await _apiService.sendMessage(conversationId, text);
+      final response = await _apiService.sendMessage(
+        conversationId,
+        text,
+        replyToMessageId: reply?.id,
+      );
       isMessagingStopped.value = response.isMessagingStopped;
       final nextMessage = response.chatMessage;
       if (nextMessage != null) {
@@ -616,11 +656,13 @@ class ChatDetailController extends GetxController {
             timeLabel: 'Now',
             status: 'sent',
             isSeen: false,
+            replyTo: reply == null ? null : ChatReplyPreview.fromMessage(reply),
           ),
         );
       }
 
       messageController.clear();
+      clearReplyTarget();
       _typingStopTimer?.cancel();
       ChatSocketService.instance.sendTyping(conversationId, false);
       stoppedBannerText.value = '';
@@ -696,19 +738,33 @@ class ChatDetailController extends GetxController {
     }
 
     isSending.value = true;
+    final reply = replyTarget.value;
     try {
       final caption = messageController.text.trim();
       final response = await _apiService.sendMediaMessage(
         conversationId: conversationId,
         mediaPath: picked.path,
         body: caption,
+        replyToMessageId: reply?.id,
       );
       isMessagingStopped.value = response.isMessagingStopped;
       final nextMessage = response.chatMessage;
       final fallbackType =
           picked.type == AppMediaType.video ? 'video' : 'image';
       if (nextMessage != null) {
-        _insertOrReconcile(nextMessage.copyWith(isMine: true));
+        var sent = nextMessage.copyWith(isMine: true);
+        if (sent.mediaUrl.trim().isEmpty) {
+          sent = sent.copyWith(
+            messageType: fallbackType,
+            mediaUrl: picked.path,
+            thumbnailUrl:
+                picked.type == AppMediaType.image ? picked.path : sent.thumbnailUrl,
+          );
+        } else if (sent.messageType.trim().isEmpty ||
+            sent.messageType.trim().toLowerCase() == 'text') {
+          sent = sent.copyWith(messageType: fallbackType);
+        }
+        _insertOrReconcile(sent);
       } else {
         _insertOrReconcile(
           ChatMessageModel(
@@ -723,15 +779,15 @@ class ChatDetailController extends GetxController {
             messageType: fallbackType,
             mediaUrl: picked.path,
             thumbnailUrl: picked.type == AppMediaType.image ? picked.path : '',
+            replyTo: reply == null ? null : ChatReplyPreview.fromMessage(reply),
           ),
         );
       }
 
-      if (caption.isNotEmpty) {
-        messageController.clear();
-        _typingStopTimer?.cancel();
-        ChatSocketService.instance.sendTyping(conversationId, false);
-      }
+      messageController.clear();
+      _typingStopTimer?.cancel();
+      ChatSocketService.instance.sendTyping(conversationId, false);
+      clearReplyTarget();
       stoppedBannerText.value = '';
       _checkChatRequestState();
       _jumpToBottom();
@@ -889,6 +945,25 @@ class ChatDetailController extends GetxController {
     );
   }
 
+  Future<void> deleteChat() async {
+    if (conversationId <= 0 || isSending.value) {
+      return;
+    }
+    isSending.value = true;
+    try {
+      await _apiService.deleteChat(conversationId);
+      _removeThreadFromInbox();
+      successSnackBar(message: 'Chat deleted.');
+      Get.back<void>();
+    } on ChatApiException catch (error) {
+      errorSnackBar(message: error.message);
+    } catch (_) {
+      errorSnackBar(message: 'Unable to delete this chat.');
+    } finally {
+      isSending.value = false;
+    }
+  }
+
   Future<void> toggleChatMessaging() async {
     if (isSending.value) {
       return;
@@ -924,6 +999,12 @@ class ChatDetailController extends GetxController {
     isBlocking.value = true;
     try {
       await _apiService.blockUser(username);
+      if (Get.isRegistered<FollowStateController>()) {
+        Get.find<FollowStateController>().markUnfollowed(username);
+      }
+      if (Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().removeBlockedUserContent(username);
+      }
       successSnackBar(message: 'User blocked successfully.');
       Get.back();
     } on ChatApiException catch (error) {

@@ -8,6 +8,7 @@ import '../../../core/utils/api_helper.dart';
 import '../../../core/utils/app_helper.dart';
 import '../../../core/utils/verified_badge_hydrator.dart';
 import '../../messages/services/chat_event_bus.dart';
+import '../../profile/controllers/follow_state_controller.dart';
 import '../models/notification_item_model.dart';
 import '../utils/like_notification_store.dart';
 
@@ -334,6 +335,34 @@ class NotificationsController extends GetxController {
   Future<void> onVibeAction(int id, String actionLabel) async {
     await markRead(id);
     infoSnackBar(message: actionLabel);
+  }
+
+  Future<void> onFollowRequestAction(
+    NotificationItemModel item, {
+    required bool approve,
+  }) async {
+    await markRead(item.id);
+    final username = item.profileHandle;
+    if (username.isEmpty) {
+      errorSnackBar(message: 'Unable to update this follow request.');
+      return;
+    }
+
+    try {
+      if (!Get.isRegistered<FollowStateController>()) {
+        Get.put(FollowStateController(), permanent: true);
+      }
+      final followState = Get.find<FollowStateController>();
+      if (approve) {
+        await followState.acceptFollowRequest(username);
+        successSnackBar(message: 'Follow request approved.');
+      } else {
+        await followState.rejectFollowRequest(username);
+        infoSnackBar(message: 'Follow request cancelled.');
+      }
+    } catch (error) {
+      errorSnackBar(message: error.toString().replaceFirst('Exception: ', ''));
+    }
   }
 
   Future<void> onNotificationAction(int id) async {

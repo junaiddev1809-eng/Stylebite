@@ -22,6 +22,7 @@ import '../../modules/profile/screen/edit_profile_screen.dart';
 import '../../modules/post/screens/hashtag_feed_screen.dart';
 import '../../modules/search/screen/search_screen.dart';
 import '../../modules/settings/screen/about_stylebite_screen.dart';
+import '../../modules/settings/screen/change_password_screen.dart';
 import '../../modules/settings/screen/help_center_screen.dart';
 import '../../modules/settings/screen/monetization_screen.dart';
 import '../../modules/settings/screen/privacy_policy_screen.dart';
@@ -92,6 +93,7 @@ class AppPages {
     _slide(AppRoutes.contestInvitations, ContestInvitationsScreen.new),
     _slide(AppRoutes.profileContestResults, ProfileContestResultsScreen.new),
     _slide(AppRoutes.privacyPolicy, PrivacyPolicyScreen.new),
+    _slide(AppRoutes.changePassword, ChangePasswordScreen.new),
     _slide(AppRoutes.helpCenter, HelpCenterScreen.new),
     _slide(AppRoutes.aboutStylebite, AboutStylebiteScreen.new),
     _slide(AppRoutes.supportTickets, SupportTicketsScreen.new),

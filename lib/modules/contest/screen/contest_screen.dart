@@ -198,6 +198,12 @@ class _ContestScreenState extends State<ContestScreen> {
     if (!_scrollController.hasClients) {
       return;
     }
+    if (_controller.isInitialLoading.value ||
+        _controller.isRefreshing.value ||
+        _controller.isLoadingMore.value ||
+        !_controller.hasMore.value) {
+      return;
+    }
     final p = _scrollController.position;
     if (p.pixels > p.maxScrollExtent - 240) {
       _controller.fetchContests(reset: false);

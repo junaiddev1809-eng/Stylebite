@@ -12,6 +12,7 @@ class FollowUserButton extends StatefulWidget {
     super.key,
     required this.username,
     required this.initialIsFollowing,
+    this.initialIsRequested = false,
     this.compact = false,
     this.dark = false,
     this.expand = false,
@@ -20,6 +21,7 @@ class FollowUserButton extends StatefulWidget {
 
   final String username;
   final bool initialIsFollowing;
+  final bool initialIsRequested;
   final bool compact;
   final bool dark;
   final bool expand;
@@ -45,7 +47,8 @@ class _FollowUserButtonState extends State<FollowUserButton> {
   void didUpdateWidget(covariant FollowUserButton oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.username != widget.username ||
-        oldWidget.initialIsFollowing != widget.initialIsFollowing) {
+        oldWidget.initialIsFollowing != widget.initialIsFollowing ||
+        oldWidget.initialIsRequested != widget.initialIsRequested) {
       _seed();
     }
   }
@@ -61,23 +64,28 @@ class _FollowUserButtonState extends State<FollowUserButton> {
     }
 
     return Obx(() {
-      final isFollowing = _controller.isFollowing(
+      final state = _controller.stateOf(
         normalizedUsername,
-        fallback: widget.initialIsFollowing,
+        fallbackFollowing: widget.initialIsFollowing,
+        fallbackRequested: widget.initialIsRequested,
       );
       final isLoading = _controller.isLoading(normalizedUsername);
+      final isFollowing = state == FollowButtonState.following;
+      final isRequested = state == FollowButtonState.requested;
+      final isActive = isFollowing || isRequested;
 
-      // `dark: true` = overlay on video/media. Keep a solid light pill with
-      // always-dark label text so it stays readable even when app theme is Dark
-      // (AppColors.text is cream in dark mode and would vanish on white).
       final background = widget.dark
-          ? (isFollowing
+          ? (isActive
                 ? Colors.white.withValues(alpha: 0.18)
                 : Colors.white)
-          : (isFollowing ? AppColors.chip : AppColors.text);
+          : (isActive ? AppColors.chip : AppColors.text);
       final foreground = widget.dark
           ? AppColors.textLight
-          : (isFollowing ? AppColors.text : Colors.white);
+          : (isActive ? AppColors.text : Colors.white);
+
+      final label = isFollowing
+          ? 'Following'
+          : (isRequested ? 'Requested' : 'Follow');
 
       return GestureDetector(
         onTap: isLoading
@@ -86,7 +94,7 @@ class _FollowUserButtonState extends State<FollowUserButton> {
                 try {
                   await _controller.toggleFollow(
                     normalizedUsername,
-                    currentlyFollowing: isFollowing,
+                    currentlyFollowing: isFollowing || isRequested,
                   );
                 } catch (error) {
                   errorSnackBar(
@@ -109,8 +117,8 @@ class _FollowUserButtonState extends State<FollowUserButton> {
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
               color: widget.dark
-                  ? Colors.white.withValues(alpha: isFollowing ? 0.18 : 0)
-                  : (isFollowing ? AppColors.cardBorder : AppColors.text),
+                  ? Colors.white.withValues(alpha: isActive ? 0.18 : 0)
+                  : (isActive ? AppColors.cardBorder : AppColors.text),
             ),
           ),
           child: isLoading
@@ -123,7 +131,7 @@ class _FollowUserButtonState extends State<FollowUserButton> {
                   ),
                 )
               : Text(
-                  isFollowing ? 'Following' : 'Follow',
+                  label,
                   style: AppFonts.beVietnam(
                     size: widget.compact ? 11 : 12,
                     weight: FontWeight.w700,
@@ -140,7 +148,11 @@ class _FollowUserButtonState extends State<FollowUserButton> {
     if (normalizedUsername.isEmpty) {
       return;
     }
-    _controller.seed(normalizedUsername, widget.initialIsFollowing);
+    _controller.seed(
+      normalizedUsername,
+      isFollowing: widget.initialIsFollowing,
+      isRequested: widget.initialIsRequested,
+    );
   }
 
   String _normalize(String username) => username.trim().replaceFirst('@', '');

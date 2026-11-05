@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/app_back_navigation.dart';
+import '../../../core/utils/local_storage.dart';
 import '../../../core/widgets/app_hero_icon.dart';
 
 class AboutStylebiteScreen extends StatelessWidget {
@@ -60,14 +62,14 @@ class AboutStylebiteScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    _AboutHero(),
-                    SizedBox(height: 12),
-                    _AboutStory(),
-                    SizedBox(height: 12),
-                    _AboutHighlights(),
-                    SizedBox(height: 12),
-                    _AboutFooter(),
+                  children: [
+                    const _AboutHero(),
+                    const SizedBox(height: 12),
+                    const _AboutStory(),
+                    const SizedBox(height: 12),
+                    const _AboutHighlights(),
+                    const SizedBox(height: 12),
+                    const _AboutFooter(),
                   ],
                 ),
               ),
@@ -302,8 +304,53 @@ class _HighlightRow extends StatelessWidget {
   }
 }
 
-class _AboutFooter extends StatelessWidget {
+class _AboutFooter extends StatefulWidget {
   const _AboutFooter();
+
+  @override
+  State<_AboutFooter> createState() => _AboutFooterState();
+}
+
+class _AboutFooterState extends State<_AboutFooter> {
+  String _versionLabel = 'Version …';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      final version = info.version.trim();
+      final build = info.buildNumber.trim();
+      if (version.isNotEmpty) {
+        LocalStorage.setAppVersion(appVersion: version);
+      }
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        if (version.isEmpty) {
+          _versionLabel = 'Version unavailable';
+        } else if (build.isEmpty) {
+          _versionLabel = 'Version $version';
+        } else {
+          _versionLabel = 'Version $version ($build)';
+        }
+      });
+    } catch (_) {
+      final cached = (LocalStorage.getAppVersion() ?? '').trim();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _versionLabel =
+            cached.isEmpty ? 'Version unavailable' : 'Version $cached';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -346,7 +393,7 @@ class _AboutFooter extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Version 1.0.2',
+            _versionLabel,
             style: AppFonts.beVietnam(
               size: 12,
               weight: FontWeight.w700,

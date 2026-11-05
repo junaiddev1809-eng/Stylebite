@@ -50,6 +50,9 @@ class ContestController extends GetxController {
   final RxBool isLoadingMore = false.obs;
   final RxBool hasMore = true.obs;
   final RxInt currentPage = 0.obs;
+  /// Bumped on every reset so stale page-2 responses cannot append duplicates
+  /// after a refresh already replaced the list.
+  int _contestsFetchEpoch = 0;
 
   final Rxn<ContestDetailModel> selectedContestDetail =
       Rxn<ContestDetailModel>();
@@ -138,16 +141,24 @@ class ContestController extends GetxController {
 
   Future<void> fetchContests({required bool reset}) async {
     if (reset) {
+      _contestsFetchEpoch++;
       isInitialLoading.value = true;
+      isLoadingMore.value = false;
       currentPage.value = 0;
       hasMore.value = true;
     } else {
-      if (isLoadingMore.value || !hasMore.value) {
+      // Never page while a reset/refresh is in flight — that re-fetches page 1
+      // and appends duplicate tiles until the next refresh.
+      if (isLoadingMore.value ||
+          !hasMore.value ||
+          isInitialLoading.value ||
+          isRefreshing.value) {
         return;
       }
       isLoadingMore.value = true;
     }
 
+    final epoch = _contestsFetchEpoch;
     try {
       final page = reset ? 1 : currentPage.value + 1;
       final result = selectedCategory.value == ContestCategory.admin
@@ -158,18 +169,30 @@ class ContestController extends GetxController {
                   : selectedTypeFilter.value,
               page: page,
             );
+      if (epoch != _contestsFetchEpoch) {
+        return;
+      }
       if (reset) {
-        _contests.assignAll(result.items);
+        _contests.assignAll(_uniqueById(result.items));
       } else {
-        _contests.addAll(result.items);
+        final existingIds = _contests.map((item) => item.id).toSet();
+        _contests.addAll(
+          result.items.where((item) => !existingIds.contains(item.id)),
+        );
       }
       _ingestEnrollment(result.items);
       currentPage.value = result.pagination.currentPage;
       hasMore.value = result.pagination.hasMorePages;
     } catch (error) {
+      if (epoch != _contestsFetchEpoch) {
+        return;
+      }
       hasMore.value = false;
       errorSnackBar(message: _friendlyError(error));
     } finally {
+      if (epoch != _contestsFetchEpoch) {
+        return;
+      }
       if (reset) {
         isInitialLoading.value = false;
         isRefreshing.value = false;
@@ -177,6 +200,17 @@ class ContestController extends GetxController {
         isLoadingMore.value = false;
       }
     }
+  }
+
+  List<ContestModel> _uniqueById(List<ContestModel> items) {
+    final seen = <int>{};
+    final unique = <ContestModel>[];
+    for (final item in items) {
+      if (seen.add(item.id)) {
+        unique.add(item);
+      }
+    }
+    return unique;
   }
 
   Future<void> refreshContests() async {

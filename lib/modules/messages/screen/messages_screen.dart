@@ -79,11 +79,13 @@ class _MessagesScreenState extends State<MessagesScreen> {
           const Positioned.fill(child: _MessagesBackdrop()),
           Column(
             children: [
-              const _MessagesTopBar(),
+              _MessagesTopBar(controller: _controller),
               Expanded(
                 child: Obx(
                   () => RefreshIndicator(
-                    onRefresh: _controller.refreshChats,
+                    onRefresh: _controller.isSelectionMode.value
+                        ? () async {}
+                        : _controller.refreshChats,
                     color: AppColors.primary,
                     child: ListView(
                       controller: _controller.scrollController,
@@ -92,11 +94,14 @@ class _MessagesScreenState extends State<MessagesScreen> {
                         16,
                         10,
                         16,
-                        safeBottom + 24,
+                        safeBottom +
+                            (_controller.isSelectionMode.value ? 96 : 24),
                       ),
                       children: [
-                        _buildSearch(),
-                        const SizedBox(height: 16),
+                        if (!_controller.isSelectionMode.value) ...[
+                          _buildSearch(),
+                          const SizedBox(height: 16),
+                        ],
                         if (_controller.query.value.trim().isNotEmpty &&
                             _controller.chats.isEmpty &&
                             !_controller.isInitialLoading.value &&
@@ -116,7 +121,9 @@ class _MessagesScreenState extends State<MessagesScreen> {
                           Row(
                             children: [
                               Text(
-                                'Conversations',
+                                _controller.isSelectionMode.value
+                                    ? 'Select chats'
+                                    : 'Conversations',
                                 style: AppFonts.plusJakarta(
                                   size: 18,
                                   weight: FontWeight.w800,
@@ -126,12 +133,40 @@ class _MessagesScreenState extends State<MessagesScreen> {
                               ),
                               const SizedBox(width: 10),
                               _Pill(
-                                label: '${_controller.chats.length}',
+                                label: _controller.isSelectionMode.value
+                                    ? '${_controller.selectedChatIds.length}'
+                                    : '${_controller.chats.length}',
                                 background: AppColors.primary.withValues(
                                   alpha: 0.12,
                                 ),
                                 foreground: AppColors.primary,
                               ),
+                              const Spacer(),
+                              if (!_controller.isSelectionMode.value &&
+                                  _controller.chats.isNotEmpty)
+                                TextButton(
+                                  onPressed: _controller.enterSelectionMode,
+                                  child: Text(
+                                    'Select',
+                                    style: AppFonts.beVietnam(
+                                      size: 13,
+                                      weight: FontWeight.w700,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                              if (_controller.isSelectionMode.value)
+                                TextButton(
+                                  onPressed: _controller.selectAllVisibleChats,
+                                  child: Text(
+                                    'Select all',
+                                    style: AppFonts.beVietnam(
+                                      size: 13,
+                                      weight: FontWeight.w700,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
                           const SizedBox(height: 12),
@@ -182,6 +217,8 @@ class _MessagesScreenState extends State<MessagesScreen> {
                               }
 
                               final thread = _controller.chats[index];
+                              final selected = _controller.selectedChatIds
+                                  .contains(thread.conversationId);
                               return _StaggeredFadeIn(
                                 key: ValueKey(
                                   'chat_thread_${thread.conversationId}',
@@ -191,7 +228,12 @@ class _MessagesScreenState extends State<MessagesScreen> {
                                   padding: const EdgeInsets.only(bottom: 12),
                                   child: _MessageTile(
                                     thread: thread,
+                                    selected: selected,
+                                    selectionMode:
+                                        _controller.isSelectionMode.value,
                                     onTap: () => _controller.openChat(thread),
+                                    onLongPress: () =>
+                                        _controller.toggleChatSelection(thread),
                                   ),
                                 ),
                               );
@@ -204,9 +246,63 @@ class _MessagesScreenState extends State<MessagesScreen> {
               ),
             ],
           ),
+          Obx(() {
+            if (!_controller.isSelectionMode.value) {
+              return const SizedBox.shrink();
+            }
+            return Positioned(
+              left: 16,
+              right: 16,
+              bottom: safeBottom + 16,
+              child: _SelectionActionBar(
+                controller: _controller,
+                onDelete: _confirmDeleteSelected,
+              ),
+            );
+          }),
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDeleteSelected() async {
+    final count = _controller.selectedChatIds.length;
+    if (count <= 0) {
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(
+            count == 1 ? 'Delete chat?' : 'Delete $count chats?',
+            style: AppFonts.plusJakarta(size: 18, weight: FontWeight.w800),
+          ),
+          content: Text(
+            count == 1
+                ? 'This removes the chat from your inbox. The other person will still have it.'
+                : 'This removes the selected chats from your inbox. Other people will still have them.',
+            style: AppFonts.beVietnam(size: 14, weight: FontWeight.w500),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text(
+                'Delete',
+                style: TextStyle(color: Colors.redAccent),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed == true) {
+      await _controller.deleteSelectedChats();
+    }
   }
 
   Widget _buildSearch() {
@@ -542,7 +638,9 @@ class _GlowBlob extends StatelessWidget {
 }
 
 class _MessagesTopBar extends StatelessWidget {
-  const _MessagesTopBar();
+  const _MessagesTopBar({required this.controller});
+
+  final MessagesController controller;
 
   @override
   Widget build(BuildContext context) {
@@ -558,57 +656,77 @@ class _MessagesTopBar extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
             color: AppColors.background.withValues(alpha: 0.95),
-            child: Row(
-              children: [
-                InkWell(
-                  onTap: AppBackNavigation.handleBack,
-                  borderRadius: BorderRadius.circular(999),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    alignment: Alignment.center,
-                    child: AppHeroIconData(
-                      Icons.arrow_back_rounded,
-                      color: AppColors.hintText,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                InkWell(
-                  onTap: () => Get.offAll<void>(
-                    () => const LandingScreen(initialIndex: 4),
-                  ),
-                  borderRadius: BorderRadius.circular(999),
-                  child: Obx(
-                    () => AppUserAvatar(
-                      imageUrl: profileController.avatarImageUrl.value,
-                      size: 42,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(
-                      colors: [AppColors.primary, Color(0xFFFF8A5B)],
-                    ).createShader(bounds),
-                    child: Text(
-                      'Messages',
-                      style: AppFonts.plusJakarta(
-                        size: 24,
-                        weight: FontWeight.w800,
-                        color: Colors.white,
+            child: Obx(() {
+              final selecting = controller.isSelectionMode.value;
+              return Row(
+                children: [
+                  InkWell(
+                    onTap: selecting
+                        ? controller.exitSelectionMode
+                        : AppBackNavigation.handleBack,
+                    borderRadius: BorderRadius.circular(999),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      alignment: Alignment.center,
+                      child: AppHeroIconData(
+                        selecting
+                            ? Icons.close_rounded
+                            : Icons.arrow_back_rounded,
+                        color: AppColors.hintText,
                       ),
                     ),
                   ),
-                ),
-                IconButton(
-                  onPressed: () => Get.to<void>(() => const SettingsScreen()),
-                  icon: const AppHeroIconData(Icons.settings_rounded),
-                  color: AppColors.hintText,
-                ),
-              ],
-            ),
+                  const SizedBox(width: 6),
+                  if (!selecting) ...[
+                    InkWell(
+                      onTap: () => Get.offAll<void>(
+                        () => const LandingScreen(initialIndex: 4),
+                      ),
+                      borderRadius: BorderRadius.circular(999),
+                      child: Obx(
+                        () => AppUserAvatar(
+                          imageUrl: profileController.avatarImageUrl.value,
+                          size: 42,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                  ],
+                  Expanded(
+                    child: selecting
+                        ? Text(
+                            '${controller.selectedChatIds.length} selected',
+                            style: AppFonts.plusJakarta(
+                              size: 20,
+                              weight: FontWeight.w800,
+                              color: AppColors.text,
+                            ),
+                          )
+                        : ShaderMask(
+                            shaderCallback: (bounds) => const LinearGradient(
+                              colors: [AppColors.primary, Color(0xFFFF8A5B)],
+                            ).createShader(bounds),
+                            child: Text(
+                              'Messages',
+                              style: AppFonts.plusJakarta(
+                                size: 24,
+                                weight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                  ),
+                  if (!selecting)
+                    IconButton(
+                      onPressed: () =>
+                          Get.to<void>(() => const SettingsScreen()),
+                      icon: const AppHeroIconData(Icons.settings_rounded),
+                      color: AppColors.hintText,
+                    ),
+                ],
+              );
+            }),
           ),
         ),
       ),
@@ -616,11 +734,111 @@ class _MessagesTopBar extends StatelessWidget {
   }
 }
 
+class _SelectionActionBar extends StatelessWidget {
+  const _SelectionActionBar({
+    required this.controller,
+    required this.onDelete,
+  });
+
+  final MessagesController controller;
+  final Future<void> Function() onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final count = controller.selectedChatIds.length;
+      final busy = controller.isDeleting.value;
+      return Material(
+        elevation: 10,
+        borderRadius: BorderRadius.circular(22),
+        color: AppColors.surface,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AppColors.cardBorder),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  count == 0
+                      ? 'Select chats to delete'
+                      : count == 1
+                      ? '1 chat selected'
+                      : '$count chats selected',
+                  style: AppFonts.beVietnam(
+                    size: 13,
+                    weight: FontWeight.w700,
+                    color: AppColors.text,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: busy ? null : controller.exitSelectionMode,
+                child: Text(
+                  'Cancel',
+                  style: AppFonts.beVietnam(
+                    size: 13,
+                    weight: FontWeight.w700,
+                    color: AppColors.hintText,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              FilledButton(
+                onPressed: busy || count == 0 ? null : onDelete,
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: busy
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        'Delete',
+                        style: AppFonts.beVietnam(
+                          size: 13,
+                          weight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+}
+
 class _MessageTile extends StatelessWidget {
-  const _MessageTile({required this.thread, required this.onTap});
+  const _MessageTile({
+    required this.thread,
+    required this.onTap,
+    this.onLongPress,
+    this.selected = false,
+    this.selectionMode = false,
+  });
 
   final ChatThreadModel thread;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final bool selected;
+  final bool selectionMode;
 
   @override
   Widget build(BuildContext context) {
@@ -632,24 +850,32 @@ class _MessageTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(26),
         splashColor: AppColors.primary.withValues(alpha: 0.08),
         highlightColor: AppColors.primary.withValues(alpha: 0.04),
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.fromLTRB(14, 14, 16, 14),
           decoration: BoxDecoration(
-            color: isUnread ? AppColors.surface : AppColors.card,
+            color: selected
+                ? AppColors.primary.withValues(alpha: 0.08)
+                : (isUnread ? AppColors.surface : AppColors.card),
             borderRadius: BorderRadius.circular(26),
             border: Border.all(
-              color: isUnread
-                  ? AppColors.primary.withValues(alpha: 0.22)
-                  : AppColors.cardBorder,
-              width: 1.1,
+              color: selected
+                  ? AppColors.primary.withValues(alpha: 0.55)
+                  : (isUnread
+                        ? AppColors.primary.withValues(alpha: 0.22)
+                        : AppColors.cardBorder),
+              width: selected ? 1.5 : 1.1,
             ),
             boxShadow: [
               BoxShadow(
-                color: (isUnread ? AppColors.primary : const Color(0xFF2F2F2E))
-                    .withValues(alpha: isUnread ? 0.14 : 0.07),
+                color: (selected || isUnread
+                        ? AppColors.primary
+                        : const Color(0xFF2F2F2E))
+                    .withValues(alpha: selected || isUnread ? 0.14 : 0.07),
                 blurRadius: 26,
                 offset: const Offset(0, 12),
                 spreadRadius: -16,
@@ -659,6 +885,18 @@ class _MessageTile extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (selectionMode) ...[
+                Padding(
+                  padding: const EdgeInsets.only(top: 10, right: 10),
+                  child: Icon(
+                    selected
+                        ? Icons.check_circle_rounded
+                        : Icons.circle_outlined,
+                    color: selected ? AppColors.primary : AppColors.hintText,
+                    size: 22,
+                  ),
+                ),
+              ],
               _Avatar(thread: thread),
               const SizedBox(width: 13),
               Expanded(

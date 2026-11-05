@@ -7,7 +7,9 @@ import '../../post/utils/in_app_share.dart';
 
 enum NotificationKind {
   vibeRequest,
+  followRequest,
   follow,
+  storyReply,
   like,
   contest,
   comment,
@@ -125,14 +127,21 @@ class NotificationItemModel {
             (entityType == 'post' && entityId > 0);
       case NotificationKind.contest:
         return true;
+      case NotificationKind.storyReply:
+        return true;
       case NotificationKind.message:
         return true;
       case NotificationKind.support:
         return entityType == 'support_ticket' && entityId > 0;
+      // Approve/Cancel (and vibe actions) are separate; body tap still opens
+      // the actor profile via NotificationNavigator.
       case NotificationKind.vibeRequest:
+      case NotificationKind.followRequest:
         return false;
       case NotificationKind.other:
-        return actionUrl.trim().isNotEmpty;
+        // System notices (earnings / verification / monetization) navigate
+        // via action_url or title/body heuristics in NotificationNavigator.
+        return true;
     }
   }
 
@@ -204,7 +213,7 @@ class NotificationItemModel {
       primaryActionText: _primaryActionLabel(kind, type),
       secondaryActionText: kind == NotificationKind.vibeRequest
           ? 'De-Vibe'
-          : null,
+          : (kind == NotificationKind.followRequest ? 'Cancel' : null),
       unread: !_asBool(source['is_read'] ?? json['is_read']),
       readAt: _nullableString(source['read_at'] ?? json['read_at']),
       deliveryStatus: _nullableString(
@@ -294,6 +303,17 @@ class NotificationItemModel {
     if (isLikeType(normalized)) {
       return NotificationKind.like;
     }
+    if (normalized == 'follow_request' ||
+        normalized == 'followrequest' ||
+        normalized.contains('follow_request')) {
+      return NotificationKind.followRequest;
+    }
+    if (normalized == 'story_reply' ||
+        normalized == 'storyreply' ||
+        normalized.contains('story_reply') ||
+        (normalized.contains('story') && normalized.contains('reply'))) {
+      return NotificationKind.storyReply;
+    }
     if (normalized == 'follow' ||
         normalized == 'followed' ||
         normalized == 'follower' ||
@@ -358,6 +378,11 @@ class NotificationItemModel {
       return fromType;
     }
     final entityType = (json['entity_type'] ?? '').toString();
+    if (entityType.trim().toLowerCase() == 'story' ||
+        storedKind == 'story_reply' ||
+        storedKind == 'storyreply') {
+      return NotificationKind.storyReply;
+    }
     if (isLikeType(entityType)) {
       return NotificationKind.like;
     }
@@ -375,6 +400,15 @@ class NotificationItemModel {
         blob.contains('likes your') ||
         blob.contains('loved your')) {
       return NotificationKind.like;
+    }
+    if (blob.contains('requested to follow') ||
+        blob.contains('follow request')) {
+      return NotificationKind.followRequest;
+    }
+    if (blob.contains('replied to your story') ||
+        blob.contains('reacted to your story') ||
+        blob.contains('story reply')) {
+      return NotificationKind.storyReply;
     }
     if (blob.contains('started following') ||
         blob.contains('following you') ||
@@ -437,6 +471,11 @@ class NotificationItemModel {
     if (kind == NotificationKind.follow) {
       return title.isNotEmpty ? title : 'started following you';
     }
+    if (kind == NotificationKind.storyReply) {
+      return body.isNotEmpty
+          ? body
+          : (title.isNotEmpty ? title : 'replied to your story');
+    }
     return title;
   }
 
@@ -486,6 +525,10 @@ class NotificationItemModel {
         return 'View Post';
       case NotificationKind.follow:
         return 'View Profile';
+      case NotificationKind.followRequest:
+        return 'Approve';
+      case NotificationKind.storyReply:
+        return 'View Story';
       case NotificationKind.contest:
         return 'View Contest';
       case NotificationKind.message:

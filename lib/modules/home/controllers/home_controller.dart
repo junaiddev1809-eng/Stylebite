@@ -23,6 +23,7 @@ import '../../reel/controllers/reel_controller.dart';
 import '../../reel/models/reel_item_model.dart';
 import '../../flashes/controllers/flash_controller.dart';
 import '../../flashes/flash_marker.dart';
+import '../../profile/controllers/follow_state_controller.dart';
 import '../../story/controllers/story_controller.dart';
 import '../../story/story_marker.dart';
 import '../models/home_battle_model.dart';
@@ -723,21 +724,9 @@ class HomeController extends GetxController {
         );
       }
 
-      _publishVisiblePosts([
-        for (final post in _publishedPosts)
-          if (!_matchesUsername(post.profileUsername, normalized) &&
-              !_matchesUsername(post.username, normalized))
-            post,
-      ]);
-      for (final cache in _feedCache.values) {
-        cache.posts.removeWhere(
-          (post) =>
-              _matchesUsername(post.profileUsername, normalized) ||
-              _matchesUsername(post.username, normalized),
-        );
-        cache.loadedPostIds
-          ..clear()
-          ..addAll(cache.posts.map((post) => post.id));
+      removeBlockedUserContent(normalized);
+      if (Get.isRegistered<FollowStateController>()) {
+        Get.find<FollowStateController>().markUnfollowed(normalized);
       }
       successSnackBar(
         message: (payload['message'] ?? 'User blocked successfully.')
@@ -745,6 +734,31 @@ class HomeController extends GetxController {
       );
     } catch (error) {
       errorSnackBar(message: error.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  /// Drop a blocked author's posts from the in-memory feed (no API call).
+  void removeBlockedUserContent(String username) {
+    final normalized = username.trim().replaceFirst('@', '');
+    if (normalized.isEmpty) {
+      return;
+    }
+
+    _publishVisiblePosts([
+      for (final post in _publishedPosts)
+        if (!_matchesUsername(post.profileUsername, normalized) &&
+            !_matchesUsername(post.username, normalized))
+          post,
+    ]);
+    for (final cache in _feedCache.values) {
+      cache.posts.removeWhere(
+        (post) =>
+            _matchesUsername(post.profileUsername, normalized) ||
+            _matchesUsername(post.username, normalized),
+      );
+      cache.loadedPostIds
+        ..clear()
+        ..addAll(cache.posts.map((post) => post.id));
     }
   }
 

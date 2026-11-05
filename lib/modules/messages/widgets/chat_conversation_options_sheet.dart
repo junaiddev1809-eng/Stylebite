@@ -4,7 +4,11 @@ import 'package:heroicons/heroicons.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 
-enum ChatConversationOptionAction { toggleMessaging, toggleBlock }
+enum ChatConversationOptionAction {
+  toggleMessaging,
+  toggleBlock,
+  deleteChat,
+}
 
 Future<ChatConversationOptionAction?> showChatConversationOptionsSheet(
   BuildContext context, {
@@ -60,6 +64,15 @@ Future<ChatConversationOptionAction?> showChatConversationOptionsSheet(
                 onTap: () => Navigator.of(
                   context,
                 ).pop(ChatConversationOptionAction.toggleBlock),
+              ),
+              const SizedBox(height: 8),
+              _item(
+                icon: HeroIcons.trash,
+                label: 'Delete Chat',
+                color: Colors.redAccent,
+                onTap: () => Navigator.of(
+                  context,
+                ).pop(ChatConversationOptionAction.deleteChat),
               ),
             ],
           ),

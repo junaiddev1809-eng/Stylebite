@@ -12,6 +12,7 @@ import '../../../core/widgets/states/app_empty_state.dart';
 import '../../../core/widgets/states/app_error_state.dart';
 import '../../../core/widgets/states/app_shimmer_box.dart';
 import '../../../core/utils/app_back_navigation.dart';
+import '../../post/widgets/post_options_sheet.dart';
 import '../../reports/widgets/report_reason_sheet.dart';
 import '../controllers/user_profile_controller.dart';
 import '../models/profile_model.dart';
@@ -216,6 +217,18 @@ class _PublicTopBar extends StatelessWidget {
         if (!(controller.user.value?.isSelf ?? true)) ...[
           const SizedBox(width: 12),
           InkWell(
+            onTap: () => _blockUser(context, controller),
+            borderRadius: BorderRadius.circular(999),
+            child: Padding(
+              padding: const EdgeInsets.all(2),
+              child: AppHeroIconData(
+                Icons.block_rounded,
+                color: AppColors.hintText,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          InkWell(
             onTap: () => _reportUser(context, controller),
             borderRadius: BorderRadius.circular(999),
             child: Padding(
@@ -228,6 +241,23 @@ class _PublicTopBar extends StatelessWidget {
         ],
       ],
     );
+  }
+}
+
+Future<void> _blockUser(
+  BuildContext context,
+  UserProfileController controller,
+) async {
+  final confirmed = await showBlockUserConfirmationSheet(
+    context,
+    username: controller.username,
+  );
+  if (confirmed != true) {
+    return;
+  }
+  final blocked = await controller.blockUser();
+  if (blocked && context.mounted) {
+    AppBackNavigation.handleBack();
   }
 }
 
@@ -322,6 +352,7 @@ class _PublicHeaderSection extends StatelessWidget {
                   child: FollowUserButton(
                     username: user.username,
                     initialIsFollowing: user.isFollowing,
+                    initialIsRequested: user.followRequestPending,
                     expand: true,
                     height: 44,
                   ),
@@ -670,6 +701,15 @@ class _PublicTabContent extends StatelessWidget {
   }
 
   Widget _buildTab() {
+    final user = controller.user.value;
+    if (user != null && user.contentLocked) {
+      return const _PublicEmptyState(
+        title: 'This account is private',
+        subtitle: 'Follow this account and wait for approval to see their posts and stories.',
+        icon: Icons.lock_outline_rounded,
+      );
+    }
+
     switch (controller.activeTab.value) {
       case ProfileContentTab.outfits:
         if (controller.outfitPosts.isEmpty) {

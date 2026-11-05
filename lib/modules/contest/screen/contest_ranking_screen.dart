@@ -145,6 +145,11 @@ class _ContestRankingScreenState extends State<ContestRankingScreen> {
                     _rewardCard(contest),
                     const SizedBox(height: 12),
                     _countdownCard(contest),
+                    if (contest.rules.isNotEmpty ||
+                        contest.winningRules != null) ...[
+                      const SizedBox(height: 12),
+                      _rulesCard(contest),
+                    ],
                     const SizedBox(height: 12),
                     _summaryCard(contest, liveCount, visible.length),
                     const SizedBox(height: 12),
@@ -267,6 +272,62 @@ class _ContestRankingScreenState extends State<ContestRankingScreen> {
             color: active ? Colors.white : AppColors.hintText,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _rulesCard(ContestDetailModel contest) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Contest rules',
+            style: AppFonts.plusJakarta(size: 16, weight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          if (contest.winningRules != null) ...[
+            Text(
+              contest.winningRules!.scoreFormulaLabel,
+              style: AppFonts.beVietnam(size: 13, color: AppColors.text),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Need at least ${contest.winningRules!.minRatingVoters} active ratings to win a prize place.',
+              style: AppFonts.beVietnam(size: 13, color: AppColors.hintText),
+            ),
+            if (contest.rules.isNotEmpty) const SizedBox(height: 10),
+          ],
+          for (var i = 0; i < contest.rules.length; i++) ...[
+            if (i > 0) const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${i + 1}.',
+                  style: AppFonts.plusJakarta(
+                    size: 13,
+                    weight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    contest.rules[i],
+                    style: AppFonts.beVietnam(size: 13, color: AppColors.text),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
       ),
     );
   }

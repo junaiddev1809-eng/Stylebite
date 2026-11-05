@@ -287,6 +287,18 @@ class LoginController extends GetxController {
             : 'email_verification',
         'debug_otp': responseData['debug_otp'],
       });
+    } else if (responseData['code'] == 'account_banned' ||
+        responseData['code'] == 'account_suspended' ||
+        responseData['code'] == 'account_inactive') {
+      await LocalStorage.removeAccessKey();
+      Get.offAllNamed(
+        AppRoutes.accountRestricted,
+        arguments: {
+          'code': responseData['code']?.toString() ?? 'account_banned',
+          'message': responseData['message']?.toString(),
+          'reason': responseData['reason']?.toString(),
+        },
+      );
     } else {
       errorSnackBar(message: responseData['message']);
     }

@@ -5,7 +5,13 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import 'chat_reaction_picker_sheet.dart';
 
-enum ChatMessageOptionAction { report, react, moreEmojis, saveToGallery }
+enum ChatMessageOptionAction {
+  reply,
+  report,
+  react,
+  moreEmojis,
+  saveToGallery,
+}
 
 class ChatMessageOptionsResult {
   const ChatMessageOptionsResult({
@@ -47,6 +53,44 @@ Future<ChatMessageOptionsResult?> showChatMessageOptionsSheet(
                 ),
               ),
               const SizedBox(height: 14),
+              InkWell(
+                onTap: () => Navigator.of(context).pop(
+                  const ChatMessageOptionsResult(
+                    action: ChatMessageOptionAction.reply,
+                  ),
+                ),
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.chip,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.reply_rounded,
+                        color: AppColors.primary,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Reply',
+                        style: AppFonts.beVietnam(
+                          size: 15,
+                          weight: FontWeight.w800,
+                          color: AppColors.text,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(

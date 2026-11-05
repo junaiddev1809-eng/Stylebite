@@ -28,6 +28,9 @@ class MessagesController extends GetxController {
   final RxBool hasError = false.obs;
   final RxString errorMessage = ''.obs;
   final RxString query = ''.obs;
+  final RxBool isSelectionMode = false.obs;
+  final RxSet<int> selectedChatIds = <int>{}.obs;
+  final RxBool isDeleting = false.obs;
 
   Timer? _debounce;
   StreamSubscription<ChatPushEvent>? _pushSubscription;
@@ -217,7 +220,87 @@ class MessagesController extends GetxController {
     await fetchChats(reset: true, silent: true);
   }
 
+  void enterSelectionMode([ChatThreadModel? seed]) {
+    isSelectionMode.value = true;
+    selectedChatIds.clear();
+    if (seed != null && seed.conversationId > 0) {
+      selectedChatIds.add(seed.conversationId);
+    }
+    selectedChatIds.refresh();
+  }
+
+  void exitSelectionMode() {
+    isSelectionMode.value = false;
+    selectedChatIds.clear();
+    selectedChatIds.refresh();
+  }
+
+  void toggleChatSelection(ChatThreadModel thread) {
+    final id = thread.conversationId;
+    if (id <= 0) {
+      return;
+    }
+    if (!isSelectionMode.value) {
+      enterSelectionMode(thread);
+      return;
+    }
+    if (selectedChatIds.contains(id)) {
+      selectedChatIds.remove(id);
+      selectedChatIds.refresh();
+      if (selectedChatIds.isEmpty) {
+        exitSelectionMode();
+      }
+      return;
+    }
+    selectedChatIds.add(id);
+    selectedChatIds.refresh();
+  }
+
+  void selectAllVisibleChats() {
+    if (chats.isEmpty) {
+      return;
+    }
+    isSelectionMode.value = true;
+    selectedChatIds
+      ..clear()
+      ..addAll(
+        chats
+            .map((thread) => thread.conversationId)
+            .where((id) => id > 0),
+      );
+    selectedChatIds.refresh();
+  }
+
+  Future<void> deleteSelectedChats() async {
+    final ids = selectedChatIds.toList(growable: false);
+    if (ids.isEmpty || isDeleting.value) {
+      return;
+    }
+    isDeleting.value = true;
+    try {
+      final deleted = await _apiService.deleteChats(ids);
+      final removed = deleted.isNotEmpty ? deleted.toSet() : ids.toSet();
+      chats.removeWhere((thread) => removed.contains(thread.conversationId));
+      exitSelectionMode();
+      successSnackBar(
+        message: removed.length == 1
+            ? 'Chat deleted.'
+            : '${removed.length} chats deleted.',
+      );
+    } on ChatApiException catch (error) {
+      errorSnackBar(message: error.message);
+    } catch (_) {
+      errorSnackBar(message: 'Unable to delete chats right now.');
+    } finally {
+      isDeleting.value = false;
+    }
+  }
+
   Future<void> openChat(ChatThreadModel thread) async {
+    if (isSelectionMode.value) {
+      toggleChatSelection(thread);
+      return;
+    }
     try {
       final initialized = await _apiService.initializeChat(
         thread.user.username,

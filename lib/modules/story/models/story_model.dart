@@ -8,6 +8,32 @@ StoryKind storyKindFrom(Object? raw) {
   return StoryKind.outfit;
 }
 
+class StoryViewer {
+  const StoryViewer({
+    required this.userId,
+    required this.username,
+    this.fullName = '',
+    this.avatarUrl = '',
+    this.viewedAt,
+  });
+
+  final int userId;
+  final String username;
+  final String fullName;
+  final String avatarUrl;
+  final DateTime? viewedAt;
+
+  factory StoryViewer.fromJson(Map<String, dynamic> json) {
+    return StoryViewer(
+      userId: int.tryParse((json['user_id'] ?? '').toString()) ?? 0,
+      username: (json['username'] ?? '').toString().trim().replaceFirst('@', ''),
+      fullName: (json['full_name'] ?? '').toString().trim(),
+      avatarUrl: (json['avatar_url'] ?? '').toString().trim(),
+      viewedAt: DateTime.tryParse((json['viewed_at'] ?? '').toString()),
+    );
+  }
+}
+
 class StoryItem {
   const StoryItem({
     required this.id,
@@ -16,11 +42,13 @@ class StoryItem {
     required this.mediaPath,
     required this.createdAt,
     this.mediaUrl = '',
+    this.posterUrl = '',
     this.remoteId = '',
     this.caption = '',
     this.isVideo = false,
     this.seen = false,
     this.kind = StoryKind.outfit,
+    this.viewCount = 0,
   });
 
   final String id;
@@ -28,12 +56,16 @@ class StoryItem {
   final String avatarUrl;
   final String mediaPath;
   final String mediaUrl;
+  /// Optional still frame for video stories (chat reply card).
+  final String posterUrl;
   final String remoteId;
   final DateTime createdAt;
   final String caption;
   final bool isVideo;
   final bool seen;
   final StoryKind kind;
+  /// Owner-only; 0 for everyone else's stories.
+  final int viewCount;
 
   bool get isFood => kind == StoryKind.food;
 
@@ -57,12 +89,14 @@ class StoryItem {
     String? avatarUrl,
     String? mediaPath,
     String? mediaUrl,
+    String? posterUrl,
     String? remoteId,
     DateTime? createdAt,
     String? caption,
     bool? isVideo,
     bool? seen,
     StoryKind? kind,
+    int? viewCount,
   }) {
     return StoryItem(
       id: id ?? this.id,
@@ -70,12 +104,14 @@ class StoryItem {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       mediaPath: mediaPath ?? this.mediaPath,
       mediaUrl: mediaUrl ?? this.mediaUrl,
+      posterUrl: posterUrl ?? this.posterUrl,
       remoteId: remoteId ?? this.remoteId,
       createdAt: createdAt ?? this.createdAt,
       caption: caption ?? this.caption,
       isVideo: isVideo ?? this.isVideo,
       seen: seen ?? this.seen,
       kind: kind ?? this.kind,
+      viewCount: viewCount ?? this.viewCount,
     );
   }
 
@@ -86,12 +122,14 @@ class StoryItem {
       'avatarUrl': avatarUrl,
       'mediaPath': mediaPath,
       'mediaUrl': mediaUrl,
+      'posterUrl': posterUrl,
       'remoteId': remoteId,
       'createdAt': createdAt.toIso8601String(),
       'caption': caption,
       'isVideo': isVideo,
       'seen': seen,
       'storyKind': kind.name,
+      'viewCount': viewCount,
     };
   }
 
@@ -102,6 +140,7 @@ class StoryItem {
       avatarUrl: (json['avatarUrl'] ?? json['avatar_url'] ?? '').toString(),
       mediaPath: (json['mediaPath'] ?? json['media_path'] ?? '').toString(),
       mediaUrl: (json['mediaUrl'] ?? json['media_url'] ?? '').toString(),
+      posterUrl: (json['posterUrl'] ?? json['poster_url'] ?? '').toString(),
       remoteId: (json['remoteId'] ?? json['remote_id'] ?? '').toString(),
       createdAt:
           DateTime.tryParse((json['createdAt'] ?? json['created_at'] ?? '').toString()) ??
@@ -112,6 +151,10 @@ class StoryItem {
       kind: storyKindFrom(
         json['storyKind'] ?? json['post_type'] ?? json['feed_type'],
       ),
+      viewCount: int.tryParse(
+            (json['viewCount'] ?? json['view_count'] ?? 0).toString(),
+          ) ??
+          0,
     );
   }
 }

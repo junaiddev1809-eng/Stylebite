@@ -272,6 +272,73 @@ class StorySyncService {
     );
   }
 
+  /// Records a story open for the current user (ignored for the author).
+  static Future<void> recordView({
+    required String remoteId,
+    int watchSeconds = 1,
+  }) async {
+    final postId = int.tryParse(remoteId.trim()) ?? 0;
+    if (postId <= 0) {
+      return;
+    }
+    try {
+      await ApiHelper.postRequestWithAuthorization(
+        'views/batch',
+        body: {
+          'views': [
+            {
+              'post_id': postId,
+              'watch_seconds': watchSeconds.clamp(1, 86400),
+              'view_source': 'story',
+            },
+          ],
+        },
+      );
+    } catch (_) {
+      // Local seen-state still works offline.
+    }
+  }
+
+  /// Owner-only: who opened this story.
+  static Future<({int viewCount, List<StoryViewer> viewers})?> fetchViewers(
+    String remoteId,
+  ) async {
+    final id = remoteId.trim();
+    if (id.isEmpty) {
+      return null;
+    }
+    try {
+      final response = await ApiHelper.fetchDataWithAuthorization(
+        'stories/${Uri.encodeComponent(id)}/viewers',
+      );
+      if (response == null ||
+          response.statusCode < 200 ||
+          response.statusCode >= 300) {
+        return null;
+      }
+      final payload = jsonDecode(response.body);
+      if (payload is! Map) {
+        return null;
+      }
+      final map = _asMap(payload);
+      final raw = map['viewers'];
+      final viewers = <StoryViewer>[];
+      if (raw is List) {
+        for (final entry in raw.whereType<Map>()) {
+          final viewer = StoryViewer.fromJson(_asMap(entry));
+          if (viewer.userId > 0 && viewer.username.isNotEmpty) {
+            viewers.add(viewer);
+          }
+        }
+      }
+      final count = int.tryParse((map['view_count'] ?? viewers.length).toString()) ??
+          viewers.length;
+      return (viewCount: count, viewers: viewers);
+    } catch (_) {
+      return null;
+    }
+  }
+
   static StoryItem? _fromStoryPayload(
     Map<String, dynamic> raw, {
     required String username,
@@ -294,6 +361,11 @@ class StorySyncService {
     if (id.isEmpty) {
       return null;
     }
+    final isVideo =
+        (raw['media_type'] ?? '').toString().toLowerCase() == 'video';
+    final poster = (raw['poster_url'] ?? raw['thumbnail_url'] ?? '')
+        .toString()
+        .trim();
     return StoryItem(
       id: 'p$id',
       remoteId: id,
@@ -301,10 +373,12 @@ class StorySyncService {
       avatarUrl: avatarUrl,
       mediaPath: '',
       mediaUrl: mediaUrl,
+      posterUrl: poster,
       createdAt: created,
       caption: StoryMarker.displayCaption((raw['caption'] ?? '').toString()),
-      isVideo: (raw['media_type'] ?? '').toString().toLowerCase() == 'video',
+      isVideo: isVideo,
       kind: storyKindFrom(raw['post_type'] ?? raw['feed_type']),
+      viewCount: int.tryParse((raw['view_count'] ?? 0).toString()) ?? 0,
     );
   }
 

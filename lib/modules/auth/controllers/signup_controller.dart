@@ -53,7 +53,7 @@ class SignUpController extends GetxController {
     _emailCheckTimer?.cancel();
 
     final email = value.trim();
-    if (AppValidators.email(email) != null) {
+    if (AppValidators.signupEmail(email) != null) {
       isCheckingEmail.value = false;
       return;
     }
@@ -143,7 +143,7 @@ class SignUpController extends GetxController {
 
       // If the user tapped Sign Up before the debounce finished, re-check once.
       if (emailAvailable.value == null &&
-          AppValidators.email(emailController.text.trim()) == null) {
+          AppValidators.signupEmail(emailController.text.trim()) == null) {
         isLoading.value = true;
         await _checkEmailAvailability(
           emailController.text.trim(),

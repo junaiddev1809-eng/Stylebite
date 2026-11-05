@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
@@ -95,6 +96,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   16,
                   safeBottom +
                       (70 +
+                          (_controller.replyTarget.value != null ? 58 : 0) +
                           (_controller.isIncomingChatRequest.value
                               ? 88
                               : _controller.isWaitingForReply.value
@@ -174,7 +176,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   curve: Curves.easeOut,
                   padding: EdgeInsets.only(bottom: keyboard > 0 ? 6 : 0),
                   child: Container(
-                    padding: EdgeInsets.fromLTRB(16, 10, 16, safeBottom + 10),
+                    padding: EdgeInsets.fromLTRB(16, 0, 16, safeBottom + 10),
                     decoration: BoxDecoration(
                       color: AppColors.surface,
                       border: Border(
@@ -183,137 +185,164 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     ),
                     child: Obx(
                       () => _controller.isIncomingChatRequest.value
-                          ? _ChatRequestActions(controller: _controller)
-                          : Row(
+                          ? Padding(
+                              padding: const EdgeInsets.only(top: 10),
+                              child: _ChatRequestActions(
+                                controller: _controller,
+                              ),
+                            )
+                          : Column(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                InkWell(
-                                  onTap: _controller.canAttachMedia
-                                      ? _controller.sendGalleryMedia
-                                      : null,
-                                  borderRadius: BorderRadius.circular(18),
-                                  child: SizedBox(
-                                    width: 42,
-                                    height: 42,
-                                    child: Icon(
-                                      Icons.perm_media_outlined,
-                                      size: 22,
-                                      color: _controller.canAttachMedia
-                                          ? AppColors.primary
-                                          : AppColors.hintText.withValues(
-                                              alpha: 0.55,
-                                            ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 180),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.inputFill,
-                                      borderRadius: BorderRadius.circular(22),
-                                      border: Border.all(
-                                        color: AppColors.cardBorder,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: TextField(
-                                      controller:
-                                          _controller.messageController,
-                                      minLines: 1,
-                                      maxLines: 4,
-                                      enabled:
-                                          !_controller.isComposerDisabled,
-                                      textInputAction: TextInputAction.send,
-                                      onSubmitted: (_) {
-                                        _controller.sendCurrentMessage();
-                                        FocusScope.of(context).unfocus();
-                                      },
-                                      style: AppFonts.beVietnam(
-                                        size: 15,
-                                        weight: FontWeight.w500,
-                                        color: AppColors.text,
-                                      ),
-                                      decoration: InputDecoration(
-                                        border: InputBorder.none,
-                                        hintText: _controller.isBlocked.value
-                                            ? 'You can\'t message this user'
-                                            : _controller
-                                                  .isMessagingStopped
-                                                  .value
-                                            ? 'Messaging stopped'
-                                            : _controller
-                                                  .isWaitingForReply
-                                                  .value
-                                            ? 'Wait for them to accept'
-                                            : 'Type a message...',
-                                        hintStyle: AppFonts.beVietnam(
-                                          size: 14,
-                                          weight: FontWeight.w500,
-                                          color: AppColors.hintText.withValues(
-                                            alpha: 0.9,
+                                _ReplyComposerBar(controller: _controller),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 10),
+                                  child: Row(
+                                    children: [
+                                      InkWell(
+                                        onTap: _controller.canAttachMedia
+                                            ? _controller.sendGalleryMedia
+                                            : null,
+                                        borderRadius: BorderRadius.circular(18),
+                                        child: SizedBox(
+                                          width: 42,
+                                          height: 42,
+                                          child: Icon(
+                                            Icons.perm_media_outlined,
+                                            size: 22,
+                                            color: _controller.canAttachMedia
+                                                ? AppColors.primary
+                                                : AppColors.hintText.withValues(
+                                                    alpha: 0.55,
+                                                  ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                InkWell(
-                                  onTap: _controller.canSend
-                                      ? _controller.sendCurrentMessage
-                                      : null,
-                                  borderRadius: BorderRadius.circular(18),
-                                  child: AnimatedContainer(
-                                    duration: const Duration(
-                                      milliseconds: 180,
-                                    ),
-                                    width: 50,
-                                    height: 50,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(18),
-                                      gradient: _controller.canSend
-                                          ? const LinearGradient(
-                                              colors: [
-                                                AppColors.primary,
-                                                Color(0xFFFF8A5B),
-                                              ],
-                                            )
-                                          : null,
-                                      color: _controller.canSend
-                                          ? null
-                                          : const Color(0xFFE7DDD8),
-                                      boxShadow: _controller.canSend
-                                          ? const [
-                                              BoxShadow(
-                                                color: Color.fromRGBO(
-                                                  255,
-                                                  77,
-                                                  109,
-                                                  0.22,
-                                                ),
-                                                blurRadius: 18,
-                                                offset: Offset(0, 8),
-                                                spreadRadius: -8,
-                                              ),
-                                            ]
-                                          : null,
-                                    ),
-                                    child: _controller.isSending.value
-                                        ? const Padding(
-                                            padding: EdgeInsets.all(13),
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2.2,
-                                              color: Colors.white,
-                                            ),
-                                          )
-                                        : const AppHeroIconData(
-                                            Icons.send_rounded,
-                                            color: Colors.white,
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: AnimatedContainer(
+                                          duration: const Duration(
+                                            milliseconds: 180,
                                           ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 14,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.inputFill,
+                                            borderRadius:
+                                                BorderRadius.circular(22),
+                                            border: Border.all(
+                                              color: AppColors.cardBorder,
+                                              width: 1,
+                                            ),
+                                          ),
+                                          child: TextField(
+                                            controller:
+                                                _controller.messageController,
+                                            focusNode:
+                                                _controller.messageFocusNode,
+                                            minLines: 1,
+                                            maxLines: 4,
+                                            enabled:
+                                                !_controller.isComposerDisabled,
+                                            textInputAction:
+                                                TextInputAction.send,
+                                            onSubmitted: (_) {
+                                              _controller.sendCurrentMessage();
+                                              FocusScope.of(context).unfocus();
+                                            },
+                                            style: AppFonts.beVietnam(
+                                              size: 15,
+                                              weight: FontWeight.w500,
+                                              color: AppColors.text,
+                                            ),
+                                            decoration: InputDecoration(
+                                              border: InputBorder.none,
+                                              hintText:
+                                                  _controller.isBlocked.value
+                                                  ? 'You can\'t message this user'
+                                                  : _controller
+                                                        .isMessagingStopped
+                                                        .value
+                                                  ? 'Messaging stopped'
+                                                  : _controller
+                                                        .isWaitingForReply
+                                                        .value
+                                                  ? 'Wait for them to accept'
+                                                  : _controller
+                                                            .replyTarget
+                                                            .value !=
+                                                        null
+                                                  ? 'Write a reply...'
+                                                  : 'Type a message...',
+                                              hintStyle: AppFonts.beVietnam(
+                                                size: 14,
+                                                weight: FontWeight.w500,
+                                                color: AppColors.hintText
+                                                    .withValues(alpha: 0.9),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      InkWell(
+                                        onTap: _controller.canSend
+                                            ? _controller.sendCurrentMessage
+                                            : null,
+                                        borderRadius: BorderRadius.circular(18),
+                                        child: AnimatedContainer(
+                                          duration: const Duration(
+                                            milliseconds: 180,
+                                          ),
+                                          width: 50,
+                                          height: 50,
+                                          decoration: BoxDecoration(
+                                            borderRadius:
+                                                BorderRadius.circular(18),
+                                            gradient: _controller.canSend
+                                                ? const LinearGradient(
+                                                    colors: [
+                                                      AppColors.primary,
+                                                      Color(0xFFFF8A5B),
+                                                    ],
+                                                  )
+                                                : null,
+                                            color: _controller.canSend
+                                                ? null
+                                                : const Color(0xFFE7DDD8),
+                                            boxShadow: _controller.canSend
+                                                ? const [
+                                                    BoxShadow(
+                                                      color: Color.fromRGBO(
+                                                        255,
+                                                        77,
+                                                        109,
+                                                        0.22,
+                                                      ),
+                                                      blurRadius: 18,
+                                                      offset: Offset(0, 8),
+                                                      spreadRadius: -8,
+                                                    ),
+                                                  ]
+                                                : null,
+                                          ),
+                                          child: _controller.isSending.value
+                                              ? const Padding(
+                                                  padding: EdgeInsets.all(13),
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2.2,
+                                                        color: Colors.white,
+                                                      ),
+                                                )
+                                              : const AppHeroIconData(
+                                                  Icons.send_rounded,
+                                                  color: Colors.white,
+                                                ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -339,10 +368,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           : null;
 
       widgets.add(
-        _ChatMessageBubble(
-          message: message,
-          onLongPress: () => _onMessageLongPress(message),
-          onReactionTap: (emoji) => _controller.reactToMessage(message, emoji),
+        Obx(
+          () => _ChatMessageBubble(
+            message: message,
+            isReplyTarget:
+                _controller.replyTarget.value?.id == message.id,
+            onLongPress: () => _onMessageLongPress(message),
+            onReplySwipe: () => _controller.setReplyTarget(message),
+            onReactionTap: (emoji) =>
+                _controller.reactToMessage(message, emoji),
+          ),
         ),
       );
 
@@ -370,6 +405,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
 
     switch (choice.action) {
+      case ChatMessageOptionAction.reply:
+        HapticFeedback.selectionClick();
+        _controller.setReplyTarget(message);
+        return;
       case ChatMessageOptionAction.react:
         await _controller.reactToMessage(message, choice.emoji);
         return;
@@ -563,6 +602,47 @@ class _ChatHeader extends StatelessWidget {
                             if (confirmed == true) {
                               await controller.blockUser();
                             }
+                          }
+                          break;
+                        case ChatConversationOptionAction.deleteChat:
+                          final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (dialogContext) {
+                              return AlertDialog(
+                                title: Text(
+                                  'Delete chat?',
+                                  style: AppFonts.plusJakarta(
+                                    size: 18,
+                                    weight: FontWeight.w800,
+                                  ),
+                                ),
+                                content: Text(
+                                  'This removes the chat from your inbox. $displayName will still have it.',
+                                  style: AppFonts.beVietnam(
+                                    size: 14,
+                                    weight: FontWeight.w500,
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext, true),
+                                    child: const Text(
+                                      'Delete',
+                                      style: TextStyle(color: Colors.redAccent),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                          if (confirmed == true) {
+                            await controller.deleteChat();
                           }
                           break;
                       }
@@ -867,44 +947,208 @@ class _DateBanner extends StatelessWidget {
   }
 }
 
-class _ChatMessageBubble extends StatelessWidget {
+class _ReplyComposerBar extends StatelessWidget {
+  const _ReplyComposerBar({required this.controller});
+
+  final ChatDetailController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final target = controller.replyTarget.value;
+      final visible = target != null;
+      return AnimatedSize(
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.bottomCenter,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          opacity: visible ? 1 : 0,
+          child: visible
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.chip,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.cardBorder),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 3,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                target.isMine
+                                    ? 'Replying to yourself'
+                                    : 'Replying to @${target.senderUsername}',
+                                style: AppFonts.beVietnam(
+                                  size: 12,
+                                  weight: FontWeight.w800,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _replySnippet(target),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppFonts.beVietnam(
+                                  size: 13,
+                                  weight: FontWeight.w500,
+                                  color: AppColors.hintText,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: controller.clearReplyTarget,
+                          visualDensity: VisualDensity.compact,
+                          icon: Icon(
+                            Icons.close_rounded,
+                            size: 20,
+                            color: AppColors.hintText,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : const SizedBox(width: double.infinity),
+        ),
+      );
+    });
+  }
+}
+
+String _replySnippet(ChatMessageModel message) {
+  if (message.hasMedia) {
+    final caption = message.body.trim();
+    if (caption.isNotEmpty) {
+      return InAppSharePayload.previewText(caption);
+    }
+    return message.isVideo ? 'Video' : 'Photo';
+  }
+  return InAppSharePayload.previewText(message.body);
+}
+
+String _replyPreviewSnippet(ChatReplyPreview reply) {
+  final body = reply.body.trim();
+  if (body.isNotEmpty) {
+    return InAppSharePayload.previewText(body);
+  }
+  return reply.displayBody;
+}
+
+class _ChatMessageBubble extends StatefulWidget {
   const _ChatMessageBubble({
     required this.message,
+    this.isReplyTarget = false,
     this.onLongPress,
+    this.onReplySwipe,
     this.onReactionTap,
   });
 
   final ChatMessageModel message;
+  final bool isReplyTarget;
   final VoidCallback? onLongPress;
+  final VoidCallback? onReplySwipe;
   final ValueChanged<String>? onReactionTap;
+
+  @override
+  State<_ChatMessageBubble> createState() => _ChatMessageBubbleState();
+}
+
+class _ChatMessageBubbleState extends State<_ChatMessageBubble>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+  double _dragDx = 0;
+
+  ChatMessageModel get message => widget.message;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+    );
+    if (widget.isReplyTarget) {
+      _pulse.forward(from: 0);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _ChatMessageBubble oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isReplyTarget && !oldWidget.isReplyTarget) {
+      _pulse.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
 
   Widget _messageBody(BuildContext context, bool isMine) {
     if (message.hasMedia) {
       final caption = message.body.trim();
-      final mediaChild = message.isVideo
-          ? AppCachedVideoPlayer(
-              videoUrl: message.mediaUrl,
-              thumbnailUrl: message.thumbnailUrl.isNotEmpty
-                  ? message.thumbnailUrl
-                  : null,
-              autoPlay: false,
-              looping: true,
-              isActive: true,
-              showControls: true,
-              showPlayPauseButton: true,
-              showMuteButton: true,
-              showCenterPlayPauseButton: true,
-              enableTapToTogglePlayback: true,
-              showProgressBar: true,
-              borderRadius: BorderRadius.circular(16),
-              fit: BoxFit.cover,
-            )
-          : AppCachedImage(
-              imageUrl: message.thumbnailUrl.isNotEmpty
-                  ? message.thumbnailUrl
-                  : message.mediaUrl,
-              fit: BoxFit.cover,
-            );
+      final previewUrl = message.thumbnailUrl.trim().isNotEmpty
+          ? message.thumbnailUrl.trim()
+          : message.mediaUrl.trim();
+      final Widget mediaChild;
+      if (message.isVideo && message.mediaUrl.trim().isNotEmpty) {
+        mediaChild = AppCachedVideoPlayer(
+          videoUrl: message.mediaUrl,
+          thumbnailUrl: previewUrl.isNotEmpty ? previewUrl : null,
+          autoPlay: false,
+          looping: true,
+          isActive: true,
+          showControls: true,
+          showPlayPauseButton: true,
+          showMuteButton: true,
+          showCenterPlayPauseButton: true,
+          enableTapToTogglePlayback: true,
+          showProgressBar: true,
+          borderRadius: BorderRadius.circular(16),
+          fit: BoxFit.cover,
+        );
+      } else if (previewUrl.isNotEmpty) {
+        mediaChild = AppCachedImage(
+          imageUrl: previewUrl,
+          fit: BoxFit.cover,
+        );
+      } else {
+        mediaChild = ColoredBox(
+          color: isMine
+              ? Colors.white.withValues(alpha: 0.16)
+              : const Color(0xFFF1EBE8),
+          child: Center(
+            child: Icon(
+              message.isVideo
+                  ? Icons.videocam_rounded
+                  : Icons.image_rounded,
+              color: isMine ? Colors.white70 : AppColors.hintText,
+              size: 40,
+            ),
+          ),
+        );
+      }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -945,7 +1189,103 @@ class _ChatMessageBubble extends StatelessWidget {
         ),
       );
     }
+    if (share.isStory) {
+      return _StoryReplyCard(share: share, isMine: isMine);
+    }
     return _SharedPostCard(share: share, isMine: isMine);
+  }
+
+  Widget _quotedReply(bool isMine) {
+    final reply = message.replyTo;
+    if (reply == null) {
+      return const SizedBox.shrink();
+    }
+    final bar = isMine ? Colors.white : AppColors.primary;
+    final title = isMine
+        ? Colors.white.withValues(alpha: 0.9)
+        : AppColors.primary;
+    final body = isMine
+        ? Colors.white.withValues(alpha: 0.82)
+        : AppColors.hintText;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+        decoration: BoxDecoration(
+          color: isMine
+              ? Colors.white.withValues(alpha: 0.16)
+              : AppColors.chip,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 3,
+              height: 32,
+              decoration: BoxDecoration(
+                color: bar,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    reply.isMine
+                        ? 'You'
+                        : '@${reply.senderUsername}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppFonts.beVietnam(
+                      size: 11,
+                      weight: FontWeight.w800,
+                      color: title,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _replyPreviewSnippet(reply),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppFonts.beVietnam(
+                      size: 12,
+                      weight: FontWeight.w500,
+                      color: body,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (reply.hasMedia) ...[
+              const SizedBox(width: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: reply.thumbnailUrl.trim().isEmpty &&
+                          reply.mediaUrl.trim().isEmpty
+                      ? ColoredBox(
+                          color: isMine
+                              ? Colors.white24
+                              : const Color(0xFFE7DDD8),
+                        )
+                      : AppCachedImage(
+                          imageUrl: reply.thumbnailUrl.trim().isNotEmpty
+                              ? reply.thumbnailUrl
+                              : reply.mediaUrl,
+                          fit: BoxFit.cover,
+                        ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _reactionChips(bool isMine) {
@@ -961,9 +1301,9 @@ class _ChatMessageBubble extends StatelessWidget {
         children: [
           for (final reaction in message.reactions)
             InkWell(
-              onTap: onReactionTap == null
+              onTap: widget.onReactionTap == null
                   ? null
-                  : () => onReactionTap!(reaction.emoji),
+                  : () => widget.onReactionTap!(reaction.emoji),
               borderRadius: BorderRadius.circular(999),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -994,6 +1334,7 @@ class _ChatMessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMine = message.isMine;
+    final slide = (_dragDx / 72).clamp(0.0, 1.0);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Align(
@@ -1006,41 +1347,121 @@ class _ChatMessageBubble extends StatelessWidget {
                 : CrossAxisAlignment.start,
             children: [
               GestureDetector(
-                onLongPress: onLongPress,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(24),
-                      topRight: const Radius.circular(24),
-                      bottomLeft: Radius.circular(isMine ? 24 : 4),
-                      bottomRight: Radius.circular(isMine ? 4 : 24),
-                    ),
-                    gradient: isMine
-                        ? const LinearGradient(
-                            colors: [AppColors.primary, Color(0xFFFF8A5B)],
-                          )
-                        : null,
-                    color: isMine ? null : AppColors.card,
-                    border: isMine
-                        ? null
-                        : Border.all(
-                            color: AppColors.cardBorder,
-                            width: 1,
-                          ),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color.fromRGBO(26, 26, 26, 0.06),
-                        blurRadius: 20,
-                        offset: Offset(0, 4),
-                        spreadRadius: -8,
+                onLongPress: widget.onLongPress,
+                onHorizontalDragUpdate: widget.onReplySwipe == null
+                    ? null
+                    : (details) {
+                        final next = isMine
+                            ? (_dragDx - details.delta.dx)
+                            : (_dragDx + details.delta.dx);
+                        setState(() => _dragDx = next.clamp(0.0, 72.0));
+                      },
+                onHorizontalDragEnd: widget.onReplySwipe == null
+                    ? null
+                    : (_) {
+                        if (_dragDx >= 42) {
+                          HapticFeedback.selectionClick();
+                          widget.onReplySwipe!();
+                        }
+                        setState(() => _dragDx = 0);
+                      },
+                onHorizontalDragCancel: () {
+                  if (_dragDx != 0) {
+                    setState(() => _dragDx = 0);
+                  }
+                },
+                child: AnimatedBuilder(
+                  animation: _pulse,
+                  builder: (context, child) {
+                    final pulse = Curves.easeOut.transform(_pulse.value);
+                    return Transform.translate(
+                      offset: Offset(
+                        isMine ? -_dragDx * 0.55 : _dragDx * 0.55,
+                        0,
                       ),
-                    ],
-                  ),
-                  child: _messageBody(context, isMine),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          if (slide > 0)
+                            Positioned(
+                              top: 0,
+                              bottom: 0,
+                              left: isMine ? null : -28,
+                              right: isMine ? -28 : null,
+                              child: Opacity(
+                                opacity: slide,
+                                child: Icon(
+                                  Icons.reply_rounded,
+                                  size: 20,
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.85,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.only(
+                                topLeft: const Radius.circular(24),
+                                topRight: const Radius.circular(24),
+                                bottomLeft: Radius.circular(isMine ? 24 : 4),
+                                bottomRight: Radius.circular(isMine ? 4 : 24),
+                              ),
+                              gradient: isMine
+                                  ? const LinearGradient(
+                                      colors: [
+                                        AppColors.primary,
+                                        Color(0xFFFF8A5B),
+                                      ],
+                                    )
+                                  : null,
+                              color: isMine ? null : AppColors.card,
+                              border: Border.all(
+                                color: widget.isReplyTarget
+                                    ? AppColors.primary.withValues(
+                                        alpha: 0.55 + (0.35 * (1 - pulse)),
+                                      )
+                                    : (isMine
+                                        ? Colors.transparent
+                                        : AppColors.cardBorder),
+                                width: widget.isReplyTarget ? 1.6 : 1,
+                              ),
+                              boxShadow: [
+                                const BoxShadow(
+                                  color: Color.fromRGBO(26, 26, 26, 0.06),
+                                  blurRadius: 20,
+                                  offset: Offset(0, 4),
+                                  spreadRadius: -8,
+                                ),
+                                if (widget.isReplyTarget)
+                                  BoxShadow(
+                                    color: AppColors.primary.withValues(
+                                      alpha: 0.18 * (1 - pulse * 0.55),
+                                    ),
+                                    blurRadius: 18,
+                                    spreadRadius: 0,
+                                  ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _quotedReply(isMine),
+                                _messageBody(context, isMine),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
               _reactionChips(isMine),
@@ -1145,6 +1566,132 @@ class _SharedPostCard extends StatelessWidget {
                 ),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact Instagram-style story reply/reaction card in chat.
+class _StoryReplyCard extends StatelessWidget {
+  const _StoryReplyCard({required this.share, required this.isMine});
+
+  final InAppSharePayload share;
+  final bool isMine;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isMine ? Colors.white : AppColors.text;
+    final muted = isMine ? Colors.white.withValues(alpha: 0.78) : AppColors.hintText;
+    final reply = share.reply.trim();
+    final isReaction = share.isStoryReaction;
+
+    return GestureDetector(
+      onTap: () {
+        final id = share.id.trim();
+        if (id.isNotEmpty) {
+          PostDetailOpenHelper.openById(id);
+        }
+      },
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 260),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _StoryThumb(previewUrl: share.previewUrl, isVideo: share.isVideo),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isReaction ? 'Reacted to your story' : 'Replied to your story',
+                    style: AppFonts.beVietnam(
+                      size: 11,
+                      weight: FontWeight.w700,
+                      color: muted,
+                    ),
+                  ),
+                  if (reply.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      reply,
+                      maxLines: isReaction ? 1 : 4,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppFonts.beVietnam(
+                        size: isReaction ? 28 : 15,
+                        height: isReaction ? 1.1 : 1.35,
+                        weight: FontWeight.w600,
+                        color: color,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StoryThumb extends StatelessWidget {
+  const _StoryThumb({required this.previewUrl, required this.isVideo});
+
+  final String previewUrl;
+  final bool isVideo;
+
+  @override
+  Widget build(BuildContext context) {
+    // IG-like compact portrait chip (~9:16), not a full post card.
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: SizedBox(
+        width: 52,
+        height: 86,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (previewUrl.trim().isEmpty)
+              const ColoredBox(color: Color(0xFF2A2A2A))
+            else
+              AppCachedImage(
+                imageUrl: previewUrl,
+                fit: BoxFit.cover,
+              ),
+            if (isVideo)
+              const Align(
+                alignment: Alignment.bottomRight,
+                child: Padding(
+                  padding: EdgeInsets.all(4),
+                  child: Icon(
+                    Icons.play_circle_fill_rounded,
+                    color: Colors.white70,
+                    size: 16,
+                  ),
+                ),
+              ),
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              child: Container(
+                height: 3,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary,
+                      Color(0xFFFF8A5B),
+                      AppColors.accent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),

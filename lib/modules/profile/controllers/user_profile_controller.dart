@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import '../../../core/utils/api_helper.dart';
 import '../../../core/utils/app_helper.dart';
 import '../../contest/services/contest_enrollment_store.dart';
+import '../../home/controllers/home_controller.dart';
 import '../../messages/models/chat_models.dart';
 import '../../messages/screen/chat_detail_screen.dart';
 import '../../messages/services/chat_api_service.dart';
@@ -17,6 +18,7 @@ import '../models/profile_model.dart';
 import '../models/style_rating_model.dart';
 import '../utils/profile_overview_query.dart';
 import '../utils/profile_pagination.dart';
+import 'follow_state_controller.dart';
 import 'saved_post_sync.dart';
 
 class UserProfileController extends GetxController {
@@ -326,6 +328,45 @@ class UserProfileController extends GetxController {
       }
     } catch (error) {
       errorSnackBar(message: error.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<bool> blockUser() async {
+    final normalized = username.trim().replaceFirst('@', '');
+    if (normalized.isEmpty) {
+      return false;
+    }
+
+    try {
+      final response = await ApiHelper.postRequestWithAuthorization(
+        'profiles/${Uri.encodeComponent(normalized)}/block',
+      );
+      if (response == null) {
+        throw Exception('No response returned from block endpoint.');
+      }
+      final payload = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode < 200 ||
+          response.statusCode >= 300 ||
+          payload['status_code'] != 1) {
+        throw Exception(
+          (payload['message'] ?? 'Unable to block user').toString(),
+        );
+      }
+
+      if (Get.isRegistered<FollowStateController>()) {
+        Get.find<FollowStateController>().markUnfollowed(normalized);
+      }
+      if (Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().removeBlockedUserContent(normalized);
+      }
+      successSnackBar(
+        message: (payload['message'] ?? 'User blocked successfully.')
+            .toString(),
+      );
+      return true;
+    } catch (error) {
+      errorSnackBar(message: error.toString().replaceFirst('Exception: ', ''));
+      return false;
     }
   }
 

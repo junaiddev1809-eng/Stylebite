@@ -30,6 +30,8 @@ class ContestDetailModel {
     required this.joinableUsers,
     required this.canJoin,
     this.prizes = const [],
+    this.rules = const [],
+    this.winningRules,
   });
 
   final int id;
@@ -56,6 +58,8 @@ class ContestDetailModel {
   final List<ContestInvitationTargetModel> joinableUsers;
   final bool canJoin;
   final List<ContestPrize> prizes;
+  final List<String> rules;
+  final ContestWinningRules? winningRules;
 
   String get statusLabel => status.replaceAll('_', ' ').toUpperCase();
 
@@ -240,8 +244,54 @@ class ContestDetailModel {
               .toList(growable: false),
       canJoin: _readBool(json['can_join']),
       prizes: readContestPrizes(json['prizes']),
+      rules: _readRules(json['rules']),
+      winningRules: ContestWinningRules.maybeFromJson(
+        json['winning_rules'] is Map
+            ? Map<String, dynamic>.from(json['winning_rules'] as Map)
+            : null,
+      ),
     );
   }
+}
+
+class ContestWinningRules {
+  const ContestWinningRules({
+    required this.minRatingVoters,
+    required this.scoreFormulaLabel,
+  });
+
+  final int minRatingVoters;
+  final String scoreFormulaLabel;
+
+  static ContestWinningRules? maybeFromJson(Map<String, dynamic>? json) {
+    if (json == null || json.isEmpty) return null;
+    return ContestWinningRules(
+      minRatingVoters: _readInt(json['min_rating_voters'], fallback: 10),
+      scoreFormulaLabel: _readString(
+        json['score_formula_label'],
+        fallback: 'Final score = (average rating × 70) + (likes × 0.3)',
+      ),
+    );
+  }
+}
+
+List<String> _readRules(dynamic value) {
+  if (value is! List) return const <String>[];
+  final rules = <String>[];
+  for (final item in value) {
+    if (item is String) {
+      final text = item.trim();
+      if (text.isNotEmpty) rules.add(text);
+      continue;
+    }
+    if (item is Map) {
+      final text = (item['rule_text'] ?? item['text'] ?? '')
+          .toString()
+          .trim();
+      if (text.isNotEmpty) rules.add(text);
+    }
+  }
+  return List<String>.unmodifiable(rules);
 }
 
 int _readInt(dynamic value, {int fallback = 0}) {

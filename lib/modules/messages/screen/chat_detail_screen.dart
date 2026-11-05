@@ -1017,7 +1017,7 @@ class _ReplyComposerBar extends StatelessWidget {
                         IconButton(
                           onPressed: controller.clearReplyTarget,
                           visualDensity: VisualDensity.compact,
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.close_rounded,
                             size: 20,
                             color: AppColors.hintText,

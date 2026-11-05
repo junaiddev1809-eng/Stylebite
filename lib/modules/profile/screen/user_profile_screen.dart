@@ -219,8 +219,8 @@ class _PublicTopBar extends StatelessWidget {
           InkWell(
             onTap: () => _blockUser(context, controller),
             borderRadius: BorderRadius.circular(999),
-            child: const Padding(
-              padding: EdgeInsets.all(2),
+            child: Padding(
+              padding: const EdgeInsets.all(2),
               child: AppHeroIconData(
                 Icons.block_rounded,
                 color: AppColors.hintText,

@@ -602,8 +602,14 @@ class NotificationNavigator {
     ).conversationId;
   }
 
-  static String _text(dynamic a, [dynamic b, dynamic c, dynamic d]) {
-    for (final value in [a, b, c, d]) {
+  static String _text(
+    dynamic a, [
+    dynamic b,
+    dynamic c,
+    dynamic d,
+    dynamic e,
+  ]) {
+    for (final value in [a, b, c, d, e]) {
       final text = (value ?? '').toString().trim();
       if (text.isNotEmpty && text.toLowerCase() != 'null') {
         return text;

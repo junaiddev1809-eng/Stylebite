@@ -266,7 +266,14 @@ class HomeController extends GetxController {
     if (current == null) {
       return;
     }
-    _updatePost(PostInteractionStore.ensure().presentHome(current));
+    final store = PostInteractionStore.ensure();
+    final presented = store.presentHome(current);
+    _updatePost(presented);
+    final sharedRating = store.viewerRatingFor(postId);
+    if (sharedRating != null && sharedRating >= 1) {
+      selectedRatings[postId] = sharedRating;
+      selectedRatings.refresh();
+    }
   }
 
   bool _isManualRefreshing = false;
@@ -471,7 +478,14 @@ class HomeController extends GetxController {
 
     selectedRatings[postId] = rating;
     selectedRatings.refresh();
-    _updatePost(postWithRating(post: previousPost, rating: rating));
+    final optimistic = postWithRating(post: previousPost, rating: rating);
+    _updatePost(optimistic);
+    PostInteractionStore.ensure().setViewerRating(
+      postId: postId,
+      rating: rating,
+      displayRating: optimistic.displayRating,
+      ratingCount: optimistic.ratingCount,
+    );
     voteLoadingIds.add(postId);
     try {
       final response = await ApiHelper.postRequestWithAuthorization(
@@ -493,6 +507,12 @@ class HomeController extends GetxController {
       final confirmed = postFromVotePayload(current, payload);
       if (confirmed != null) {
         _updatePost(confirmed);
+        PostInteractionStore.ensure().setViewerRating(
+          postId: postId,
+          rating: rating,
+          displayRating: confirmed.displayRating,
+          ratingCount: confirmed.ratingCount,
+        );
       }
       selectedRatings[postId] = rating;
       selectedRatings.refresh();
@@ -505,6 +525,14 @@ class HomeController extends GetxController {
       }
       selectedRatings.refresh();
       _updatePost(previousPost);
+      if (previousRating != null && previousRating >= 1) {
+        PostInteractionStore.ensure().setViewerRating(
+          postId: postId,
+          rating: previousRating,
+          displayRating: previousPost.displayRating,
+          ratingCount: previousPost.ratingCount,
+        );
+      }
       errorSnackBar(message: error.toString().replaceFirst('Exception: ', ''));
     } finally {
       voteLoadingIds.remove(postId);
@@ -873,9 +901,17 @@ class HomeController extends GetxController {
     _applyContestEnrollment();
     unawaited(_hydrateMissingHashtags(filteredFeed));
 
+    final store = PostInteractionStore.ensure();
     for (final post in filteredFeed) {
-      selectedRatings[post.id] =
-          selectedRatings[post.id] ?? post.defaultSelectedRate;
+      final existing = selectedRatings[post.id];
+      if (existing == null || existing < 1) {
+        final shared = store.viewerRatingFor(post.id);
+        final seeded = shared ??
+            (post.defaultSelectedRate >= 1 ? post.defaultSelectedRate : null);
+        if (seeded != null) {
+          selectedRatings[post.id] = seeded;
+        }
+      }
       _rememberLoadedMedia(post);
     }
   }

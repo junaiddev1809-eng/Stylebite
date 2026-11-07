@@ -8,7 +8,7 @@ import '../../reel/models/reel_item_model.dart';
 import '../utils/like_toggle.dart';
 
 /// Which field the latest shared update changed.
-enum PostInteractionField { like, save }
+enum PostInteractionField { like, save, rating }
 
 /// Like and save state for one post, shared by feed, reels, profile, and detail.
 class PostInteraction {
@@ -109,9 +109,14 @@ class PostInteractionStore extends GetxController {
   final Set<String> _saveBusy = {};
   final Set<String> _likeKnown = {};
   final Set<String> _saveKnown = {};
+  final Set<String> _ratingKnown = {};
+  final Map<String, int> _viewerRatings = {};
+  final Map<String, double> _ratingAverages = {};
+  final Map<String, int> _ratingCounts = {};
   final Map<String, SavedPostDraft> _drafts = {};
   final Map<String, int> _likeEpoch = {};
   final Map<String, int> _saveEpoch = {};
+  final Map<String, int> _ratingEpoch = {};
   int _clock = 0;
 
   final RxInt revision = 0.obs;
@@ -130,6 +135,17 @@ class PostInteractionStore extends GetxController {
   bool hasLike(String postId) => _likeKnown.contains(postId);
 
   bool hasSave(String postId) => _saveKnown.contains(postId);
+
+  bool hasRating(String postId) => _ratingKnown.contains(postId);
+
+  /// Viewer's own 1–5 rating when this session already knows it (contest,
+  /// feed, or reels). Null when never set in this session.
+  int? viewerRatingFor(String postId) {
+    if (!_ratingKnown.contains(postId)) {
+      return null;
+    }
+    return _viewerRatings[postId];
+  }
 
   bool isLikeBusy(String postId) => _likeBusy.contains(postId);
 
@@ -156,9 +172,14 @@ class PostInteractionStore extends GetxController {
     _saveBusy.clear();
     _likeKnown.clear();
     _saveKnown.clear();
+    _ratingKnown.clear();
+    _viewerRatings.clear();
+    _ratingAverages.clear();
+    _ratingCounts.clear();
     _drafts.clear();
     _likeEpoch.clear();
     _saveEpoch.clear();
+    _ratingEpoch.clear();
     lastChangedId = null;
     lastChange = null;
     _userId = null;
@@ -182,12 +203,42 @@ class PostInteractionStore extends GetxController {
     _saveBusy.clear();
     _likeKnown.clear();
     _saveKnown.clear();
+    _ratingKnown.clear();
+    _viewerRatings.clear();
+    _ratingAverages.clear();
+    _ratingCounts.clear();
     _drafts.clear();
     _likeEpoch.clear();
     _saveEpoch.clear();
+    _ratingEpoch.clear();
     lastChangedId = null;
     lastChange = null;
     revision.value++;
+  }
+
+  /// Sync the viewer's 1–5 rating across feed / reels / contest / explore.
+  /// Contest votes and feed votes both call this so cards stay in sync.
+  void setViewerRating({
+    required String postId,
+    required int rating,
+    double? displayRating,
+    int? ratingCount,
+  }) {
+    if (_skip(postId)) {
+      return;
+    }
+    bindCurrentUser();
+    final selected = rating.clamp(1, 5);
+    _ratingKnown.add(postId);
+    _viewerRatings[postId] = selected;
+    if (displayRating != null && displayRating.isFinite && displayRating > 0) {
+      _ratingAverages[postId] = displayRating.clamp(0, 5);
+    }
+    if (ratingCount != null && ratingCount >= 0) {
+      _ratingCounts[postId] = ratingCount;
+    }
+    _ratingEpoch[postId] = ++_clock;
+    _emit(postId, PostInteractionField.rating);
   }
 
   void toggleLike({
@@ -455,20 +506,43 @@ class PostInteractionStore extends GetxController {
       saveCount: post.saveCount,
       observedAt: observedAt,
     );
+    _adoptServerRating(
+      postId: post.id,
+      viewerRating: post.defaultSelectedRate,
+      displayRating: post.displayRating,
+      ratingCount: post.ratingCount,
+      observedAt: observedAt,
+    );
     rememberDraft(SavedPostDraft.fromHome(post));
     return presentHome(post);
   }
 
   HomePostModel presentHome(HomePostModel post) {
+    if (_skip(post.id)) {
+      return post;
+    }
     final state = _states[post.id];
-    if (state == null || _skip(post.id)) {
+    final hasLikeOrSave = state != null &&
+        (_likeKnown.contains(post.id) || _saveKnown.contains(post.id));
+    final hasRating = _ratingKnown.contains(post.id);
+    if (!hasLikeOrSave && !hasRating) {
       return post;
     }
     return post.copyWith(
-      isLiked: _likeKnown.contains(post.id) ? state.isLiked : null,
-      likes: _likeKnown.contains(post.id) ? formatLikeCount(state.likeCount) : null,
-      isSaved: _saveKnown.contains(post.id) ? state.isSaved : null,
-      saveCount: _saveKnown.contains(post.id) ? state.saveCount : null,
+      isLiked: _likeKnown.contains(post.id) ? state?.isLiked : null,
+      likes: _likeKnown.contains(post.id)
+          ? formatLikeCount(state!.likeCount)
+          : null,
+      isSaved: _saveKnown.contains(post.id) ? state?.isSaved : null,
+      saveCount: _saveKnown.contains(post.id) ? state?.saveCount : null,
+      defaultSelectedRate:
+          hasRating ? (_viewerRatings[post.id] ?? post.defaultSelectedRate) : null,
+      displayRating: hasRating && _ratingAverages.containsKey(post.id)
+          ? _ratingAverages[post.id]
+          : null,
+      ratingCount: hasRating && _ratingCounts.containsKey(post.id)
+          ? _ratingCounts[post.id]
+          : null,
     );
   }
 
@@ -484,22 +558,80 @@ class PostInteractionStore extends GetxController {
       saveCount: reel.saveCount,
       observedAt: observedAt,
     );
+    final score = double.tryParse(reel.rating) ?? 0;
+    _adoptServerRating(
+      postId: reel.id,
+      viewerRating: reel.viewerRating ?? 0,
+      displayRating: score,
+      ratingCount: reel.ratingCount,
+      observedAt: observedAt,
+    );
     rememberDraft(SavedPostDraft.fromReel(reel));
     return presentReel(reel);
   }
 
   ReelItemModel presentReel(ReelItemModel reel) {
-    final state = _states[reel.id];
-    if (state == null || _skip(reel.id)) {
+    if (_skip(reel.id)) {
       return reel;
     }
+    final state = _states[reel.id];
+    final hasLikeOrSave = state != null &&
+        (_likeKnown.contains(reel.id) || _saveKnown.contains(reel.id));
+    final hasRating = _ratingKnown.contains(reel.id);
+    if (!hasLikeOrSave && !hasRating) {
+      return reel;
+    }
+    final avg = _ratingAverages[reel.id];
     return reel.copyWith(
-      isLiked: _likeKnown.contains(reel.id) ? state.isLiked : null,
-      likeCount: _likeKnown.contains(reel.id) ? state.likeCount : null,
-      likes: _likeKnown.contains(reel.id) ? formatLikeCount(state.likeCount) : null,
-      isSaved: _saveKnown.contains(reel.id) ? state.isSaved : null,
-      saveCount: _saveKnown.contains(reel.id) ? state.saveCount : null,
+      isLiked: _likeKnown.contains(reel.id) ? state?.isLiked : null,
+      likeCount: _likeKnown.contains(reel.id) ? state?.likeCount : null,
+      likes: _likeKnown.contains(reel.id)
+          ? formatLikeCount(state!.likeCount)
+          : null,
+      isSaved: _saveKnown.contains(reel.id) ? state?.isSaved : null,
+      saveCount: _saveKnown.contains(reel.id) ? state?.saveCount : null,
+      viewerRating: hasRating ? _viewerRatings[reel.id] : null,
+      rating: hasRating && avg != null ? avg.toStringAsFixed(1) : null,
+      ratingCount: hasRating && _ratingCounts.containsKey(reel.id)
+          ? _ratingCounts[reel.id]
+          : null,
     );
+  }
+
+  /// Seed viewer rating from API when this session has not already voted on
+  /// the post. Never overwrite a fresher local contest/feed vote.
+  void _adoptServerRating({
+    required String postId,
+    required int viewerRating,
+    required double displayRating,
+    required int ratingCount,
+    required int observedAt,
+  }) {
+    final fresh = observedAt >= (_ratingEpoch[postId] ?? 0);
+    if (!fresh) {
+      return;
+    }
+    if (_ratingKnown.contains(postId)) {
+      // Keep the in-session vote; still refresh aggregate badges from server
+      // when the server average looks newer / present.
+      if (displayRating.isFinite && displayRating > 0) {
+        _ratingAverages[postId] = displayRating.clamp(0, 5);
+      }
+      if (ratingCount >= 0) {
+        _ratingCounts[postId] = ratingCount;
+      }
+      return;
+    }
+    if (viewerRating >= 1 && viewerRating <= 5) {
+      _ratingKnown.add(postId);
+      _viewerRatings[postId] = viewerRating;
+    }
+    if (displayRating.isFinite && displayRating > 0) {
+      _ratingAverages[postId] = displayRating.clamp(0, 5);
+    }
+    if (ratingCount >= 0) {
+      _ratingCounts[postId] = ratingCount;
+    }
   }
 
   PostInteraction _ensure(

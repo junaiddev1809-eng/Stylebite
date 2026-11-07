@@ -143,11 +143,11 @@ class PushNotificationService {
       if (message == null) {
         return;
       }
-
-      Future<void>.delayed(const Duration(milliseconds: 500), () {
-        _publishRefreshEvent(_mergedPushPayload(message));
-        _openChatFromPayload(_mergedPushPayload(message));
-      });
+      // Do not delay+navigate during splash — openPayload waits until the
+      // app shell is ready so splash's Get.offNamed(landing) cannot wipe it.
+      final payload = _mergedPushPayload(message);
+      _publishRefreshEvent(payload);
+      _openChatFromPayload(payload);
     });
   }
 
@@ -155,6 +155,11 @@ class PushNotificationService {
     // Shared router: every notification type opens its specific destination
     // (chat, post, profile, story, contest, earnings, etc.).
     unawaited(NotificationNavigator.openPayload(payload));
+  }
+
+  /// After splash reaches landing, flush any cold-start notification tap.
+  static Future<void> flushPendingNavigation() {
+    return NotificationNavigator.flushPending();
   }
 
   static Map<String, dynamic> _mergedPushPayload(RemoteMessage message) {

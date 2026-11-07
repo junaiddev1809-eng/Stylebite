@@ -118,7 +118,13 @@ class HashtagFeedController extends GetxController {
     if (current == null) {
       return;
     }
-    _replacePost(PostInteractionStore.ensure().presentHome(current));
+    final store = PostInteractionStore.ensure();
+    _replacePost(store.presentHome(current));
+    final sharedRating = store.viewerRatingFor(postId);
+    if (sharedRating != null && sharedRating >= 1) {
+      selectedRatings[postId] = sharedRating;
+      selectedRatings.refresh();
+    }
   }
 
   Future<void> sharePost(String postId, {required String shareChannel}) async {
@@ -142,7 +148,14 @@ class HashtagFeedController extends GetxController {
     }
     selectedRatings[postId] = rating;
     selectedRatings.refresh();
-    _replacePost(postWithRating(post: previousPost, rating: rating));
+    final optimistic = postWithRating(post: previousPost, rating: rating);
+    _replacePost(optimistic);
+    PostInteractionStore.ensure().setViewerRating(
+      postId: postId,
+      rating: rating,
+      displayRating: optimistic.displayRating,
+      ratingCount: optimistic.ratingCount,
+    );
     voteLoadingIds.add(postId);
     try {
       final response = await ApiHelper.postRequestWithAuthorization(
@@ -162,6 +175,12 @@ class HashtagFeedController extends GetxController {
       final confirmed = postFromVotePayload(current, payload);
       if (confirmed != null) {
         _replacePost(confirmed);
+        PostInteractionStore.ensure().setViewerRating(
+          postId: postId,
+          rating: rating,
+          displayRating: confirmed.displayRating,
+          ratingCount: confirmed.ratingCount,
+        );
       }
       selectedRatings[postId] = rating;
       selectedRatings.refresh();
@@ -174,6 +193,14 @@ class HashtagFeedController extends GetxController {
       }
       selectedRatings.refresh();
       _replacePost(previousPost);
+      if (previousRating != null && previousRating >= 1) {
+        PostInteractionStore.ensure().setViewerRating(
+          postId: postId,
+          rating: previousRating,
+          displayRating: previousPost.displayRating,
+          ratingCount: previousPost.ratingCount,
+        );
+      }
       errorSnackBar(message: error.toString().replaceFirst('Exception: ', ''));
     } finally {
       voteLoadingIds.remove(postId);

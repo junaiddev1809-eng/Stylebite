@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 
 import '../../../app/routes/app_routes.dart';
 import '../../../core/utils/app_helper.dart';
-import '../../landing/screen/landing_screen.dart';
+import '../../landing/controllers/landing_controller.dart';
 import '../../messages/screen/messages_screen.dart';
 import '../../post/utils/post_detail_open_helper.dart';
 import '../../profile/utils/profile_open_helper.dart';
@@ -18,6 +18,10 @@ import '../models/notification_item_model.dart';
 /// follow → that profile, story reply → that story, contest → contest, etc.
 class NotificationNavigator {
   NotificationNavigator._();
+
+  /// Latest push payload waiting for the app to leave splash/login.
+  static Map<String, dynamic>? _pendingPayload;
+  static int _openGeneration = 0;
 
   static Future<void> openItem(NotificationItemModel item) async {
     switch (item.kind) {
@@ -46,10 +50,9 @@ class NotificationNavigator {
             (item.kind == NotificationKind.like ||
                 item.entityType.toLowerCase() == 'post' ||
                 item.entityType.toLowerCase() == 'reel')) {
-          PostDetailOpenHelper.openById(item.entityId.toString());
+          unawaited(PostDetailOpenHelper.openById(item.entityId.toString()));
           return;
         }
-        _openHomeFeed();
         return;
       case NotificationKind.follow:
       case NotificationKind.followRequest:
@@ -90,7 +93,40 @@ class NotificationNavigator {
   }
 
   /// Push / FCM payload entry point — same destinations as [openItem].
+  ///
+  /// Waits until splash/login are done so [Get.offNamed(landing)] cannot wipe
+  /// the deep-linked screen a moment later.
   static Future<void> openPayload(Map<String, dynamic> payload) async {
+    _pendingPayload = Map<String, dynamic>.from(payload);
+    final generation = ++_openGeneration;
+    final ready = await _whenAppReady();
+    if (!ready || generation != _openGeneration) {
+      return;
+    }
+    final pending = _pendingPayload;
+    if (pending == null) {
+      return;
+    }
+    _pendingPayload = null;
+    await _routePayload(pending);
+  }
+
+  /// Called after splash lands on the main shell so a cold-start tap is not lost.
+  static Future<void> flushPending() async {
+    final pending = _pendingPayload;
+    if (pending == null) {
+      return;
+    }
+    _pendingPayload = null;
+    final generation = ++_openGeneration;
+    final ready = await _whenAppReady();
+    if (!ready || generation != _openGeneration) {
+      return;
+    }
+    await _routePayload(pending);
+  }
+
+  static Future<void> _routePayload(Map<String, dynamic> payload) async {
     final type = _text(payload['type'], payload['notification_type']);
     final entityType = _text(payload['entity_type']);
     final entityId = _int(payload['entity_id']);
@@ -155,10 +191,9 @@ class NotificationNavigator {
       }
       if (entityId > 0 &&
           (entityType == 'post' || entityType == 'reel' || entityType.isEmpty)) {
-        PostDetailOpenHelper.openById(entityId.toString());
+        unawaited(PostDetailOpenHelper.openById(entityId.toString()));
         return;
       }
-      _openHomeFeed();
       return;
     }
 
@@ -172,10 +207,9 @@ class NotificationNavigator {
         return;
       }
       if (entityType == 'post' && entityId > 0) {
-        PostDetailOpenHelper.openById(entityId.toString());
+        unawaited(PostDetailOpenHelper.openById(entityId.toString()));
         return;
       }
-      _openHomeFeed();
       return;
     }
 
@@ -266,12 +300,12 @@ class NotificationNavigator {
       }
     }
 
-    // Last resort: still try to land somewhere useful.
+    // Last resort: profile if we know who, otherwise stay put — never wipe
+    // the stack back to the home feed after a notification tap.
     if (username.isNotEmpty) {
       ProfileOpenHelper.open(username: username);
       return;
     }
-    _openHomeFeed();
   }
 
   static void _openChat({
@@ -340,7 +374,7 @@ class NotificationNavigator {
             const ['contests', 'contest'],
           );
     if (contestId <= 0) {
-      _openHomeFeed(tabIndex: 3);
+      _openContestTabSoft();
       return;
     }
     if (item.isContestResultsNotification) {
@@ -382,7 +416,6 @@ class NotificationNavigator {
       ProfileOpenHelper.open(username: item.profileHandle);
       return;
     }
-    _openHomeFeed();
   }
 
   static void _openProfile(String username) {
@@ -393,8 +426,50 @@ class NotificationNavigator {
     ProfileOpenHelper.open(username: cleaned);
   }
 
-  static void _openHomeFeed({int tabIndex = 0}) {
-    Get.offAll<void>(() => LandingScreen(initialIndex: tabIndex));
+  /// Soft contest fallback — switch tab if already on landing; never [Get.offAll].
+  static void _openContestTabSoft() {
+    if (Get.isRegistered<LandingController>()) {
+      Get.find<LandingController>().onTabChanged(3);
+    }
+  }
+
+  /// Wait until splash/intro/login are gone so deep links are not cleared by
+  /// the boot [Get.offNamed] to landing.
+  static Future<bool> _whenAppReady() async {
+    for (var attempt = 0; attempt < 40; attempt++) {
+      final route = Get.currentRoute;
+      final onShell = route == AppRoutes.landing ||
+          route == AppRoutes.home ||
+          route == AppRoutes.messages ||
+          route == AppRoutes.contestDetail ||
+          route == AppRoutes.contestRanking ||
+          route == AppRoutes.editProfile ||
+          route == AppRoutes.myEarnings ||
+          route == AppRoutes.monetization ||
+          route == AppRoutes.supportTickets ||
+          route == AppRoutes.supportTicketDetail;
+      final pastBoot = route.isNotEmpty &&
+          route != AppRoutes.splash &&
+          route != '/' &&
+          route != AppRoutes.intro &&
+          route != AppRoutes.login &&
+          route != AppRoutes.otp &&
+          route != AppRoutes.signUp &&
+          route != AppRoutes.forgotPassword &&
+          route != AppRoutes.resetPassword;
+      if (onShell || pastBoot) {
+        // Let the landing transition finish before pushing the target.
+        await Future<void>.delayed(const Duration(milliseconds: 120));
+        return true;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    final route = Get.currentRoute;
+    return route == AppRoutes.landing ||
+        (route.isNotEmpty &&
+            route != AppRoutes.splash &&
+            route != '/' &&
+            route != AppRoutes.login);
   }
 
   static bool _openActionUrl(String actionUrl) {

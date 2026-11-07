@@ -90,6 +90,9 @@ class SplashController extends GetxController {
     _go(route);
     if (route == AppRoutes.landing) {
       unawaited(DeepLinkService.flushPending());
+      // Cold-start notification taps wait for this — open chat/post/etc.
+      // after landing is up so splash cannot clear the destination.
+      unawaited(PushNotificationService.flushPendingNavigation());
     }
     if (route == AppRoutes.login) {
       unawaited(PushNotificationService.requestPermission());

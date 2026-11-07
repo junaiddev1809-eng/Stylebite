@@ -300,7 +300,35 @@ class ContestModel {
 
   bool get isAdminTabItem => hasReward || isAdminContest;
 
-  bool get ended => status.toLowerCase() == 'completed';
+  bool get ended {
+    final normalized = status.trim().toLowerCase();
+    return normalized == 'completed' ||
+        normalized == 'ended' ||
+        normalized == 'closed' ||
+        normalized == 'cancelled' ||
+        normalized == 'canceled';
+  }
+
+  bool get isUpcoming => status.trim().toLowerCase() == 'upcoming';
+
+  bool get isActive {
+    final normalized = status.trim().toLowerCase();
+    return normalized == 'active' || normalized == 'live';
+  }
+
+  /// 0 = active, 1 = upcoming, 2 = ended/other — for list ordering.
+  int get lifecycleRank {
+    if (isActive) {
+      return 0;
+    }
+    if (isUpcoming) {
+      return 1;
+    }
+    if (ended) {
+      return 2;
+    }
+    return 3;
+  }
 
   String get imageUrl => coverImageUrl;
 
@@ -384,4 +412,44 @@ class ContestModel {
     final mins = diff.inMinutes.remainder(60);
     return '${diff.inHours}h ${mins}m';
   }
+}
+
+/// List order: active → upcoming → ended; within each group featured first,
+/// then by relevant date (active/upcoming ascending, ended most-recent first).
+int compareContestListOrder(ContestModel a, ContestModel b) {
+  final rankCmp = a.lifecycleRank.compareTo(b.lifecycleRank);
+  if (rankCmp != 0) {
+    return rankCmp;
+  }
+  if (a.featured != b.featured) {
+    return a.featured ? -1 : 1;
+  }
+
+  switch (a.lifecycleRank) {
+    case 0: // active — ending soonest first
+      return _compareNullableDate(a.endAt, b.endAt, ascending: true);
+    case 1: // upcoming — starting soonest first
+      return _compareNullableDate(
+        a.startAt ?? a.enrollmentStartAt,
+        b.startAt ?? b.enrollmentStartAt,
+        ascending: true,
+      );
+    case 2: // ended — most recently ended first
+      return _compareNullableDate(a.endAt, b.endAt, ascending: false);
+    default:
+      return b.id.compareTo(a.id);
+  }
+}
+
+int _compareNullableDate(DateTime? a, DateTime? b, {required bool ascending}) {
+  if (a == null && b == null) {
+    return 0;
+  }
+  if (a == null) {
+    return 1;
+  }
+  if (b == null) {
+    return -1;
+  }
+  return ascending ? a.compareTo(b) : b.compareTo(a);
 }

@@ -81,13 +81,19 @@ class ContestController extends GetxController {
   final RxList<String> cityOptions = <String>[].obs;
   final RxBool isMetaLoading = false.obs;
 
-  List<ContestModel> get adminContests => _applySearch(
-    _contests.where((item) => item.isAdminTabItem).toList(growable: false),
-  );
+  List<ContestModel> get adminContests {
+    final items = _applySearch(
+      _contests.where((item) => item.isAdminTabItem).toList(growable: false),
+    );
+    return [...items]..sort(compareContestListOrder);
+  }
 
-  List<ContestModel> get communityContests => _applySearch(
-    _contests.where((item) => !item.isAdminTabItem).toList(growable: false),
-  );
+  List<ContestModel> get communityContests {
+    final items = _applySearch(
+      _contests.where((item) => !item.isAdminTabItem).toList(growable: false),
+    );
+    return [...items]..sort(compareContestListOrder);
+  }
 
   ContestModel? get nearestEnrollmentContest {
     final now = DateTime.now();

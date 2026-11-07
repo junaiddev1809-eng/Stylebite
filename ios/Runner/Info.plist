@@ -29,6 +29,16 @@
 		<dict>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.stylebite.stylebite</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>stylebite</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>com.googleusercontent.apps.144396214843-pt835jeqpql3op8t1kimaf72c2o8v9sb</string>

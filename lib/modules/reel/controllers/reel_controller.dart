@@ -905,14 +905,21 @@ class ReelController extends GetxController {
     final hadPrevious =
         (currentReel.viewerRating ?? 0) >= 1 &&
         (currentReel.viewerRating ?? 0) <= 5;
+    final nextCount = hadPrevious
+        ? currentReel.ratingCount
+        : currentReel.ratingCount + 1;
     _updateReel(
       currentReel.copyWith(
         viewerRating: rating,
         rating: nextAverage.toStringAsFixed(1),
-        ratingCount: hadPrevious
-            ? currentReel.ratingCount
-            : currentReel.ratingCount + 1,
+        ratingCount: nextCount,
       ),
+    );
+    PostInteractionStore.ensure().setViewerRating(
+      postId: reelId,
+      rating: rating,
+      displayRating: nextAverage,
+      ratingCount: nextCount,
     );
 
     isVoteLoading.value = true;
@@ -926,22 +933,38 @@ class ReelController extends GetxController {
       final serverAverage = payload['rating_avg'];
       final serverCount = payload['rating_count'];
       final latest = _findReel(reelId) ?? currentReel;
+      final confirmedAvg = serverAverage == null
+          ? nextAverage
+          : (serverAverage is num
+                ? serverAverage.toDouble()
+                : double.tryParse(serverAverage.toString()) ?? nextAverage);
+      final confirmedCount = serverCount is num
+          ? serverCount.round()
+          : int.tryParse('${serverCount ?? ''}') ?? latest.ratingCount;
       _updateReel(
         latest.copyWith(
           viewerRating: rating,
-          rating: serverAverage == null
-              ? latest.rating
-              : (serverAverage is num
-                    ? serverAverage.toDouble()
-                    : double.tryParse(serverAverage.toString()) ?? nextAverage)
-                  .toStringAsFixed(1),
-          ratingCount: serverCount is num
-              ? serverCount.round()
-              : int.tryParse('${serverCount ?? ''}') ?? latest.ratingCount,
+          rating: confirmedAvg.toStringAsFixed(1),
+          ratingCount: confirmedCount,
         ),
+      );
+      PostInteractionStore.ensure().setViewerRating(
+        postId: reelId,
+        rating: rating,
+        displayRating: confirmedAvg,
+        ratingCount: confirmedCount,
       );
     } catch (error) {
       _updateReel(previousReel);
+      final previous = previousReel.viewerRating;
+      if (previous != null && previous >= 1) {
+        PostInteractionStore.ensure().setViewerRating(
+          postId: reelId,
+          rating: previous,
+          displayRating: double.tryParse(previousReel.rating),
+          ratingCount: previousReel.ratingCount,
+        );
+      }
       errorSnackBar(message: error.toString().replaceFirst('Exception: ', ''));
     } finally {
       isVoteLoading.value = false;

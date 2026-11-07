@@ -19,16 +19,7 @@ class CommunityContestSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sortedContests = [...contests]
-      ..sort((a, b) {
-        if (a.featured != b.featured) {
-          return a.featured ? -1 : 1;
-        }
-        if (a.ended != b.ended) {
-          return a.ended ? 1 : -1;
-        }
-        return 0;
-      });
+    final sortedContests = [...contests]..sort(compareContestListOrder);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

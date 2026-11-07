@@ -30,6 +30,7 @@ import '../controllers/contest_controller.dart';
 import '../models/contest_detail_model.dart';
 import '../models/contest_prize.dart';
 import '../models/contest_submission_model.dart';
+import '../widgets/contest_rules_card.dart';
 import 'contest_ranking_screen.dart';
 
 class ContestDetailScreen extends StatefulWidget {
@@ -404,9 +405,7 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
                           if (contest.rules.isNotEmpty ||
                               contest.winningRules != null) ...[
                             const SizedBox(height: 16),
-                            _sectionTitle('Contest rules'),
-                            const SizedBox(height: 8),
-                            _surface(child: _rulesBody(contest)),
+                            ContestRulesCard(contest: contest),
                           ],
                           if (contest.prizes.isNotEmpty) ...[
                             const SizedBox(height: 16),
@@ -598,49 +597,6 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _rulesBody(ContestDetailModel contest) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (contest.winningRules != null) ...[
-          Text(
-            contest.winningRules!.scoreFormulaLabel,
-            style: AppFonts.beVietnam(size: 13, color: AppColors.text),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Need at least ${contest.winningRules!.minRatingVoters} active ratings to win a prize place.',
-            style: AppFonts.beVietnam(size: 13, color: AppColors.hintText),
-          ),
-          if (contest.rules.isNotEmpty) const SizedBox(height: 12),
-        ],
-        for (var i = 0; i < contest.rules.length; i++) ...[
-          if (i > 0) const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${i + 1}.',
-                style: AppFonts.plusJakarta(
-                  size: 13,
-                  weight: FontWeight.w700,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  contest.rules[i],
-                  style: AppFonts.beVietnam(size: 13, color: AppColors.text),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ],
     );
   }
 
@@ -889,6 +845,15 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
       _voteCountOverrides[submission.id] = nextCount;
       _pendingVotes[submission.id] = value;
     });
+    // Keep feed / reels / explore in sync with this contest vote.
+    if (submission.postId > 0) {
+      store.setViewerRating(
+        postId: submission.postId.toString(),
+        rating: value,
+        displayRating: nextAverage,
+        ratingCount: nextCount,
+      );
+    }
     unawaited(_flushVote(submission.id));
   }
 
@@ -998,10 +963,23 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
   }
 
   /// What the bottom selector should highlight: the viewer's own rating
-  /// (optimistic override first, then the server's value). Never the
+  /// (optimistic override first, then shared store / server). Never the
   /// aggregate — that belongs to the top badge only.
   int _viewerRatingFor(ContestSubmissionModel submission) {
-    return _viewerRatingOverrides[submission.id] ?? submission.viewerScore ?? 0;
+    final override = _viewerRatingOverrides[submission.id];
+    if (override != null) {
+      return override;
+    }
+    final postId = submission.postId > 0
+        ? submission.postId.toString()
+        : '';
+    if (postId.isNotEmpty) {
+      final shared = PostInteractionStore.ensure().viewerRatingFor(postId);
+      if (shared != null && shared >= 1) {
+        return shared;
+      }
+    }
+    return submission.viewerScore ?? 0;
   }
 
   HomePostModel _toPost(

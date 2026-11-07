@@ -2,7 +2,7 @@ name: stylebite
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.0.19+65
+version: 1.0.19+66
 
 environment:
   sdk: ^3.11.1

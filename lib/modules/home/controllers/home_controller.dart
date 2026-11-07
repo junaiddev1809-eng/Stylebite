@@ -901,7 +901,6 @@ class HomeController extends GetxController {
     _applyContestEnrollment();
     unawaited(_hydrateMissingHashtags(filteredFeed));
 
-    final store = PostInteractionStore.ensure();
     for (final post in filteredFeed) {
       final existing = selectedRatings[post.id];
       if (existing == null || existing < 1) {

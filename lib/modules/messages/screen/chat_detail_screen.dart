@@ -2,17 +2,19 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../core/media/media_type_resolver.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/app_back_navigation.dart';
 import '../../../core/utils/app_time_formatter.dart';
 import '../../../core/widgets/app_cached_image.dart';
-import '../../../core/widgets/app_cached_video_player.dart';
 import '../../../core/widgets/app_hero_icon.dart';
 import '../../../core/widgets/app_user_avatar.dart';
 import '../../../core/widgets/app_verified_badge.dart';
 import '../../../core/widgets/states/app_error_state.dart';
 import '../../../core/widgets/states/app_shimmer_box.dart';
+import '../../post/screens/full_media_preview_screen.dart';
 import '../../post/widgets/post_options_sheet.dart';
 import '../../post/utils/in_app_share.dart';
 import '../../post/utils/post_detail_open_helper.dart';
@@ -503,6 +505,9 @@ class _ChatHeader extends StatelessWidget {
                         GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () {
+                            if (user?.canOpenProfile != true) {
+                              return;
+                            }
                             ProfileOpenHelper.open(
                               username: controller.username,
                             );
@@ -522,11 +527,21 @@ class _ChatHeader extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              VerifiedBadgeSlot(
-                                username: controller.username,
-                                fallback: user?.isVerifiedBadge == true,
-                                size: 14,
-                              ),
+                              if (user?.isOfficialAccount == true) ...[
+                                const SizedBox(width: 6),
+                                _StatusChip(
+                                  label: 'Official',
+                                  color: AppColors.primary,
+                                  background: AppColors.primary.withValues(
+                                    alpha: 0.12,
+                                  ),
+                                ),
+                              ] else
+                                VerifiedBadgeSlot(
+                                  username: controller.username,
+                                  fallback: user?.isVerifiedBadge == true,
+                                  size: 14,
+                                ),
                             ],
                           ),
                         ),
@@ -535,17 +550,18 @@ class _ChatHeader extends StatelessWidget {
                           spacing: 8,
                           runSpacing: 6,
                           children: [
-                            _StatusChip(
-                              label: user?.isOnline == true
-                                  ? 'Active now'
-                                  : 'Offline',
-                              color: user?.isOnline == true
-                                  ? const Color(0xFF16A34A)
-                                  : AppColors.hintText,
-                              background: user?.isOnline == true
-                                  ? const Color(0xFFEAF8EF)
-                                  : AppColors.chip,
-                            ),
+                            if (user?.isOfficialAccount != true)
+                              _StatusChip(
+                                label: user?.isOnline == true
+                                    ? 'Active now'
+                                    : 'Offline',
+                                color: user?.isOnline == true
+                                    ? const Color(0xFF16A34A)
+                                    : AppColors.hintText,
+                                background: user?.isOnline == true
+                                    ? const Color(0xFFEAF8EF)
+                                    : AppColors.chip,
+                              ),
                             if (_headerStatusLabel(controller, isStopped) !=
                                 null)
                               _StatusChip(
@@ -1035,6 +1051,13 @@ class _ReplyComposerBar extends StatelessWidget {
 }
 
 String _replySnippet(ChatMessageModel message) {
+  if (message.isFile) {
+    final caption = message.body.trim();
+    if (caption.isNotEmpty) {
+      return InAppSharePayload.previewText(caption);
+    }
+    return 'Prize invoice';
+  }
   if (message.hasMedia) {
     final caption = message.body.trim();
     if (caption.isNotEmpty) {
@@ -1105,33 +1128,128 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
     super.dispose();
   }
 
+  void _openMediaPreview() {
+    final fullUrl = message.mediaUrl.trim();
+    final thumb = message.thumbnailUrl.trim();
+    final openUrl = fullUrl.isNotEmpty
+        ? fullUrl
+        : (thumb.isNotEmpty ? thumb : '');
+    if (openUrl.isEmpty) return;
+    Get.to<void>(
+      () => FullMediaPreviewScreen(
+        mediaUrl: openUrl,
+        thumbnailUrl: thumb.isNotEmpty ? thumb : null,
+        type: message.isVideo ? AppMediaType.video : AppMediaType.image,
+      ),
+    );
+  }
+
   Widget _messageBody(BuildContext context, bool isMine) {
+    if (message.isFile) {
+      final caption = message.body.trim();
+      final fileUrl = message.mediaUrl.trim();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: fileUrl.isEmpty
+                  ? null
+                  : () async {
+                      final uri = Uri.tryParse(fileUrl);
+                      if (uri == null) return;
+                      await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
+                    },
+              child: Container(
+                width: 220,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: isMine
+                      ? Colors.white.withValues(alpha: 0.16)
+                      : const Color(0xFFF1EBE8),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.description_rounded,
+                      color: isMine ? Colors.white : AppColors.primary,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Prize invoice',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppFonts.beVietnam(
+                          size: 14,
+                          weight: FontWeight.w700,
+                          color: isMine ? Colors.white : AppColors.text,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.open_in_new_rounded,
+                      size: 16,
+                      color: isMine ? Colors.white70 : AppColors.hintText,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (caption.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              caption,
+              style: AppFonts.beVietnam(
+                size: 15,
+                height: 1.35,
+                weight: FontWeight.w500,
+                color: isMine ? Colors.white : AppColors.text,
+              ),
+            ),
+          ],
+        ],
+      );
+    }
+
     if (message.hasMedia) {
       final caption = message.body.trim();
       final previewUrl = message.thumbnailUrl.trim().isNotEmpty
           ? message.thumbnailUrl.trim()
           : message.mediaUrl.trim();
       final Widget mediaChild;
-      if (message.isVideo && message.mediaUrl.trim().isNotEmpty) {
-        mediaChild = AppCachedVideoPlayer(
-          videoUrl: message.mediaUrl,
-          thumbnailUrl: previewUrl.isNotEmpty ? previewUrl : null,
-          autoPlay: false,
-          looping: true,
-          isActive: true,
-          showControls: true,
-          showPlayPauseButton: true,
-          showMuteButton: true,
-          showCenterPlayPauseButton: true,
-          enableTapToTogglePlayback: true,
-          showProgressBar: true,
-          borderRadius: BorderRadius.circular(16),
-          fit: BoxFit.cover,
-        );
-      } else if (previewUrl.isNotEmpty) {
-        mediaChild = AppCachedImage(
-          imageUrl: previewUrl,
-          fit: BoxFit.cover,
+      if (previewUrl.isNotEmpty) {
+        mediaChild = Stack(
+          fit: StackFit.expand,
+          children: [
+            AppCachedImage(
+              imageUrl: previewUrl,
+              fit: BoxFit.cover,
+            ),
+            if (message.isVideo)
+              const ColoredBox(
+                color: Color(0x33000000),
+                child: Center(
+                  child: Icon(
+                    Icons.play_circle_fill_rounded,
+                    color: Colors.white,
+                    size: 56,
+                  ),
+                ),
+              ),
+          ],
         );
       } else {
         mediaChild = ColoredBox(
@@ -1153,12 +1271,15 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: SizedBox(
-              width: 220,
-              height: 220,
-              child: mediaChild,
+          GestureDetector(
+            onTap: _openMediaPreview,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: SizedBox(
+                width: 220,
+                height: 220,
+                child: mediaChild,
+              ),
             ),
           ),
           if (caption.isNotEmpty) ...[

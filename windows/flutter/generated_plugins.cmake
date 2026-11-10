@@ -8,6 +8,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   firebase_core
   gal
   geolocator_windows
+  pro_video_editor
   share_plus
   url_launcher_windows
 )

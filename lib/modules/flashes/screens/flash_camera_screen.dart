@@ -5,16 +5,21 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'package:pro_image_editor/pro_image_editor.dart';
+
 import '../../../core/media/media_type_resolver.dart';
 import '../../../core/media/picked_media.dart';
+import '../../../core/media/stylebite_editor_looks.dart';
+import '../../../core/media/stylebite_filter_baker.dart';
+import '../../../core/media/stylebite_look_strip.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/app_helper.dart';
 import '../controllers/flash_controller.dart';
 import '../models/flash_model.dart';
 
-/// Instants-style camera: caption first, shutter shares immediately.
-/// Zoom + mid/wide frame; no gallery, no editor.
+/// Instants-style camera: pick a look → shutter → bake filter → upload.
+/// No post editor — Flashes stay one-tap.
 class FlashCameraScreen extends StatefulWidget {
   const FlashCameraScreen({super.key, this.kind = FlashKind.outfit});
 
@@ -38,6 +43,9 @@ class _FlashCameraScreenState extends State<FlashCameraScreen> {
   late FlashKind _kind = widget.kind;
   String? _lastSharedId;
   String? _error;
+  FilterModel _look = StyleBiteEditorLooks.all.first;
+  static const double _lookIntensity = 0.7;
+  var _comparing = false;
 
   bool get _isFood => _kind == FlashKind.food;
 
@@ -117,9 +125,21 @@ class _FlashCameraScreenState extends State<FlashCameraScreen> {
       );
       await File(shot.path).copy(target.path);
 
+      // Bake live look, then share immediately (no editor / post flow).
+      final baked = await StyleBiteFilterBaker.bake(
+        source: target,
+        look: _look,
+        intensity: _lookIntensity,
+      );
+      final media = PickedMedia(
+        file: baked ?? target,
+        type: AppMediaType.image,
+      );
+
+      if (!mounted) return;
       setState(() => _sharing = true);
       final localId = await FlashController.ensure().addFlash(
-        media: PickedMedia(file: target, type: AppMediaType.image),
+        media: media,
         caption: _caption.text,
         kind: _kind,
         quiet: true,
@@ -181,15 +201,27 @@ class _FlashCameraScreenState extends State<FlashCameraScreen> {
                       ),
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => FlashController.ensure().openMineArchive(
-                      kind: _kind,
+                  GestureDetector(
+                    onTap: () {
+                      FlashController.ensure().openMineViewer(kind: _kind);
+                    },
+                    onLongPress: () {
+                      FlashController.ensure().openMineArchive(kind: _kind);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 10,
+                      ),
+                      child: Text(
+                        'Yours',
+                        style: AppFonts.plusJakarta(
+                          size: 14,
+                          weight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
-                    icon: const Icon(
-                      Icons.grid_view_rounded,
-                      color: Colors.white,
-                    ),
-                    tooltip: 'Your archive',
                   ),
                 ],
               ),
@@ -268,8 +300,28 @@ class _FlashCameraScreenState extends State<FlashCameraScreen> {
                   ],
                 ),
               ),
+            const SizedBox(height: 6),
+            StyleBiteLookStrip(
+              compact: true,
+              selected: _look,
+              onSelected: (look) => setState(() => _look = look),
+            ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+              child: Text(
+                _comparing
+                    ? 'Original (release to see look)'
+                    : 'Hold preview to compare · long-press look to favorite',
+                textAlign: TextAlign.center,
+                style: AppFonts.plusJakarta(
+                  size: 11,
+                  weight: FontWeight.w500,
+                  color: Colors.white54,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
               child: TextField(
                 controller: _caption,
                 style: AppFonts.beVietnam(
@@ -391,20 +443,31 @@ class _FlashCameraScreenState extends State<FlashCameraScreen> {
         child: CircularProgressIndicator(color: Colors.white),
       );
     }
+    final preview = FittedBox(
+      fit: BoxFit.cover,
+      child: SizedBox(
+        width: cam.value.previewSize?.height ?? 720,
+        height: cam.value.previewSize?.width ?? 1280,
+        child: CameraPreview(cam),
+      ),
+    );
+
     return GestureDetector(
       onScaleStart: (_) => _pinchBase = _zoom,
       onScaleUpdate: (details) {
         final next = (_pinchBase * details.scale).clamp(_minZoom, _maxZoom);
         _setZoom(next);
       },
-      child: FittedBox(
-        fit: BoxFit.cover,
-        child: SizedBox(
-          width: cam.value.previewSize?.height ?? 720,
-          height: cam.value.previewSize?.width ?? 1280,
-          child: CameraPreview(cam),
-        ),
-      ),
+      onLongPressStart: (_) => setState(() => _comparing = true),
+      onLongPressEnd: (_) => setState(() => _comparing = false),
+      child: _comparing || _look.filters.isEmpty
+          ? preview
+          : ColorFiltered(
+              colorFilter: ColorFilter.matrix(
+                StyleBiteFilterBaker.matrixFor(_look, _lookIntensity),
+              ),
+              child: preview,
+            ),
     );
   }
 }

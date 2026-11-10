@@ -103,9 +103,10 @@ class _StyleBiteAppState extends State<StyleBiteApp>
       return;
     }
 
+    // Only full background — `inactive`/`hidden` fire for the notification
+    // shade and brief system UI and were causing reconnect churn.
     if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.hidden) {
+        state == AppLifecycleState.detached) {
       ChatPresenceService.instance.markOffline();
     }
   }

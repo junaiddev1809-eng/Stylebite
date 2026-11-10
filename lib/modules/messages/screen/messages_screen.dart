@@ -6,13 +6,13 @@ import 'package:get/get.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/app_back_navigation.dart';
-import '../../../core/widgets/app_cached_image.dart';
 import '../../../core/widgets/app_hero_icon.dart';
 import '../../../core/widgets/app_user_avatar.dart';
 import '../../../core/widgets/app_verified_badge.dart';
 import '../../../core/widgets/states/app_empty_state.dart';
 import '../../../core/widgets/states/app_error_state.dart';
 import '../../../core/widgets/states/app_shimmer_box.dart';
+import '../../flashes/widgets/flash_tray.dart';
 import '../../landing/screen/landing_screen.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../../settings/screen/settings_screen.dart';
@@ -100,7 +100,10 @@ class _MessagesScreenState extends State<MessagesScreen> {
                       children: [
                         if (!_controller.isSelectionMode.value) ...[
                           _buildSearch(),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 14),
+                          // Instants-style: Flashes + Bites side by side.
+                          const FlashTraysBar(),
+                          const SizedBox(height: 8),
                         ],
                         if (_controller.query.value.trim().isNotEmpty &&
                             _controller.chats.isEmpty &&
@@ -922,11 +925,23 @@ class _MessageTile extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              VerifiedBadgeSlot(
-                                username: thread.user.username,
-                                fallback: thread.user.isVerifiedBadge,
-                                size: 14,
-                              ),
+                              if (thread.user.isOfficialAccount)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 6),
+                                  child: _Pill(
+                                    label: 'Official',
+                                    background: AppColors.primary.withValues(
+                                      alpha: 0.12,
+                                    ),
+                                    foreground: AppColors.primary,
+                                  ),
+                                )
+                              else
+                                VerifiedBadgeSlot(
+                                  username: thread.user.username,
+                                  fallback: thread.user.isVerifiedBadge,
+                                  size: 14,
+                                ),
                             ],
                           ),
                         ),

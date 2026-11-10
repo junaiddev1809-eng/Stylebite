@@ -49,6 +49,8 @@ class HomeController extends GetxController {
   List<HomePostModel> _publishedPosts = <HomePostModel>[];
   final Map<HomeFeedType, List<HomePostModel>> _suggestedReelsByFeed =
       <HomeFeedType, List<HomePostModel>>{};
+  final Set<HomeFeedType> _suggestedReelsLoading = <HomeFeedType>{};
+  DateTime? _lastLoadMoreAt;
   final RxList<HomeFeedRow> feedRows = <HomeFeedRow>[].obs;
 
   static const int _suggestAfter = 7;
@@ -350,9 +352,19 @@ class HomeController extends GetxController {
   }
 
   Future<void> loadMore() async {
-    if (isLoadingMore.value || !hasMore.value || hasError.value || isLocationDenied.value) {
+    if (isLoadingMore.value ||
+        isInitialLoading.value ||
+        !hasMore.value ||
+        hasError.value ||
+        isLocationDenied.value) {
       return;
     }
+    final now = DateTime.now();
+    final last = _lastLoadMoreAt;
+    if (last != null && now.difference(last) < const Duration(milliseconds: 450)) {
+      return;
+    }
+    _lastLoadMoreAt = now;
 
     isLoadingMore.value = true;
     try {
@@ -979,7 +991,8 @@ class HomeController extends GetxController {
       return;
     }
     _session.scrollOffset = scrollController.offset;
-    if (scrollController.position.extentAfter < 600) {
+    // Tighter threshold + debounce in loadMore — avoids page-chaining on 3G.
+    if (scrollController.position.extentAfter < 280) {
       loadMore();
     }
   }
@@ -1160,17 +1173,22 @@ class HomeController extends GetxController {
     }
     visiblePosts.assignAll(_publishedPosts);
     _rebuildFeedRows();
+    // Suggested-reels once per feed type — never storm on every like/republish.
     unawaited(_loadSuggestedReels());
     feedRevision.value++;
-    ReelReadyService.prefetch(
-      _publishedPosts
-          .where(
-            (post) =>
-                post.resolvedMediaType == AppMediaType.video ||
-                post.mediaType == HomeMediaType.video,
-          )
-          .map((post) => post.primaryMediaUrl),
-    );
+    // Don't compete with the primary feed request on slow networks.
+    if (!isInitialLoading.value && !isLoadingMore.value) {
+      ReelReadyService.prefetch(
+        _publishedPosts
+            .where(
+              (post) =>
+                  post.resolvedMediaType == AppMediaType.video ||
+                  post.mediaType == HomeMediaType.video,
+            )
+            .map((post) => post.primaryMediaUrl)
+            .take(3),
+      );
+    }
   }
 
   void _replacePublishedPost(HomePostModel updatedPost) {
@@ -1259,6 +1277,12 @@ class HomeController extends GetxController {
 
   Future<void> _loadSuggestedReels() async {
     final feedType = selectedFeedType.value;
+    if (_suggestedReelsByFeed.containsKey(feedType) ||
+        _suggestedReelsLoading.contains(feedType)) {
+      return;
+    }
+    _suggestedReelsLoading.add(feedType);
+
     final reelType =
         feedType == HomeFeedType.style ? ReelFeedType.style : ReelFeedType.bite;
     final apiType = feedType == HomeFeedType.style ? 'outfit' : 'food';
@@ -1278,47 +1302,9 @@ class HomeController extends GetxController {
       collected.add(post.copyWith(feedType: feedType));
     }
 
-    if (Get.isRegistered<ReelController>()) {
-      for (final reel in Get.find<ReelController>().cachedReelsFor(reelType)) {
-        take(
-          reel.toHomePost().copyWith(
-            feedType: feedType,
-            mediaType: HomeMediaType.video,
-          ),
-        );
-      }
-    }
-
-    for (final post in _publishedPosts) {
-      if (post.feedType != feedType) {
-        continue;
-      }
-      if (post.mediaType != HomeMediaType.video &&
-          post.resolvedMediaType != AppMediaType.video) {
-        continue;
-      }
-      take(post);
-    }
-
-    var hasMorePages = true;
-    for (var page = 1; page <= 5 && collected.length < _suggestRowPool; page++) {
-      if (!hasMorePages && page > 1) {
-        break;
-      }
-      try {
-        final response = await ApiHelper.fetchDataWithAuthorization(
-          'reels?type=$apiType&page=$page&per_page=15&sort=trending',
-        );
-        if (response == null || response.statusCode != 200) {
-          break;
-        }
-        final payload = jsonDecode(response.body) as Map<String, dynamic>;
-        if (payload['status_code'] != 1 && payload['status_code'] != '1') {
-          break;
-        }
-        final parsed = ReelResponse.fromJson(payload);
-        hasMorePages = parsed.pagination.hasMorePages;
-        for (final reel in parsed.reels) {
+    try {
+      if (Get.isRegistered<ReelController>()) {
+        for (final reel in Get.find<ReelController>().cachedReelsFor(reelType)) {
           take(
             reel.toHomePost().copyWith(
               feedType: feedType,
@@ -1326,19 +1312,57 @@ class HomeController extends GetxController {
             ),
           );
         }
-      } catch (_) {
-        break;
       }
-    }
 
-    _suggestedReelsByFeed[feedType] = collected;
-    if (selectedFeedType.value == feedType) {
-      _rebuildFeedRows();
-      if (collected.isNotEmpty) {
-        ReelReadyService.prefetch(
-          collected.take(_suggestPerRow).map((post) => post.primaryMediaUrl),
-        );
+      for (final post in _publishedPosts) {
+        if (post.feedType != feedType) {
+          continue;
+        }
+        if (post.mediaType != HomeMediaType.video &&
+            post.resolvedMediaType != AppMediaType.video) {
+          continue;
+        }
+        take(post);
       }
+
+      // One page only — enough for the strip without starving the feed on 3G.
+      if (collected.length < _suggestRowPool) {
+        try {
+          final response = await ApiHelper.fetchDataWithAuthorization(
+            'reels?type=$apiType&page=1&per_page=15&sort=trending',
+          );
+          if (response != null && response.statusCode == 200) {
+            final payload = jsonDecode(response.body) as Map<String, dynamic>;
+            if (payload['status_code'] == 1 || payload['status_code'] == '1') {
+              final parsed = ReelResponse.fromJson(payload);
+              for (final reel in parsed.reels) {
+                take(
+                  reel.toHomePost().copyWith(
+                    feedType: feedType,
+                    mediaType: HomeMediaType.video,
+                  ),
+                );
+              }
+            }
+          }
+        } catch (_) {
+          // Keep whatever we already collected from feed/cache.
+        }
+      }
+
+      _suggestedReelsByFeed[feedType] = collected;
+      if (selectedFeedType.value == feedType) {
+        _rebuildFeedRows();
+        if (collected.isNotEmpty &&
+            !isInitialLoading.value &&
+            !isLoadingMore.value) {
+          ReelReadyService.prefetch(
+            collected.take(3).map((post) => post.primaryMediaUrl),
+          );
+        }
+      }
+    } finally {
+      _suggestedReelsLoading.remove(feedType);
     }
   }
 }

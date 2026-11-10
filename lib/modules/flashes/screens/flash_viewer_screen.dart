@@ -24,12 +24,16 @@ class FlashViewerScreen extends StatefulWidget {
     required this.kind,
     this.startIndex = 0,
     this.openCameraWhenDone = true,
+    this.showYoursAction = false,
   });
 
   final List<FlashItem> items;
   final FlashKind kind;
   final int startIndex;
   final bool openCameraWhenDone;
+
+  /// Manage / jump to owner flashes from inside Flashes (not the feed).
+  final bool showYoursAction;
 
   @override
   State<FlashViewerScreen> createState() => _FlashViewerScreenState();
@@ -225,6 +229,7 @@ class _FlashViewerScreenState extends State<FlashViewerScreen> {
         kind: widget.kind,
         startIndex: _index.clamp(0, remaining.length - 1),
         openCameraWhenDone: widget.openCameraWhenDone,
+        showYoursAction: widget.showYoursAction,
       ),
     );
   }
@@ -277,6 +282,35 @@ class _FlashViewerScreenState extends State<FlashViewerScreen> {
                           ),
                         ),
                       ),
+                      if (widget.showYoursAction)
+                        GestureDetector(
+                          onTap: () {
+                            unawaited(
+                              FlashController.ensure().openMineViewer(
+                                kind: widget.kind,
+                              ),
+                            );
+                          },
+                          onLongPress: () {
+                            FlashController.ensure().openMineArchive(
+                              kind: widget.kind,
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 10,
+                            ),
+                            child: Text(
+                              'Yours',
+                              style: AppFonts.plusJakarta(
+                                size: 13,
+                                weight: FontWeight.w800,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
                       if (_isMine)
                         IconButton(
                           onPressed: _deleteCurrent,

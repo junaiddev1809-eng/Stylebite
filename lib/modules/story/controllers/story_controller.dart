@@ -234,8 +234,8 @@ class StoryController extends GetxController {
     }
 
     final media = source == 'camera'
-        ? await MediaPickerService.pickFromCamera()
-        : await MediaPickerService.pickFromGallery();
+        ? await MediaPickerService.pickFromCamera(storyTools: true)
+        : await MediaPickerService.pickFromGallery(storyTools: true);
     if (media == null) {
       return;
     }

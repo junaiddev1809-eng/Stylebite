@@ -1072,6 +1072,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "13.5.0"
+  pro_video_editor:
+    dependency: "direct main"
+    description:
+      name: pro_video_editor
+      sha256: "9804e6b77d7b256d7b52eaf83c16aef567429b06e3383eb352ad225ea05dcf7a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.51.2"
   pub_semver:
     dependency: transitive
     description:

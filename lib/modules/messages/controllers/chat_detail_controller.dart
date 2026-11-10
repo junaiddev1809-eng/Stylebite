@@ -73,8 +73,6 @@ class ChatDetailController extends GetxController {
       <StreamSubscription<dynamic>>[];
   Timer? _typingStopTimer;
   Timer? _typingIndicatorTimeout;
-  Timer? _seenRefreshTimer;
-  bool _seenRefreshInFlight = false;
 
   /// Number of live socket-stream listeners registered by [_initSocket].
   /// Should always be either 0 (not subscribed) or 6 (subscribed exactly
@@ -121,14 +119,12 @@ class ChatDetailController extends GetxController {
     if (!initialIsBlocked) {
       _initSocket();
     }
-    _seenRefreshTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      _refreshSeenState();
-    });
+    // Seen ticks come from socket `messages.read` + reconnect sync.
+    // A 4s REST poll starved slow networks while a thread stayed open.
   }
 
   @override
   void onClose() {
-    _seenRefreshTimer?.cancel();
     _typingStopTimer?.cancel();
     _typingIndicatorTimeout?.cancel();
     ChatSocketService.instance.sendTyping(conversationId, false);
@@ -434,50 +430,6 @@ class ChatDetailController extends GetxController {
       // follow-up post should still refresh the badge from that result.
     }
     _refreshUnreadBadge();
-  }
-
-  /// Copies seen ticks onto messages already on screen. The sender's open
-  /// chat otherwise keeps the status from when the message was sent.
-  Future<void> _refreshSeenState() async {
-    if (isClosed || _seenRefreshInFlight || isInitialLoading.value) {
-      return;
-    }
-    var highestSeen = 0;
-    final hasUnseenMine = messages.any((message) {
-      if (message.isMine && message.isSeen && message.id > highestSeen) {
-        highestSeen = message.id;
-      }
-      return message.isMine && !message.isSeen;
-    });
-    if (!hasUnseenMine || conversationId <= 0) {
-      return;
-    }
-
-    _seenRefreshInFlight = true;
-    try {
-      final response = await _apiService.getMessages(username, page: 1);
-      if (isClosed) {
-        return;
-      }
-      for (final fresh in response.messages) {
-        if (fresh.isMine && fresh.isSeen && fresh.id > highestSeen) {
-          highestSeen = fresh.id;
-        }
-      }
-      if (highestSeen <= 0) {
-        return;
-      }
-      for (var i = 0; i < messages.length; i++) {
-        final message = messages[i];
-        if (message.isMine && !message.isSeen && message.id <= highestSeen) {
-          messages[i] = message.copyWith(status: 'seen', isSeen: true);
-        }
-      }
-    } catch (_) {
-      // The next pass retries.
-    } finally {
-      _seenRefreshInFlight = false;
-    }
   }
 
   /// Backend now tells us directly which side blocked which via

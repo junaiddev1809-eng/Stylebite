@@ -16,7 +16,6 @@ import '../../notifications/controllers/notifications_controller.dart';
 import '../../post/controllers/restaurant_review_store.dart';
 import '../../post/services/post_interaction_store.dart';
 import '../../profile/screen/profile_swipe_screen.dart';
-import '../../reel/controllers/reel_controller.dart';
 import '../../reel/screen/reel_screen.dart';
 import '../../upload/screen/upload_screen.dart';
 
@@ -46,7 +45,8 @@ class _LandingScreenState extends State<LandingScreen> {
       Get.put(RestaurantReviewStore(), permanent: true);
     }
     PostInteractionStore.ensure();
-    ReelController.ensureTabController();
+    // Do not create ReelController / warm Reels here — that races Home on
+    // slow networks. Reels load when the user opens that tab.
     _warm(0);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -66,12 +66,12 @@ class _LandingScreenState extends State<LandingScreen> {
   }
 
   void _warm(int index) {
-    for (final i in <int>[index - 1, index, index + 1]) {
-      if (i < 0 || i >= _pages.length || _pages[i] != null) {
-        continue;
-      }
-      _pages[i] = _pageFor(i);
+    // Warm the active tab only. Prefetching neighbors (esp. Reels) piles
+    // API + video downloads on top of Home and stalls 3G sessions.
+    if (index < 0 || index >= _pages.length || _pages[index] != null) {
+      return;
     }
+    _pages[index] = _pageFor(index);
   }
 
   @override

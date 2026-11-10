@@ -18,8 +18,6 @@ import '../../post/screens/edit_post_screen.dart';
 import '../../post/widgets/feed_post_card.dart';
 import '../../search/screen/search_screen.dart';
 import '../../flashes/controllers/flash_controller.dart';
-import '../../flashes/models/flash_model.dart';
-import '../../flashes/widgets/flash_tray.dart';
 import '../../story/controllers/story_controller.dart';
 import '../../story/models/story_model.dart';
 import '../../story/widgets/style_story_tray.dart';
@@ -86,21 +84,11 @@ class _HomeFeedContentState extends State<HomeFeedContent>
                       ),
                     ),
                     SliverToBoxAdapter(
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: StyleStoryTray(
-                              kind: isBite ? StoryKind.food : StoryKind.outfit,
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 18),
-                            child: FlashTray(
-                              kind: isBite ? FlashKind.food : FlashKind.outfit,
-                            ),
-                          ),
-                        ],
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 18),
+                        child: StyleStoryTray(
+                          kind: isBite ? StoryKind.food : StoryKind.outfit,
+                        ),
                       ),
                     ),
                     if (loading)
@@ -264,39 +252,6 @@ class _LoadMoreSpinner extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: 20),
       child: Center(child: CircularProgressIndicator.adaptive()),
-    );
-  }
-}
-
-class _DiscoverToggleShimmer extends StatelessWidget {
-  const _DiscoverToggleShimmer();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(5),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(999),
-          color: AppColors.surface.withValues(alpha: 0.92),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppShimmerBox(
-              width: 92,
-              height: 36,
-              borderRadius: BorderRadius.all(Radius.circular(999)),
-            ),
-            SizedBox(width: 6),
-            AppShimmerBox(
-              width: 92,
-              height: 36,
-              borderRadius: BorderRadius.all(Radius.circular(999)),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -556,13 +511,22 @@ class _HomeTopBar extends StatelessWidget {
                     )
                   : action.icon == HeroIcons.chatBubbleOvalLeft
                   ? Obx(
-                      () => _TopActionIcon(
-                        icon: action.icon,
-                        showDot: chatUnreadController.unreadCount.value > 0,
-                        onPressed: () {
-                          Get.to<void>(() => const MessagesScreen());
-                        },
-                      ),
+                      () {
+                        final flashCtrl = FlashController.ensure();
+                        // Touch RxList so Obx rebuilds when flashes change.
+                        final _ = flashCtrl.buckets.length;
+                        final hasFlash = flashCtrl.hasAnyUnseenPeers;
+                        final hasChat =
+                            chatUnreadController.unreadCount.value > 0;
+                        return _TopActionIcon(
+                          icon: action.icon,
+                          showDot: hasChat || hasFlash,
+                          glowing: hasFlash,
+                          onPressed: () {
+                            Get.to<void>(() => const MessagesScreen());
+                          },
+                        );
+                      },
                     )
                   : _TopActionIcon(
                       icon: action.icon,
@@ -650,38 +614,49 @@ class _TopActionIcon extends StatelessWidget {
     required this.icon,
     required this.showDot,
     required this.onPressed,
+    this.glowing = false,
   });
 
   final Object icon;
   final bool showDot;
+  final bool glowing;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
+    final button = Material(
+      color: Colors.transparent,
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onPressed,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Center(
+            child: AppHeroIconData(
+              icon,
+              size: 20,
+              color: AppColors.text,
+            ),
+          ),
+        ),
+      ),
+    );
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Material(
-            color: AppColors.surface.withValues(alpha: 0.94),
-            shape: const CircleBorder(),
-            child: InkWell(
-              onTap: onPressed,
-              customBorder: const CircleBorder(),
-              child: SizedBox(
-                width: 40,
-                height: 40,
-                child: Center(
-                  child: AppHeroIconData(
-                    icon,
-                    size: 20,
-                    color: AppColors.text,
-                  ),
-                ),
-              ),
+          if (glowing)
+            _ChatFlashGlow(child: button)
+          else
+            Material(
+              color: AppColors.surface.withValues(alpha: 0.94),
+              shape: const CircleBorder(),
+              child: button,
             ),
-          ),
           if (showDot)
             Positioned(
               right: 1,
@@ -698,6 +673,66 @@ class _TopActionIcon extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Soft pulse around the chat icon when unseen Flashes / Bites await.
+class _ChatFlashGlow extends StatefulWidget {
+  const _ChatFlashGlow({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_ChatFlashGlow> createState() => _ChatFlashGlowState();
+}
+
+class _ChatFlashGlowState extends State<_ChatFlashGlow>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _pulse,
+      builder: (context, child) {
+        final t = _pulse.value;
+        return Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppColors.surface.withValues(alpha: 0.94),
+            border: Border.all(
+              color: Color.lerp(
+                    AppColors.primary.withValues(alpha: 0.35),
+                    AppColors.primary,
+                    t,
+                  ) ??
+                  AppColors.primary,
+              width: 1.6,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.22 + t * 0.35),
+                blurRadius: 10 + t * 12,
+                spreadRadius: t * 1.5,
+              ),
+            ],
+          ),
+          child: child,
+        );
+      },
+      child: widget.child,
     );
   }
 }

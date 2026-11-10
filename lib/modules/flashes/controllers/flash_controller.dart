@@ -236,6 +236,10 @@ class FlashController extends GetxController {
     return false;
   }
 
+  /// Any Style Flashes or Bite flashes waiting — drives chat-icon glow.
+  bool get hasAnyUnseenPeers =>
+      hasUnseenPeers(FlashKind.outfit) || hasUnseenPeers(FlashKind.food);
+
   int mineCount(FlashKind kind) {
     for (final bucket in buckets) {
       if (!bucket.isMine) continue;
@@ -244,8 +248,8 @@ class FlashController extends GetxController {
     return 0;
   }
 
-  /// Others only (Instants stack). Your flashes stay in Yours / archive.
-  /// If nobody has unseen flashes → opens camera.
+  /// Followings only, ordered by who flashed first. Empty → camera.
+  /// Own flashes are via [openMineViewer] / Yours inside Flashes.
   Future<void> openCombined({FlashKind kind = FlashKind.outfit}) async {
     final playlist = peersPlaylist(kind);
     if (playlist.isEmpty) {
@@ -257,12 +261,13 @@ class FlashController extends GetxController {
         items: playlist,
         kind: kind,
         openCameraWhenDone: true,
+        showYoursAction: true,
       ),
     );
     await load();
   }
 
-  /// Your flashes only — same mid-screen viewer, with delete.
+  /// Owner flashes — opened from Yours inside Flashes / camera.
   Future<void> openMineViewer({FlashKind kind = FlashKind.outfit}) async {
     final playlist = minePlaylist(kind);
     if (playlist.isEmpty) {
@@ -274,6 +279,7 @@ class FlashController extends GetxController {
         items: playlist,
         kind: kind,
         openCameraWhenDone: false,
+        showYoursAction: false,
       ),
     );
     await load();

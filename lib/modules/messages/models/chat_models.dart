@@ -58,6 +58,8 @@ class ChatUserModel {
     required this.imageUrl,
     required this.isOnline,
     required this.isVerifiedBadge,
+    this.isOfficialAccount = false,
+    this.showProfile = true,
   });
 
   final int id;
@@ -66,6 +68,8 @@ class ChatUserModel {
   final String imageUrl;
   final bool isOnline;
   final bool isVerifiedBadge;
+  final bool isOfficialAccount;
+  final bool showProfile;
 
   String get displayName {
     if (name.trim().isNotEmpty) {
@@ -77,6 +81,8 @@ class ChatUserModel {
     return 'User';
   }
 
+  bool get canOpenProfile => showProfile && !isOfficialAccount;
+
   ChatUserModel copyWith({bool? isOnline}) {
     return ChatUserModel(
       id: id,
@@ -85,12 +91,22 @@ class ChatUserModel {
       imageUrl: imageUrl,
       isOnline: isOnline ?? this.isOnline,
       isVerifiedBadge: isVerifiedBadge,
+      isOfficialAccount: isOfficialAccount,
+      showProfile: showProfile,
     );
   }
 
   factory ChatUserModel.fromJson(Map<String, dynamic> json) {
     final profile =
         (json['profile'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    final isOfficial = _asBool(
+      json['is_official_account'] ??
+          json['is_official'] ??
+          profile['is_official_account'],
+    );
+    final showProfileRaw = json.containsKey('show_profile')
+        ? _asBool(json['show_profile'])
+        : !isOfficial;
 
     return ChatUserModel(
       id: _asInt(json['id']),
@@ -106,19 +122,25 @@ class ChatUserModel {
         profile['display_name'],
         json['username'],
       ),
-      imageUrl: _firstText(
-        json['image'],
-        json['image_url'],
-        json['avatar_url'],
-        profile['avatar_url'],
-      ),
-      isOnline: _asBool(
-        json['is_online'] ?? json['online'] ?? profile['is_online'],
-      ),
+      imageUrl: isOfficial
+          ? ''
+          : _firstText(
+              json['image'],
+              json['image_url'],
+              json['avatar_url'],
+              profile['avatar_url'],
+            ),
+      isOnline: isOfficial
+          ? false
+          : _asBool(
+              json['is_online'] ?? json['online'] ?? profile['is_online'],
+            ),
       isVerifiedBadge: VerifiedBadgeCache.resolve(
         _firstText(json['username'], json['handle'], profile['username']),
         parseVerifiedFlag(json) || parseVerifiedFlag(profile),
       ),
+      isOfficialAccount: isOfficial,
+      showProfile: showProfileRaw && !isOfficial,
     );
   }
 }
@@ -452,15 +474,28 @@ class ChatMessageModel {
   final List<ChatMessageReactionGroup> reactions;
   final ChatReplyPreview? replyTo;
 
+  bool get isFile =>
+      messageType.trim().toLowerCase() == 'file' ||
+      _looksLikeDocumentUrl(mediaUrl);
+
   bool get hasMedia =>
-      mediaUrl.trim().isNotEmpty ||
-      thumbnailUrl.trim().isNotEmpty ||
-      messageType.trim().toLowerCase() == 'image' ||
-      messageType.trim().toLowerCase() == 'video';
+      !isFile &&
+      (mediaUrl.trim().isNotEmpty ||
+          thumbnailUrl.trim().isNotEmpty ||
+          messageType.trim().toLowerCase() == 'image' ||
+          messageType.trim().toLowerCase() == 'video');
 
   bool get isVideo =>
       messageType.trim().toLowerCase() == 'video' ||
       _looksLikeVideoUrl(mediaUrl);
+
+  static bool _looksLikeDocumentUrl(String url) {
+    final lower = url.trim().toLowerCase();
+    return lower.endsWith('.pdf') ||
+        lower.endsWith('.doc') ||
+        lower.endsWith('.docx') ||
+        lower.contains('/invoices/');
+  }
 
   static bool _looksLikeVideoUrl(String url) {
     final lower = url.trim().toLowerCase();
@@ -553,12 +588,18 @@ class ChatMessageModel {
       timeLabel: _messageTimeLabel(createdAt),
       status: _firstText(json['status'], json['delivery_status']),
       isSeen: _asBool(json['is_seen'] ?? json['seen']),
-      messageType: _firstText(
-        json['message_type'],
-        json['type'],
-        primaryAttachment?['media_type'],
-        primaryAttachment == null ? 'text' : 'image',
-      ),
+      messageType: () {
+        final attachmentType = _firstText(primaryAttachment?['media_type']);
+        if (attachmentType.toLowerCase() == 'file') {
+          return 'file';
+        }
+        return _firstText(
+          json['message_type'],
+          json['type'],
+          attachmentType,
+          primaryAttachment == null ? 'text' : 'image',
+        );
+      }(),
       mediaUrl: _firstText(
         json['media_url'],
         json['file_url'],

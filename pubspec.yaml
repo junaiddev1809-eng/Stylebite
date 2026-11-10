@@ -2,7 +2,7 @@ name: stylebite
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.0.19+66
+version: 1.0.19+67
 
 environment:
   sdk: ^3.11.1
@@ -49,6 +49,7 @@ dependencies:
   webview_flutter: ^4.10.0
   camera: ^0.12.1
   gal: ^2.3.3
+  pro_video_editor: ^2.51.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -66,4 +67,5 @@ flutter:
   assets:
     - assets/images/
     - assets/svg/
+    - assets/luts/
 

@@ -6,11 +6,47 @@ import '../../../core/theme/app_fonts.dart';
 import '../controllers/flash_controller.dart';
 import '../models/flash_model.dart';
 
-/// Instants-style entry: "+ Flashes" for others; separate "Yours" for mine.
+/// Flashes + Bites side by side on the chat screen.
+class FlashTraysBar extends StatelessWidget {
+  const FlashTraysBar({
+    super.key,
+    this.padding = const EdgeInsets.only(bottom: 12),
+    this.gap = 10,
+  });
+
+  final EdgeInsetsGeometry padding;
+  final double gap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: padding,
+      child: Row(
+        children: [
+          const FlashTray(kind: FlashKind.outfit, chipOnly: true),
+          SizedBox(width: gap),
+          const FlashTray(kind: FlashKind.food, chipOnly: true),
+          const Spacer(),
+        ],
+      ),
+    );
+  }
+}
+
+/// Flashes / Bites entry — used on the chat screen (Instants-style).
 class FlashTray extends StatelessWidget {
-  const FlashTray({super.key, this.kind = FlashKind.outfit});
+  const FlashTray({
+    super.key,
+    this.kind = FlashKind.outfit,
+    this.padding = EdgeInsets.zero,
+    this.chipOnly = false,
+  });
 
   final FlashKind kind;
+  final EdgeInsetsGeometry padding;
+
+  /// When true, only the glowing chip (for side-by-side bars).
+  final bool chipOnly;
 
   bool get _isFood => kind == FlashKind.food;
 
@@ -19,28 +55,26 @@ class FlashTray extends StatelessWidget {
     final controller = FlashController.ensure();
     return Obx(() {
       final hasPeers = controller.hasUnseenPeers(kind);
-      final mineCount = controller.mineCount(kind);
       final title = flashPluralLabel(kind);
       final accent = _isFood ? const Color(0xFF1F8A4C) : AppColors.primary;
 
+      final chip = _GlowEntry(
+        label: title,
+        accent: accent,
+        glowing: hasPeers,
+        onTap: () => controller.openCombined(kind: kind),
+        onLongPress: () => controller.openMineArchive(kind: kind),
+      );
+
+      if (chipOnly) {
+        return Padding(padding: padding, child: chip);
+      }
+
       return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+        padding: padding,
         child: Row(
           children: [
-            _GlowEntry(
-              label: title,
-              accent: accent,
-              glowing: hasPeers,
-              onTap: () => controller.openCombined(kind: kind),
-              onLongPress: () => controller.openMineArchive(kind: kind),
-            ),
-            const SizedBox(width: 10),
-            _YoursButton(
-              count: mineCount,
-              accent: accent,
-              onView: () => controller.openMineViewer(kind: kind),
-              onManage: () => controller.openMineArchive(kind: kind),
-            ),
+            chip,
             const Spacer(),
             if (hasPeers)
               Text(
@@ -55,61 +89,6 @@ class FlashTray extends StatelessWidget {
         ),
       );
     });
-  }
-}
-
-class _YoursButton extends StatelessWidget {
-  const _YoursButton({
-    required this.count,
-    required this.accent,
-    required this.onView,
-    required this.onManage,
-  });
-
-  final int count;
-  final Color accent;
-  final VoidCallback onView;
-  final VoidCallback onManage;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: count > 0 ? onView : onManage,
-        onLongPress: onManage,
-        borderRadius: BorderRadius.circular(999),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
-            color: AppColors.surface,
-            border: Border.all(
-              color: accent.withValues(alpha: count > 0 ? 0.55 : 0.25),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.person_outline_rounded,
-                size: 16,
-                color: accent,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                count > 0 ? 'Yours ($count)' : 'Yours',
-                style: AppFonts.beVietnam(
-                  size: 13,
-                  weight: FontWeight.w800,
-                  color: AppColors.text,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 

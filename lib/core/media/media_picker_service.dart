@@ -4,12 +4,15 @@ import 'dart:typed_data';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mime/mime.dart';
-import 'package:pro_image_editor/pro_image_editor.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'cover_image_crop_screen.dart';
 import 'media_type_resolver.dart';
 import 'picked_media.dart';
+import 'stylebite_carousel_edit_sheet.dart';
+import 'stylebite_carousel_look_screen.dart';
+import 'stylebite_photo_editor.dart';
+import 'stylebite_video_editor.dart';
 
 class MediaPickerService {
   MediaPickerService._();
@@ -18,11 +21,14 @@ class MediaPickerService {
 
   static const int carouselPhotoLimit = 10;
 
-  static Future<PickedMedia?> pickFromCamera() => _pickFromCamera();
+  static Future<PickedMedia?> pickFromCamera({bool storyTools = false}) =>
+      _pickFromCamera(storyTools: storyTools);
 
-  static Future<PickedMedia?> pickFromGallery() => _pickFromGallery();
+  static Future<PickedMedia?> pickFromGallery({bool storyTools = false}) =>
+      _pickFromGallery(storyTools: storyTools);
 
-  /// Camera photo only — no gallery, no editor (Instants / Flashes).
+  /// Camera photo for Instants / Flashes — opens the same VSCO-style editor.
+  /// Cancel in the editor aborts the pick (returns null).
   static Future<PickedMedia?> pickInstantPhoto() async {
     final image = await _picker.pickImage(
       source: ImageSource.camera,
@@ -32,11 +38,24 @@ class MediaPickerService {
     if (image == null) {
       return null;
     }
-    return PickedMedia(file: File(image.path), type: AppMediaType.image);
+    return editImage(File(image.path));
   }
 
-  /// Gallery pick for a post. One photo still opens the editor. Several
-  /// photos become one carousel, capped at [carouselPhotoLimit].
+  /// Opens the StyleBite photo editor on an existing image file.
+  /// Used by flashes after shutter and by gallery/camera picks.
+  static Future<PickedMedia?> editImage(
+    File file, {
+    bool storyTools = false,
+    bool hideFilters = false,
+  }) =>
+      _editImage(
+        file.path,
+        storyTools: storyTools,
+        hideFilters: hideFilters,
+      );
+
+  /// Gallery pick for a post. Every photo opens the editor. Several photos
+  /// become one carousel (each edited in order), capped at [carouselPhotoLimit].
   static Future<PostGalleryPick> pickPostGallery() async {
     final picked = await _picker.pickMultipleMedia(
       limit: carouselPhotoLimit,
@@ -75,20 +94,21 @@ class MediaPickerService {
       );
     }
     if (videos.length == 1) {
-      return PostGalleryPick(media: videos);
-    }
-
-    final limited = images.take(carouselPhotoLimit).toList(growable: false);
-    final trimmed = images.length > carouselPhotoLimit;
-    if (limited.length == 1) {
-      final edited = await _editImage(limited.first.path);
+      final edited = await _editVideo(videos.first.path);
       if (edited == null) {
         return const PostGalleryPick();
       }
       return PostGalleryPick(media: [edited]);
     }
+
+    final limited = images.take(carouselPhotoLimit).toList(growable: false);
+    final trimmed = images.length > carouselPhotoLimit;
+    final edited = await _editImageList(limited);
+    if (edited.isEmpty) {
+      return const PostGalleryPick();
+    }
     return PostGalleryPick(
-      media: limited,
+      media: edited,
       notice: trimmed ? 'A post can include up to 10 photos.' : '',
     );
   }
@@ -158,7 +178,9 @@ class MediaPickerService {
   // Chaining them (try image, fall back to video on cancel) meant closing
   // the image-only gallery immediately reopened it filtered to videos only
   // — pickMedia() opens one unified gallery covering both media types.
-  static Future<PickedMedia?> _pickFromGallery() async {
+  static Future<PickedMedia?> _pickFromGallery({
+    bool storyTools = false,
+  }) async {
     final media = await _picker.pickMedia();
     if (media == null) {
       return null;
@@ -175,34 +197,36 @@ class MediaPickerService {
     final mimeType = lookupMimeType(media.path, headerBytes: headerBytes);
     final isVideo = mimeType?.startsWith('video/') ?? false;
     if (isVideo) {
-      return PickedMedia(file: File(media.path), type: AppMediaType.video);
+      return _editVideo(media.path);
     }
 
-    return _editImage(media.path);
+    return _editImage(
+      media.path,
+      storyTools: storyTools,
+    );
   }
 
   // The camera has no unified photo/video mode, so it still has to launch
   // as either a photo or a video capture — falling back to video only when
   // the photo capture is cancelled.
-  static Future<PickedMedia?> _pickFromCamera() async {
+  static Future<PickedMedia?> _pickFromCamera({
+    bool storyTools = false,
+  }) async {
     final image = await _picker.pickImage(source: ImageSource.camera);
     if (image != null) {
-      return _editImage(image.path);
+      return _editImage(image.path, storyTools: storyTools);
+    }
+
+    if (storyTools) {
+      // Stories keep photo-first; skip video fallback to avoid reel editor.
+      return null;
     }
 
     final video = await _picker.pickVideo(source: ImageSource.camera);
     if (video == null) {
       return null;
     }
-
-    final type = MediaTypeResolver.resolve(
-      video.path,
-      fallback: AppMediaType.video,
-    );
-    return PickedMedia(
-      file: File(video.path),
-      type: type == AppMediaType.unknown ? AppMediaType.video : type,
-    );
+    return _editVideo(video.path);
   }
 
   static Future<List<int>?> _readHeaderBytes(String path) async {
@@ -218,15 +242,57 @@ class MediaPickerService {
     }
   }
 
-  static Future<PickedMedia?> _editImage(String path) async {
-    final Uint8List? editedBytes = await Get.to(
-      () => ProImageEditor.file(
-        File(path),
-        callbacks: ProImageEditorCallbacks(
-          onImageEditingComplete: (bytes) async {
-            Get.back(result: bytes);
-          },
-        ),
+  /// Edits each carousel photo in order. Cancel on a slide keeps that
+  /// slide's original so the rest of the carousel is not lost. Cancel on
+  /// the only photo (or abort before any Done) yields an empty list when
+  /// every slide was cancelled with no prior keep — for a single photo,
+  /// cancel still returns empty (abort pick).
+  static Future<List<PickedMedia>> _editImageList(
+    List<PickedMedia> images,
+  ) async {
+    if (images.isEmpty) {
+      return const [];
+    }
+    if (images.length == 1) {
+      final edited = await _editImage(images.first.path);
+      return edited == null ? const [] : [edited];
+    }
+
+    final choice = await showStyleBiteCarouselEditSheet(
+      slideCount: images.length,
+    );
+    if (choice == null) {
+      return const [];
+    }
+    if (choice == StyleBiteCarouselEditChoice.skipEditing) {
+      return images;
+    }
+    if (choice == StyleBiteCarouselEditChoice.applyLookToAll) {
+      final baked = await Get.to<List<PickedMedia>>(
+        () => StyleBiteCarouselLookScreen(images: images),
+      );
+      return baked ?? const [];
+    }
+
+    final out = <PickedMedia>[];
+    for (final image in images) {
+      final edited = await _editImage(image.path);
+      // Keep original if the user backs out of that slide's editor.
+      out.add(edited ?? image);
+    }
+    return out;
+  }
+
+  static Future<PickedMedia?> _editImage(
+    String path, {
+    bool storyTools = false,
+    bool hideFilters = false,
+  }) async {
+    final Uint8List? editedBytes = await Get.to<Uint8List>(
+      () => StyleBitePhotoEditor(
+        file: File(path),
+        storyTools: storyTools,
+        hideFilters: hideFilters,
       ),
     );
 
@@ -235,9 +301,25 @@ class MediaPickerService {
     }
 
     final tempDir = await getTemporaryDirectory();
-    final editedFile = File('${tempDir.path}/edited_${DateTime.now().millisecondsSinceEpoch}.jpg');
+    final editedFile = File(
+      '${tempDir.path}/edited_${DateTime.now().millisecondsSinceEpoch}.jpg',
+    );
     await editedFile.writeAsBytes(editedBytes);
 
     return PickedMedia(file: editedFile, type: AppMediaType.image);
+  }
+
+  /// Opens the VSCO-style video editor. Cancel → null. Export failure still
+  /// returns the original file so reel uploads never fail open.
+  static Future<PickedMedia?> _editVideo(String path) async {
+    final original = PickedMedia(file: File(path), type: AppMediaType.video);
+    try {
+      final result = await Get.to<PickedMedia?>(
+        () => StyleBiteVideoEditor(file: File(path)),
+      );
+      return result;
+    } catch (_) {
+      return original;
+    }
   }
 }

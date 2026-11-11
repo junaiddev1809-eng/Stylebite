@@ -799,6 +799,9 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
   /// The selected number, the 1–5 average, and the contest score move on
   /// tap. The card stays where it is until the server contest comes back.
   void _onRatingSelected(ContestSubmissionModel submission, int value) {
+    if (submission.isMine) {
+      return;
+    }
     final previous = _viewerRatingFor(submission);
     if (previous == value) {
       return;
@@ -813,15 +816,25 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
     final likes = store.hasLike(postId)
         ? (store.stateFor(postId)?.likeCount ?? submission.likeCount)
         : submission.likeCount;
+    // Same account on another device already counted — do not +1 again.
+    final alreadyVoted = previous >= 1 ||
+        submission.viewerHasVoted ||
+        submission.viewerScore != null ||
+        (submission.postId > 0 &&
+            (store.viewerRatingFor(submission.postId.toString()) ?? 0) >= 1);
     final nextAverage = nextRatingAverage(
       average: average,
       count: count,
       previous: previous,
       next: value,
+      alreadyVoted: alreadyVoted,
     );
-    final nextCount = previous <= 0
-        ? (count <= 0 && average > 0 ? 2 : count + 1)
-        : (count <= 0 ? 1 : count);
+    final nextCount = nextRatingCount(
+      count: count,
+      average: average,
+      previous: previous,
+      alreadyVoted: alreadyVoted,
+    );
     _ratingSnapshots.putIfAbsent(
       submission.id,
       () => _ContestRatingSnapshot(
@@ -881,6 +894,26 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
       if (ok) {
         _committedRatings[submissionId] = value;
         _ratingSnapshots.remove(submissionId);
+        // Prefer server totals so a cross-device re-rate cannot leave a +1
+        // optimistic headcount on screen.
+        final contest = _controller.selectedContestDetail.value;
+        ContestSubmissionModel? match;
+        for (final item
+            in contest?.submissions ?? const <ContestSubmissionModel>[]) {
+          if (item.id == submissionId) {
+            match = item;
+            break;
+          }
+        }
+        if (match != null) {
+          _viewerRatingOverrides[submissionId] = match.viewerScore ?? value;
+          _voteCountOverrides[submissionId] = match.totalVotes;
+          _ratingAverageOverrides[submissionId] = match.ratingAverage;
+          _totalScoreOverrides[submissionId] = contestTotalScore(
+            averageRating: match.ratingAverage,
+            totalLikes: match.likeCount,
+          );
+        }
       } else {
         _restoreRatingSnapshot(submissionId);
       }
@@ -1026,7 +1059,7 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
       contestId: contest.id,
       contestTitle: contest.title,
       contestStatus: contest.status,
-      ratingEnabled: _contestVotingOpen(contest),
+      ratingEnabled: _contestVotingOpen(contest) && !submission.isMine,
     );
   }
 

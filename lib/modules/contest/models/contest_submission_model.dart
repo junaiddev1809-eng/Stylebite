@@ -19,6 +19,7 @@ class ContestSubmissionModel {
     required this.isMine,
     required this.submittedAt,
     this.viewerScore,
+    this.viewerHasVoted = false,
     this.rankPosition,
     this.likeCount = 0,
     this.commentCount = 0,
@@ -48,6 +49,9 @@ class ContestSubmissionModel {
 
   /// The current viewer's own rating (1–5), null when they haven't voted.
   final int? viewerScore;
+
+  /// True when this account already has a contest vote (even if score is missing).
+  final bool viewerHasVoted;
   final int? rankPosition;
   final int likeCount;
   final int commentCount;
@@ -102,6 +106,14 @@ class ContestSubmissionModel {
             json['my_score'] ??
             json['viewer_rating'],
       ),
+      viewerHasVoted: _readBool(json['viewer_has_voted']) ||
+          _readViewerScore(
+                json['viewer_score'] ??
+                    json['my_vote'] ??
+                    json['my_score'] ??
+                    json['viewer_rating'],
+              ) !=
+              null,
       rankPosition: _readNullableRank(json['rank_position'] ?? json['rank']),
       likeCount: _readInt(json['like_count'] ?? post['like_count']),
       commentCount: _readInt(json['comment_count'] ?? post['comment_count']),

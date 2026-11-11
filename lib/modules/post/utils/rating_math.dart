@@ -4,14 +4,19 @@ import '../../home/models/home_post_model.dart';
 ///
 /// When the server sent an average but no count, treat that average as one
 /// prior vote so the badge still moves on tap until the real count arrives.
+///
+/// [alreadyVoted] covers cross-device cases where this account already has a
+/// vote but this device has not loaded `viewer_score` yet — do not invent a
+/// second voter in the average.
 double nextRatingAverage({
   required double average,
   required int count,
   required int previous,
   required int next,
+  bool alreadyVoted = false,
 }) {
   final nextVote = next.clamp(1, 5);
-  final hadPrevious = previous >= 1 && previous <= 5;
+  final hadPrevious = (previous >= 1 && previous <= 5) || alreadyVoted;
   final safeAverage = average.isFinite && average > 0 ? average : 0.0;
   var safeCount = count < 0 ? 0 : count;
   if (safeCount == 0 && safeAverage > 0) {
@@ -23,8 +28,32 @@ double nextRatingAverage({
     return _clampRating(raw, fallback: nextVote.toDouble());
   }
   final base = safeCount < 1 ? 1 : safeCount;
-  final raw = ((safeAverage * base) - previous + nextVote) / base;
+  final previousVote = previous >= 1 && previous <= 5
+      ? previous
+      : safeAverage.round().clamp(1, 5);
+  final raw = ((safeAverage * base) - previousVote + nextVote) / base;
   return _clampRating(raw, fallback: nextVote.toDouble());
+}
+
+/// Vote headcount after one viewer changes their rating.
+///
+/// Never bumps the count when this account already voted (including votes
+/// cast on another device).
+int nextRatingCount({
+  required int count,
+  required double average,
+  required int previous,
+  bool alreadyVoted = false,
+}) {
+  final hadPrevious = (previous >= 1 && previous <= 5) || alreadyVoted;
+  var safeCount = count < 0 ? 0 : count;
+  if (safeCount == 0 && average.isFinite && average > 0) {
+    safeCount = 1;
+  }
+  if (!hadPrevious) {
+    return safeCount + 1;
+  }
+  return safeCount < 1 ? 1 : safeCount;
 }
 
 double _clampRating(double raw, {required double fallback}) {
@@ -58,16 +87,22 @@ HomePostModel postWithRating({
 }) {
   final selected = rating.clamp(1, 5);
   final previous = post.defaultSelectedRate;
+  final alreadyVoted = previous >= 1 && previous <= 5;
   final average = ratingAverage ??
       nextRatingAverage(
         average: post.displayRating,
         count: post.ratingCount,
         previous: previous,
         next: selected,
+        alreadyVoted: alreadyVoted,
       );
-  final hadPrevious = previous >= 1 && previous <= 5;
   final count = ratingCount ??
-      (hadPrevious ? post.ratingCount : post.ratingCount + 1);
+      nextRatingCount(
+        count: post.ratingCount,
+        average: post.displayRating,
+        previous: previous,
+        alreadyVoted: alreadyVoted,
+      );
   return post.copyWith(
     displayRating: average,
     defaultSelectedRate: selected,

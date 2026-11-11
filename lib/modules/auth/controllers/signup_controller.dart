@@ -31,20 +31,85 @@ class SignUpController extends GetxController {
   /// `true` = available (green), `false` = taken (red), `null` = unknown/idle.
   final emailAvailable = RxnBool();
   final isCheckingEmail = false.obs;
+  final usernameAvailable = RxnBool();
+  final isCheckingUsername = false.obs;
 
   SignUpModel? signUpData;
   Timer? _emailCheckTimer;
   int _emailCheckToken = 0;
+  Timer? _usernameCheckTimer;
+  int _usernameCheckToken = 0;
 
   @override
   void onInit() {
     super.onInit();
-    usernameController.addListener(() {
-      if (usernameError.value != null) {
-        usernameError.value = null;
-        formKey.currentState?.validate();
-      }
+  }
+
+  void onUsernameChanged(String value) {
+    usernameError.value = null;
+    usernameAvailable.value = null;
+    _usernameCheckTimer?.cancel();
+
+    final username = value.trim().toLowerCase();
+    if (username.isEmpty) {
+      isCheckingUsername.value = false;
+      return;
+    }
+    if (username.length < 3) {
+      isCheckingUsername.value = false;
+      usernameAvailable.value = false;
+      usernameError.value = 'Username must be at least 3 characters.';
+      formKey.currentState?.validate();
+      return;
+    }
+    if (!RegExp(r'^[a-z0-9_]+$').hasMatch(username)) {
+      isCheckingUsername.value = false;
+      usernameAvailable.value = false;
+      usernameError.value =
+          'Usernames may only contain lowercase letters, numbers, and underscores.';
+      formKey.currentState?.validate();
+      return;
+    }
+
+    final token = ++_usernameCheckToken;
+    isCheckingUsername.value = true;
+    _usernameCheckTimer = Timer(const Duration(milliseconds: 450), () {
+      _checkUsernameAvailability(username, token);
     });
+  }
+
+  Future<void> _checkUsernameAvailability(String username, int token) async {
+    try {
+      final response = await ApiHelper.postRequest('auth/check-username', {
+        'username': username,
+      });
+      if (token != _usernameCheckToken) return;
+      if (response == null) {
+        usernameAvailable.value = null;
+        return;
+      }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (data['status_code'] != 1) {
+        usernameAvailable.value = null;
+        return;
+      }
+
+      final available = data['available'] == true;
+      usernameAvailable.value = available;
+      usernameError.value = available
+          ? null
+          : (data['message']?.toString() ?? 'Name is taken.');
+      formKey.currentState?.validate();
+    } catch (_) {
+      if (token == _usernameCheckToken) {
+        usernameAvailable.value = null;
+      }
+    } finally {
+      if (token == _usernameCheckToken) {
+        isCheckingUsername.value = false;
+      }
+    }
   }
 
   void onEmailChanged(String value) {
@@ -135,6 +200,12 @@ class SignUpController extends GetxController {
         return;
       }
 
+      if (usernameAvailable.value == false) {
+        usernameError.value = usernameError.value ?? 'Name is taken.';
+        formKey.currentState?.validate();
+        return;
+      }
+
       if (emailAvailable.value == false) {
         emailError.value = 'An account already exists with this email.';
         formKey.currentState?.validate();
@@ -142,6 +213,20 @@ class SignUpController extends GetxController {
       }
 
       // If the user tapped Sign Up before the debounce finished, re-check once.
+      final pendingUsername = usernameController.text.trim().toLowerCase();
+      if (usernameAvailable.value == null &&
+          pendingUsername.length >= 3 &&
+          RegExp(r'^[a-z0-9_]+$').hasMatch(pendingUsername)) {
+        isLoading.value = true;
+        await _checkUsernameAvailability(
+          pendingUsername,
+          ++_usernameCheckToken,
+        );
+        if (usernameAvailable.value == false) {
+          return;
+        }
+      }
+
       if (emailAvailable.value == null &&
           AppValidators.signupEmail(emailController.text.trim()) == null) {
         isLoading.value = true;
@@ -155,7 +240,6 @@ class SignUpController extends GetxController {
       }
 
       isLoading.value = true;
-      usernameError.value = null;
 
       final metadata = await AppDeviceService.getLoginMetadata();
       signUpData = SignUpModel(
@@ -202,7 +286,8 @@ class SignUpController extends GetxController {
         if (responseData['errors'] != null) {
           final errors = responseData['errors'] as Map<String, dynamic>;
           if (errors['username'] != null) {
-            usernameError.value = errors['username'][0];
+            usernameError.value = errors['username'][0].toString();
+            usernameAvailable.value = false;
           }
           if (errors['email'] != null) {
             emailError.value = errors['email'][0].toString();
@@ -239,6 +324,7 @@ class SignUpController extends GetxController {
   @override
   void onClose() {
     _emailCheckTimer?.cancel();
+    _usernameCheckTimer?.cancel();
     nameController.dispose();
     usernameController.dispose();
     emailController.dispose();

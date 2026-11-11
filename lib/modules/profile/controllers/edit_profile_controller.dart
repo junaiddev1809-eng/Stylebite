@@ -101,7 +101,9 @@ class EditProfileController extends GetxController {
       return;
     }
     if (trimmedUsername != _initialUsername && !isUsernameAvailable.value) {
-      usernameMessage.value = 'Please choose an available username.';
+      usernameMessage.value = usernameMessage.value.trim().isNotEmpty
+          ? usernameMessage.value
+          : 'Name is taken.';
       return;
     }
 

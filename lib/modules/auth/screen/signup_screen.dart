@@ -110,21 +110,37 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   prefixIcon: Icons.person_outline,
                 ),
                 const SizedBox(height: 14),
-                AppTextField(
-                  controller: _controller.usernameController,
-                  label: 'Username',
-                  hintText: 'Choose a unique username',
-                  textInputAction: TextInputAction.next,
-                  errorMaxLines: 2,
-                  validator: (value) {
-                    final requiredError =
-                    AppValidators.requiredField(value, fieldName: 'Username');
-                    if (requiredError != null) return requiredError;
-
-                    return _controller.usernameError.value;
-                  },
-                  prefixIcon: Icons.alternate_email,
-                ),
+                Obx(() {
+                  final available = _controller.usernameAvailable.value;
+                  final ok = available == true;
+                  final checking = _controller.isCheckingUsername.value;
+                  return AppTextField(
+                    controller: _controller.usernameController,
+                    label: 'Username',
+                    hintText: 'Choose a unique username',
+                    textInputAction: TextInputAction.next,
+                    errorMaxLines: 2,
+                    onChanged: _controller.onUsernameChanged,
+                    borderColor: ok ? Colors.green : null,
+                    helperText: checking
+                        ? 'Checking…'
+                        : (ok ? 'Username is available.' : null),
+                    helperColor: ok ? Colors.green.shade700 : null,
+                    validator: (value) {
+                      final requiredError = AppValidators.requiredField(
+                        value,
+                        fieldName: 'Username',
+                      );
+                      if (requiredError != null) return requiredError;
+                      if (_controller.usernameAvailable.value == false) {
+                        return _controller.usernameError.value ??
+                            'Name is taken.';
+                      }
+                      return _controller.usernameError.value;
+                    },
+                    prefixIcon: Icons.alternate_email,
+                  );
+                }),
                 const SizedBox(height: 14),
                 Obx(() {
                   final available = _controller.emailAvailable.value;

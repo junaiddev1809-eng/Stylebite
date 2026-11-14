@@ -11,7 +11,6 @@ class DeleteAccountScreen extends GetView<DeleteAccountController> {
 
   @override
   Widget build(BuildContext context) {
-    // Inject the controller
     Get.put(DeleteAccountController());
 
     return Scaffold(
@@ -25,9 +24,7 @@ class DeleteAccountScreen extends GetView<DeleteAccountController> {
               decoration: BoxDecoration(
                 color: AppColors.background.withValues(alpha: 0.88),
                 border: Border(
-                  bottom: BorderSide(
-                    color: AppColors.divider,
-                  ),
+                  bottom: BorderSide(color: AppColors.divider),
                 ),
               ),
               child: Row(
@@ -63,122 +60,55 @@ class DeleteAccountScreen extends GetView<DeleteAccountController> {
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-                child: Form(
-                  key: controller.formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const _DeleteAccountIntro(),
-                      const SizedBox(height: 24),
-                      Text(
-                        'Reason for deletion',
-                        style: AppFonts.plusJakarta(
-                          size: 16,
-                          weight: FontWeight.w700,
-                          color: AppColors.text,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Obx(() => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            decoration: BoxDecoration(color: AppColors.surface,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: const Color(0xFFF2DDD1),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.04),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButtonFormField<String>(
-                                value: controller.selectedReason.value.isEmpty
-                                    ? null
-                                    : controller.selectedReason.value,
-                                hint: Text(
-                                  'Select a reason',
-                                  style: AppFonts.beVietnam(
-                                    size: 14,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                icon: const Icon(
-                                  Icons.keyboard_arrow_down_rounded,
-                                  color: AppColors.primary,
-                                ),
-                                decoration: const InputDecoration(
-                                  border: InputBorder.none,
-                                  enabledBorder: InputBorder.none,
-                                  focusedBorder: InputBorder.none,
-                                ),
-                                items: controller.reasons.map((reason) {
-                                  return DropdownMenuItem(
-                                    value: reason,
-                                    child: Text(
-                                      reason,
-                                      style: AppFonts.beVietnam(
-                                        size: 14,
-                                        weight: FontWeight.w500,
-                                        color: AppColors.text,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                                onChanged: controller.setSelectedReason,
-                                validator: (value) => value == null || value.isEmpty
-                                    ? 'Please select a reason'
-                                    : null,
-                              ),
-                            ),
-                          )),
-                      const SizedBox(height: 24),
-                      const _DeleteAccountCard(),
-                    ],
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    _DeleteAccountIntro(),
+                    SizedBox(height: 24),
+                    _DeleteAccountCard(),
+                  ],
                 ),
               ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: Obx(() => SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: controller.isLoading.value
-                          ? null
-                          : controller.submitDeleteRequest,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor:
-                            AppColors.primary.withValues(alpha: 0.6),
-                        minimumSize: const Size.fromHeight(52),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        elevation: 0,
+              child: Obx(
+                () => SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: controller.isLoading.value
+                        ? null
+                        : controller.openDeleteAccountWebsite,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor:
+                          AppColors.primary.withValues(alpha: 0.6),
+                      minimumSize: const Size.fromHeight(52),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
                       ),
-                      child: controller.isLoading.value
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Text(
-                              'Delete My Account',
-                              style: AppFonts.beVietnam(
-                                size: 14,
-                                weight: FontWeight.w700,
-                              ),
-                            ),
+                      elevation: 0,
                     ),
-                  )),
+                    child: controller.isLoading.value
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            'Continue on StyleBite website',
+                            style: AppFonts.beVietnam(
+                              size: 14,
+                              weight: FontWeight.w700,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -227,7 +157,7 @@ class _DeleteAccountIntro extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Delete your account',
+            'Delete your account on the web',
             textAlign: TextAlign.center,
             style: AppFonts.plusJakarta(
               size: 20,
@@ -237,7 +167,7 @@ class _DeleteAccountIntro extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'We’re sorry to see you go. Please review what happens when you delete your StyleBite account.',
+            'To permanently delete your StyleBite account, continue to the StyleBite Account Center website. You will confirm your email, username, and password there.',
             textAlign: TextAlign.center,
             style: AppFonts.beVietnam(
               size: 14,
@@ -292,7 +222,7 @@ class _DeleteAccountCard extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Before you delete your account',
+                  'Before you continue',
                   style: AppFonts.plusJakarta(
                     size: 16,
                     weight: FontWeight.w800,
@@ -305,19 +235,18 @@ class _DeleteAccountCard extends StatelessWidget {
           const SizedBox(height: 16),
           const _DeletePoint(
             text:
-                'Your account and associated profile information will be permanently deleted.',
+                'Deletion is completed on stylebiteapp.com/delete-account.html.',
           ),
           const _DeletePoint(
             text:
-                'Your posts, comments, and other account-related data may no longer be available.',
+                'Your profile, posts, messages, and related data will be permanently removed.',
+          ),
+          const _DeletePoint(
+            text: 'This action cannot be undone after you confirm on the website.',
           ),
           const _DeletePoint(
             text:
-                'This action cannot be undone once the account deletion is completed.',
-          ),
-          const _DeletePoint(
-            text:
-                'If you change your mind, you may need to create a new account.',
+                'You will be signed out of this device when you open the deletion page.',
           ),
         ],
       ),
@@ -341,7 +270,8 @@ class _DeletePoint extends StatelessWidget {
             margin: const EdgeInsets.only(top: 7),
             width: 6,
             height: 6,
-            decoration: BoxDecoration(color: AppColors.secondary,
+            decoration: BoxDecoration(
+              color: AppColors.secondary,
               shape: BoxShape.circle,
             ),
           ),

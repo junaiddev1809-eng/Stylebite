@@ -440,66 +440,80 @@ class _FeedPostCardState extends State<FeedPostCard> {
                                   ),
                                 ],
                               ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: List.generate(5, (index) {
-                                  final value = index + 1;
-                                  final isSelected =
-                                      widget.selectedRating == value;
-
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 3,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Rate the style',
+                                    style: AppFonts.beVietnam(
+                                      size: 12,
+                                      weight: FontWeight.w700,
+                                      color: AppColors.text,
                                     ),
-                                    child: GestureDetector(
-                                      onTap: () =>
-                                          widget.onRatingSelected(value),
-                                      child: Container(
-                                        width: 34,
-                                        height: 34,
-                                        alignment: Alignment.center,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: isSelected
-                                              ? AppColors.primary
-                                              : AppColors.chip,
-                                          border: isSelected
-                                              ? null
-                                              : Border.all(
-                                                  color: AppColors.cardBorder,
-                                                ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: isSelected
-                                                  ? const Color.fromRGBO(
-                                                      255,
-                                                      77,
-                                                      109,
-                                                      0.35,
-                                                    )
-                                                  : Colors.black.withValues(
-                                                      alpha: 0.18,
-                                                    ),
-                                              blurRadius: 10,
-                                              offset: const Offset(0, 4),
-                                              spreadRadius: -4,
-                                            ),
-                                          ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: List.generate(5, (index) {
+                                      final value = index + 1;
+                                      final isSelected =
+                                          widget.selectedRating == value;
+
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 3,
                                         ),
-                                        child: Text(
-                                          '$value',
-                                          style: AppFonts.beVietnam(
-                                            size: 13,
-                                            weight: FontWeight.w700,
-                                            color: isSelected
-                                                ? Colors.white
-                                                : AppColors.text,
+                                        child: GestureDetector(
+                                          onTap: () =>
+                                              widget.onRatingSelected(value),
+                                          child: Container(
+                                            width: 34,
+                                            height: 34,
+                                            alignment: Alignment.center,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: isSelected
+                                                  ? AppColors.primary
+                                                  : AppColors.chip,
+                                              border: isSelected
+                                                  ? null
+                                                  : Border.all(
+                                                      color: AppColors.cardBorder,
+                                                    ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: isSelected
+                                                      ? const Color.fromRGBO(
+                                                          255,
+                                                          77,
+                                                          109,
+                                                          0.35,
+                                                        )
+                                                      : Colors.black.withValues(
+                                                          alpha: 0.18,
+                                                        ),
+                                                  blurRadius: 10,
+                                                  offset: const Offset(0, 4),
+                                                  spreadRadius: -4,
+                                                ),
+                                              ],
+                                            ),
+                                            child: Text(
+                                              '$value',
+                                              style: AppFonts.beVietnam(
+                                                size: 13,
+                                                weight: FontWeight.w700,
+                                                color: isSelected
+                                                    ? Colors.white
+                                                    : AppColors.text,
+                                              ),
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ),
-                                  );
-                                }),
+                                      );
+                                    }),
+                                  ),
+                                ],
                               ),
                             ),
                           ),

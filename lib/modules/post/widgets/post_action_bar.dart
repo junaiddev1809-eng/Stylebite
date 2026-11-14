@@ -223,38 +223,50 @@ class PostActionBar extends StatelessWidget {
   }
 
   Widget _ratingSelector() {
+    // Contest voting only — label makes clear this scores fashion/style.
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: List.generate(5, (index) {
-        final value = index + 1;
-        final isSelected = selectedRating == value;
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 1),
-          child: GestureDetector(
-            onTap: () => onRatingSelected!(value),
-            child: Container(
-              width: 26,
-              height: 26,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isSelected ? AppColors.primary : AppColors.chip,
-                border: isSelected
-                    ? null
-                    : Border.all(color: AppColors.cardBorder),
-              ),
-              child: Text(
-                '$value',
-                style: AppFonts.beVietnam(
-                  size: 11,
-                  weight: FontWeight.w700,
-                  color: isSelected ? Colors.white : AppColors.text,
+      children: [
+        Text(
+          'Rate the style',
+          style: AppFonts.beVietnam(
+            size: 11,
+            weight: FontWeight.w700,
+            color: AppColors.text,
+          ),
+        ),
+        const SizedBox(width: 6),
+        ...List.generate(5, (index) {
+          final value = index + 1;
+          final isSelected = selectedRating == value;
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 1),
+            child: GestureDetector(
+              onTap: () => onRatingSelected!(value),
+              child: Container(
+                width: 26,
+                height: 26,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected ? AppColors.primary : AppColors.chip,
+                  border: isSelected
+                      ? null
+                      : Border.all(color: AppColors.cardBorder),
+                ),
+                child: Text(
+                  '$value',
+                  style: AppFonts.beVietnam(
+                    size: 11,
+                    weight: FontWeight.w700,
+                    color: isSelected ? Colors.white : AppColors.text,
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      }),
+          );
+        }),
+      ],
     );
   }
 

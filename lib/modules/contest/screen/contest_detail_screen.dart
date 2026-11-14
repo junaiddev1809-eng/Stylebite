@@ -1205,7 +1205,7 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Rate a post from 1 to 5.\n\nYour place comes from the average of those ratings, plus the likes on the post.\n\nRatings count much more than likes. The highest score wins.\n\nA post needs at least 10 different people to rate it before it can win.',
+                    'Rate the style of each outfit from 1 to 5 — fashion sense, clothing choices, and how the look is put together.\n\nYour place comes from the average of those style ratings, plus the likes on the post.\n\nStyle ratings count much more than likes. The highest score wins.\n\nA post needs at least 10 different people to rate the style before it can win.',
                     style: AppFonts.beVietnam(
                       size: 13,
                       color: AppColors.text,

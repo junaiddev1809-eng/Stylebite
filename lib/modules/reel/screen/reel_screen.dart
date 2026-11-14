@@ -1631,13 +1631,13 @@ class _ReelActions extends StatelessWidget {
               likeCountLabel: live.likes,
             ),
           ),
-          // Rate only while contest voting is open. Ended contests keep the
-          // score badge near the avatar — not a Rate action icon.
+          // Contest style rating only while voting is open. Ended contests
+          // keep the score badge near the avatar — not a rating action icon.
           if (live.ratingEnabled) ...[
             const SizedBox(height: 12),
             _ActionItem(
               icon: HeroIcons.star,
-              label: live.viewerRating?.toString() ?? 'Rate',
+              label: live.viewerRating?.toString() ?? 'Rate style',
               isLoading: controller.isVoteLoading.value,
               onTap: () => _showRatingSheet(context, controller, live),
             ),
@@ -1727,11 +1727,21 @@ class _ReelActions extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'Rate Reel',
+                  'Rate the style',
                   style: AppFonts.plusJakarta(
                     size: 20,
                     weight: FontWeight.w800,
                     color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Score the outfit and fashion styling from 1 to 5.',
+                  textAlign: TextAlign.center,
+                  style: AppFonts.beVietnam(
+                    size: 13,
+                    weight: FontWeight.w500,
+                    color: Colors.white.withValues(alpha: 0.72),
                   ),
                 ),
                 const SizedBox(height: 18),

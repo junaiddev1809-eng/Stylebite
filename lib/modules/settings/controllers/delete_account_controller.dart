@@ -1,50 +1,69 @@
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:stylebite/app/routes/app_routes.dart';
 import 'package:stylebite/core/utils/api_helper.dart';
 import 'package:stylebite/core/utils/app_helper.dart';
-import 'package:stylebite/core/utils/config.dart';
 import 'package:stylebite/core/utils/local_storage.dart';
 import 'package:stylebite/modules/messages/services/chat_presence_service.dart';
 import 'package:stylebite/modules/messages/services/chat_socket_service.dart';
 import 'package:stylebite/modules/post/services/post_interaction_store.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-/// Opens the StyleBite Account Center web page where account deletion
-/// is completed (App Store 5.1.1(v) allows finishing deletion on a website
-/// when the app links directly to that page).
+/// In-app account deletion with a 1-day recovery window.
 class DeleteAccountController extends GetxController {
+  final formKey = GlobalKey<FormState>();
+  final passwordController = TextEditingController();
   final isLoading = false.obs;
+  final acknowledged = false.obs;
 
-  static Uri deleteAccountWebUri({String? email, String? username}) {
-    final base = remoteBaseUrl.replaceAll(RegExp(r'/$'), '');
-    return Uri.parse('$base/delete-account.html').replace(
-      queryParameters: <String, String>{
-        if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
-        if (username != null && username.trim().isNotEmpty)
-          'username': username.trim().replaceFirst(RegExp(r'^@'), ''),
-      },
-    );
-  }
-
-  Future<void> openDeleteAccountWebsite() async {
+  Future<void> scheduleDeletion() async {
     if (isLoading.value) return;
+    if (!formKey.currentState!.validate()) return;
+    if (!acknowledged.value) {
+      errorSnackBar(
+        message: 'Confirm that you understand the 1-day recovery window.',
+      );
+      return;
+    }
+
     isLoading.value = true;
     try {
-      final username = LocalStorage.getUsername();
-      final uri = deleteAccountWebUri(username: username);
-      final opened = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
+      final response = await ApiHelper.postRequestWithAuthorization(
+        'account/delete',
+        body: {
+          'password': passwordController.text,
+        },
       );
-      if (!opened) {
-        errorSnackBar(message: 'Could not open the account deletion page.');
+      if (response == null) return;
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (data['status_code'] == 1) {
+        successSnackBar(
+          message: data['message']?.toString() ??
+              'Account scheduled for deletion. You can recover within 1 day.',
+        );
+        await _signOutLocally();
         return;
       }
-      // After sending the user to the website, clear the local session so a
-      // deleted account cannot keep using a stale token on this device.
-      await _signOutLocally();
+
+      final errors = data['errors'];
+      String? detail;
+      if (errors is Map) {
+        for (final value in errors.values) {
+          if (value is List && value.isNotEmpty) {
+            detail = value.first.toString();
+            break;
+          }
+        }
+      }
+      errorSnackBar(
+        message: detail ??
+            data['message']?.toString() ??
+            'Could not schedule account deletion.',
+      );
     } catch (_) {
-      errorSnackBar(message: 'Could not open the account deletion page.');
+      errorSnackBar(message: 'Could not schedule account deletion.');
     } finally {
       isLoading.value = false;
     }
@@ -69,5 +88,11 @@ class DeleteAccountController extends GetxController {
     await LocalStorage.removeUserId();
     await LocalStorage.removeAvatarUrl();
     Get.offAllNamed(AppRoutes.login);
+  }
+
+  @override
+  void onClose() {
+    passwordController.dispose();
+    super.onClose();
   }
 }

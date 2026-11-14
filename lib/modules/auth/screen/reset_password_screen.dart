@@ -53,10 +53,15 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AuthHeader(
-                  title: 'Reset Password',
-                  subtitle:
-                      'Enter the 6 digit PIN sent to your email and set a new password.',
+                Obx(
+                  () => AuthHeader(
+                    title: _controller.isRecoverFlow
+                        ? 'Recover Account'
+                        : 'Reset Password',
+                    subtitle: _controller.isRecoverFlow
+                        ? 'Enter the 6 digit code and set a new password to restore your account.'
+                        : 'Enter the 6 digit PIN sent to your email and set a new password.',
+                  ),
                 ),
                 const SizedBox(height: 18),
                 Obx(

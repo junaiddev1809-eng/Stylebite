@@ -4,6 +4,7 @@ import '../../modules/auth/screen/account_restricted_screen.dart';
 import '../../modules/auth/screen/forgot_password_screen.dart';
 import '../../modules/auth/screen/login_screen.dart';
 import '../../modules/auth/screen/otp_screen.dart';
+import '../../modules/auth/screen/recover_account_screen.dart';
 import '../../modules/auth/screen/reset_password_screen.dart';
 import '../../modules/auth/screen/signup_screen.dart';
 import '../../modules/create_contest/screen/create_contest_screen.dart';
@@ -72,6 +73,7 @@ class AppPages {
     _slide(AppRoutes.otp, OtpScreen.new),
     _fade(AppRoutes.accountRestricted, AccountRestrictedScreen.new),
     _slide(AppRoutes.forgotPassword, ForgotPasswordScreen.new),
+    _slide(AppRoutes.recoverAccount, RecoverAccountScreen.new),
     _slide(AppRoutes.resetPassword, ResetPasswordScreen.new),
     _fade(AppRoutes.landing, LandingScreen.new),
     _fade(AppRoutes.home, HomeScreen.new),

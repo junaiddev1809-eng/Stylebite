@@ -205,6 +205,15 @@ class LoginController extends GetxController {
     Get.toNamed(AppRoutes.forgotPassword);
   }
 
+  void goToRecoverAccount() {
+    Get.toNamed(
+      AppRoutes.recoverAccount,
+      arguments: {
+        'email': emailController.text.trim(),
+      },
+    );
+  }
+
   Future<void> _ensureGoogleInitialized() async {
     if (_isGoogleInitialized) {
       return;
@@ -287,6 +296,45 @@ class LoginController extends GetxController {
             : 'email_verification',
         'debug_otp': responseData['debug_otp'],
       });
+    } else if (responseData['code'] == 'account_pending_deletion' ||
+        responseData['recoverable'] == true) {
+      await LocalStorage.removeAccessKey();
+      final email = (responseData['email'] ?? loginId)?.toString() ?? '';
+      final recover = await Get.dialog<bool>(
+        AlertDialog(
+          title: const Text('Recover account?'),
+          content: const Text(
+            'This account is scheduled for deletion. You can recover it within 1 day.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Get.back(result: false),
+              child: const Text('Not now'),
+            ),
+            TextButton(
+              onPressed: () => Get.back(result: true),
+              child: const Text('Yes, recover'),
+            ),
+          ],
+        ),
+        barrierDismissible: true,
+      );
+      if (recover == true) {
+        Get.offAllNamed(
+          AppRoutes.recoverAccount,
+          arguments: {'email': email},
+        );
+      } else {
+        Get.offAllNamed(
+          AppRoutes.accountRestricted,
+          arguments: {
+            'code': 'account_pending_deletion',
+            'message': responseData['message']?.toString(),
+            'reason': responseData['reason']?.toString(),
+            'email': email,
+          },
+        );
+      }
     } else if (responseData['code'] == 'account_banned' ||
         responseData['code'] == 'account_suspended' ||
         responseData['code'] == 'account_inactive') {

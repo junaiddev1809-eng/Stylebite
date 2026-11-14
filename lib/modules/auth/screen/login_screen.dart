@@ -81,6 +81,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: const Text('Forgot Password?'),
                   ),
                 ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _controller.goToRecoverAccount,
+                    child: const Text('Recover deleted account'),
+                  ),
+                ),
                 Obx(
                   () => AppPrimaryButton(
                     label: 'Login',

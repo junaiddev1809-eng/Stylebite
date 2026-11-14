@@ -3,7 +3,9 @@ import 'package:get/get.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../../../core/utils/app_back_navigation.dart';
+import '../../../core/utils/app_validators.dart';
 import '../../../core/widgets/app_hero_icon.dart';
+import '../../../core/widgets/app_text_field.dart';
 import '../controllers/delete_account_controller.dart';
 
 class DeleteAccountScreen extends GetView<DeleteAccountController> {
@@ -60,13 +62,44 @@ class DeleteAccountScreen extends GetView<DeleteAccountController> {
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    _DeleteAccountIntro(),
-                    SizedBox(height: 24),
-                    _DeleteAccountCard(),
-                  ],
+                child: Form(
+                  key: controller.formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const _DeleteAccountIntro(),
+                      const SizedBox(height: 24),
+                      const _DeleteAccountCard(),
+                      const SizedBox(height: 20),
+                      AppTextField(
+                        controller: controller.passwordController,
+                        label: 'Password',
+                        hintText: 'Enter your password',
+                        isPassword: true,
+                        textInputAction: TextInputAction.done,
+                        validator: AppValidators.password,
+                        prefixIcon: Icons.lock_outline,
+                      ),
+                      const SizedBox(height: 12),
+                      Obx(
+                        () => CheckboxListTile(
+                          value: controller.acknowledged.value,
+                          onChanged: (value) =>
+                              controller.acknowledged.value = value ?? false,
+                          contentPadding: EdgeInsets.zero,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          title: Text(
+                            'I understand I can recover this account within 1 day.',
+                            style: AppFonts.beVietnam(
+                              size: 13,
+                              weight: FontWeight.w500,
+                              color: AppColors.text,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -78,7 +111,7 @@ class DeleteAccountScreen extends GetView<DeleteAccountController> {
                   child: ElevatedButton(
                     onPressed: controller.isLoading.value
                         ? null
-                        : controller.openDeleteAccountWebsite,
+                        : controller.scheduleDeletion,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -100,7 +133,7 @@ class DeleteAccountScreen extends GetView<DeleteAccountController> {
                             ),
                           )
                         : Text(
-                            'Continue on StyleBite website',
+                            'Permanently delete account',
                             style: AppFonts.beVietnam(
                               size: 14,
                               weight: FontWeight.w700,
@@ -157,7 +190,7 @@ class _DeleteAccountIntro extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Delete your account on the web',
+            'Delete your StyleBite account',
             textAlign: TextAlign.center,
             style: AppFonts.plusJakarta(
               size: 20,
@@ -167,7 +200,7 @@ class _DeleteAccountIntro extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'To permanently delete your StyleBite account, continue to the StyleBite Account Center website. You will confirm your email, username, and password there.',
+            'Account will be permanently removed after 1 day. You can recover it until then.',
             textAlign: TextAlign.center,
             style: AppFonts.beVietnam(
               size: 14,
@@ -235,18 +268,19 @@ class _DeleteAccountCard extends StatelessWidget {
           const SizedBox(height: 16),
           const _DeletePoint(
             text:
-                'Deletion is completed on stylebiteapp.com/delete-account.html.',
+                'You will be signed out right away and the account stays frozen for 1 day.',
           ),
           const _DeletePoint(
             text:
-                'Your profile, posts, messages, and related data will be permanently removed.',
-          ),
-          const _DeletePoint(
-            text: 'This action cannot be undone after you confirm on the website.',
+                'Recover anytime within that day using your email, OTP, and a new password.',
           ),
           const _DeletePoint(
             text:
-                'You will be signed out of this device when you open the deletion page.',
+                'After 1 day the account is permanently deleted and cannot be recovered.',
+          ),
+          const _DeletePoint(
+            text:
+                'Your profile, posts, messages, and related data will be removed after the grace period.',
           ),
         ],
       ),

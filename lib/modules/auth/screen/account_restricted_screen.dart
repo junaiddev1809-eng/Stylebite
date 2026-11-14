@@ -17,10 +17,13 @@ class AccountRestrictedScreen extends StatelessWidget {
     final reason = (args['reason'] as String?)?.trim();
     final suspendedUntil = args['suspendedUntil'] as DateTime?;
 
+    final email = (args['email'] as String?)?.trim() ?? '';
     final isSuspended = code == 'account_suspended';
+    final isPendingDeletion = code == 'account_pending_deletion';
     final title = switch (code) {
       'account_suspended' => 'Account Suspended',
       'account_inactive' => 'Account Inactive',
+      'account_pending_deletion' => 'Deletion Scheduled',
       _ => 'Account Banned',
     };
 
@@ -101,6 +104,16 @@ class AccountRestrictedScreen extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 32),
+              if (isPendingDeletion) ...[
+                AppPrimaryButton(
+                  label: 'Recover Account',
+                  onPressed: () => Get.offAllNamed(
+                    AppRoutes.recoverAccount,
+                    arguments: {'email': email},
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               AppPrimaryButton(
                 label: 'Back to Login',
                 onPressed: () => Get.offAllNamed(AppRoutes.login),

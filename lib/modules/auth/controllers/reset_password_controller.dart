@@ -16,14 +16,18 @@ class ResetPasswordController extends GetxController {
   final isLoading = false.obs;
 
   final RxString email = ''.obs;
+  final RxString purpose = 'reset'.obs;
   ResetPasswordModel? resetData;
+
+  bool get isRecoverFlow => purpose.value == 'recover';
 
   @override
   void onInit() {
     super.onInit();
     final arguments = Get.arguments;
-    if (arguments is Map<String, dynamic>) {
+    if (arguments is Map) {
       email.value = (arguments['email'] ?? '').toString();
+      purpose.value = (arguments['purpose'] ?? 'reset').toString();
     }
   }
 
@@ -41,8 +45,10 @@ class ResetPasswordController extends GetxController {
         passwordConfirmation: confirmPasswordController.text,
       );
 
+      final endpoint =
+          isRecoverFlow ? 'account/recover/confirm' : 'auth/reset-password';
       final response = await ApiHelper.postRequest(
-        "auth/reset-password",
+        endpoint,
         resetData!.toJson(),
       );
       if (response == null) {
@@ -52,12 +58,18 @@ class ResetPasswordController extends GetxController {
 
       if (responseData['status_code'] == 1) {
         successSnackBar(
-          message: responseData['message'] ?? 'Password reset successful',
+          message: responseData['message'] ??
+              (isRecoverFlow
+                  ? 'Account recovered. Sign in with your new password.'
+                  : 'Password reset successful'),
         );
         Get.offAllNamed(AppRoutes.login);
       } else {
         errorSnackBar(
-          message: responseData['message'] ?? 'Unable to reset password',
+          message: responseData['message'] ??
+              (isRecoverFlow
+                  ? 'Unable to recover account'
+                  : 'Unable to reset password'),
         );
       }
     } catch (e) {

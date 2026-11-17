@@ -98,6 +98,20 @@ class ContestEnrollmentStore {
     _byPostId[id] = existing == null ? incoming : existing.merge(incoming);
   }
 
+  /// Drop a post after it is deleted so contest badges / rating chrome clear.
+  void remove(dynamic postId) {
+    final id = _normalizeId('$postId');
+    if (id.isEmpty) {
+      return;
+    }
+    _byPostId.remove(id);
+  }
+
+  void clear() {
+    _byPostId.clear();
+    _loadedAt = null;
+  }
+
   void addAll(
     Iterable<dynamic> postIds, {
     int contestId = 0,
@@ -167,6 +181,8 @@ class ContestEnrollmentStore {
       if ('${payload['status_code']}' != '1') {
         return false;
       }
+      // Replace cache so deleted posts do not keep looking enrolled.
+      _byPostId.clear();
       final posts = payload['posts'];
       if (posts is List && posts.isNotEmpty) {
         for (final item in posts) {

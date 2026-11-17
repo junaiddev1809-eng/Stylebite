@@ -664,6 +664,9 @@ class HomeController extends GetxController {
         );
       }
       removePost(postId);
+      try {
+        ContestEnrollmentStore.instance.remove(postId);
+      } catch (_) {}
       successSnackBar(
         message: (payload['message'] ?? 'Post deleted successfully.')
             .toString(),

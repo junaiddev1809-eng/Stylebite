@@ -447,6 +447,7 @@ class PostDetailController extends GetxController {
           ? Get.find<HomeController>()
           : null;
       homeController?.removePost(postId);
+      ContestEnrollmentStore.instance.remove(postId);
       successSnackBar(message: 'Post deleted successfully.');
       return true;
     } catch (error) {

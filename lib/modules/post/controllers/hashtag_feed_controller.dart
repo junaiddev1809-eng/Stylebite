@@ -228,6 +228,7 @@ class HashtagFeedController extends GetxController {
       if (Get.isRegistered<HomeController>()) {
         Get.find<HomeController>().removePost(postId);
       }
+      ContestEnrollmentStore.instance.remove(postId);
       successSnackBar(
         message: (payload['message'] ?? 'Post deleted successfully.')
             .toString(),

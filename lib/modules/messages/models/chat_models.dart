@@ -389,7 +389,27 @@ class ChatReplyPreview {
   bool get hasMedia =>
       mediaUrl.trim().isNotEmpty || thumbnailUrl.trim().isNotEmpty;
 
-  bool get isVideo => messageType.trim().toLowerCase() == 'video';
+  bool get isVideo =>
+      messageType.trim().toLowerCase() == 'video' ||
+      ChatMessageModel.looksLikeVideoUrl(mediaUrl);
+
+  String get stillPreviewUrl {
+    final thumb = thumbnailUrl.trim();
+    final media = mediaUrl.trim();
+    if (isVideo) {
+      if (thumb.isNotEmpty && !ChatMessageModel.looksLikeVideoUrl(thumb)) {
+        return thumb;
+      }
+      return '';
+    }
+    if (thumb.isNotEmpty && !ChatMessageModel.looksLikeVideoUrl(thumb)) {
+      return thumb;
+    }
+    if (media.isNotEmpty && !ChatMessageModel.looksLikeVideoUrl(media)) {
+      return media;
+    }
+    return '';
+  }
 
   String get displayBody {
     final text = body.trim();
@@ -413,6 +433,14 @@ class ChatReplyPreview {
       json['sender_username'],
       (json['sender'] is Map ? (json['sender'] as Map)['username'] : null),
     );
+    final mediaUrl = _firstText(json['media_url'], json['file_url']);
+    final explicitThumb = _firstText(json['thumbnail_url']);
+    final thumb = explicitThumb.isNotEmpty &&
+            !ChatMessageModel.looksLikeVideoUrl(explicitThumb)
+        ? explicitThumb
+        : (mediaUrl.isNotEmpty && !ChatMessageModel.looksLikeVideoUrl(mediaUrl)
+            ? mediaUrl
+            : '');
     return ChatReplyPreview(
       id: _asInt(json['id']),
       body: _firstText(json['body'], json['message']),
@@ -423,8 +451,8 @@ class ChatReplyPreview {
                 currentUsername.trim().toLowerCase()),
       ),
       messageType: _firstText(json['message_type'], json['type'], 'text'),
-      thumbnailUrl: _firstText(json['thumbnail_url'], json['media_url']),
-      mediaUrl: _firstText(json['media_url'], json['file_url']),
+      thumbnailUrl: thumb,
+      mediaUrl: mediaUrl,
     );
   }
 
@@ -487,7 +515,27 @@ class ChatMessageModel {
 
   bool get isVideo =>
       messageType.trim().toLowerCase() == 'video' ||
-      _looksLikeVideoUrl(mediaUrl);
+      looksLikeVideoUrl(mediaUrl);
+
+  /// Still-image URL safe for [AppCachedImage] / CachedNetworkImage.
+  /// Video file URLs are excluded so bubbles don't render blank tiles.
+  String get stillPreviewUrl {
+    final thumb = thumbnailUrl.trim();
+    final media = mediaUrl.trim();
+    if (isVideo) {
+      if (thumb.isNotEmpty && !looksLikeVideoUrl(thumb)) {
+        return thumb;
+      }
+      return '';
+    }
+    if (thumb.isNotEmpty && !looksLikeVideoUrl(thumb)) {
+      return thumb;
+    }
+    if (media.isNotEmpty && !looksLikeVideoUrl(media)) {
+      return media;
+    }
+    return '';
+  }
 
   static bool _looksLikeDocumentUrl(String url) {
     final lower = url.trim().toLowerCase();
@@ -497,8 +545,8 @@ class ChatMessageModel {
         lower.contains('/invoices/');
   }
 
-  static bool _looksLikeVideoUrl(String url) {
-    final lower = url.trim().toLowerCase();
+  static bool looksLikeVideoUrl(String url) {
+    final lower = url.trim().toLowerCase().split('?').first;
     return lower.endsWith('.mp4') ||
         lower.endsWith('.mov') ||
         lower.endsWith('.webm') ||
@@ -606,12 +654,23 @@ class ChatMessageModel {
         primaryAttachment?['file_url'],
         primaryAttachment?['url'],
       ),
-      thumbnailUrl: _firstText(
-        json['thumbnail_url'],
-        primaryAttachment?['thumbnail_url'],
-        json['media_url'],
-        primaryAttachment?['file_url'],
-      ),
+      thumbnailUrl: () {
+        final explicit = _firstText(
+          json['thumbnail_url'],
+          primaryAttachment?['thumbnail_url'],
+        );
+        if (explicit.isNotEmpty && !looksLikeVideoUrl(explicit)) {
+          return explicit;
+        }
+        final fallbackMedia = _firstText(
+          json['media_url'],
+          primaryAttachment?['file_url'],
+        );
+        if (fallbackMedia.isNotEmpty && !looksLikeVideoUrl(fallbackMedia)) {
+          return fallbackMedia;
+        }
+        return '';
+      }(),
       myReaction: (json['my_reaction'] ?? '').toString(),
       reactions: rawReactions is List
           ? [

@@ -170,20 +170,9 @@ class ChatDetailController extends GetxController {
     _socketSubscriptions.clear();
   }
 
-  bool _insertIfNew(ChatMessageModel message) {
-    if (messages.any((existing) => existing.id == message.id)) {
-      return false;
-    }
-    messages.insert(0, message);
-    return true;
-  }
-
-  /// Used for the REST send response, which is authoritative for a message
-  /// we just sent ourselves. The socket echo of the same message (broadcasts
-  /// go to both participants) can arrive first and race ahead of the REST
-  /// response — if it computed isMine incorrectly (e.g. sender id fields the
-  /// backend didn't include), this replaces that entry instead of silently
-  /// keeping the earlier, possibly-wrong one.
+  /// Used for REST send responses and socket echoes. Socket can arrive first
+  /// and race the REST response — reconcile instead of dropping the later
+  /// authoritative payload, and never let a thinner update wipe media.
   void _insertOrReconcile(ChatMessageModel message) {
     final existingIndex = messages.indexWhere(
       (existing) => existing.id == message.id,
@@ -217,7 +206,12 @@ class ChatDetailController extends GetxController {
     ChatMessageModel message, {
     required bool jumpToBottom,
   }) async {
-    if (!_insertIfNew(message)) {
+    final wasNew = !messages.any((existing) => existing.id == message.id);
+    // Reconcile so socket echoes / reaction updates don't wipe media we
+    // already have from the REST send response.
+    _insertOrReconcile(message);
+    if (!wasNew) {
+      messages.refresh();
       return;
     }
     _checkChatRequestState();
@@ -716,6 +710,11 @@ class ChatDetailController extends GetxController {
             sent.messageType.trim().toLowerCase() == 'text') {
           sent = sent.copyWith(messageType: fallbackType);
         }
+        // Keep a local still for images while CDN/cache catches up.
+        if (picked.type == AppMediaType.image &&
+            sent.stillPreviewUrl.isEmpty) {
+          sent = sent.copyWith(thumbnailUrl: picked.path);
+        }
         _insertOrReconcile(sent);
       } else {
         _insertOrReconcile(
@@ -742,6 +741,7 @@ class ChatDetailController extends GetxController {
       clearReplyTarget();
       stoppedBannerText.value = '';
       _checkChatRequestState();
+      messages.refresh();
       _jumpToBottom();
     } on ChatApiException catch (error) {
       if (error.httpStatusCode == 403) {

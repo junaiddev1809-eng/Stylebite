@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:mime/mime.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:stylebite/core/utils/app_helper.dart';
 import 'package:stylebite/core/utils/config.dart';
@@ -436,17 +437,13 @@ class ApiHelper {
           fileFieldName.isNotEmpty &&
           filePath != null &&
           filePath.isNotEmpty) {
-        request.files.add(
-          await http.MultipartFile.fromPath(fileFieldName, filePath),
-        );
+        request.files.add(await _multipartFile(fileFieldName, filePath));
       }
       for (final file in files) {
         if (file.key.trim().isEmpty || file.value.trim().isEmpty) {
           continue;
         }
-        request.files.add(
-          await http.MultipartFile.fromPath(file.key, file.value),
-        );
+        request.files.add(await _multipartFile(file.key, file.value));
       }
 
       final response = await request.send().timeout(_uploadTimeout);
@@ -500,5 +497,69 @@ class ApiHelper {
       persistentConnection: response.persistentConnection,
       reasonPhrase: response.reasonPhrase,
     );
+  }
+
+  static Future<http.MultipartFile> _multipartFile(
+    String fieldName,
+    String filePath,
+  ) async {
+    final path = filePath.trim();
+    var filename = path.split(RegExp(r'[\\/]')).last;
+    // Laravel `mimes` is extension-based. Cache paths sometimes lack a
+    // useful extension — sniff magic bytes and append one when needed.
+    if (!_hasKnownMediaExtension(filename)) {
+      final mime = lookupMimeType(path, headerBytes: await _readMagic(path));
+      final ext = _extensionForMime(mime);
+      if (ext != null) {
+        filename = '$filename.$ext';
+      }
+    }
+    return http.MultipartFile.fromPath(
+      fieldName,
+      path,
+      filename: filename.isNotEmpty ? filename : null,
+    );
+  }
+
+  static Future<List<int>?> _readMagic(String path) async {
+    try {
+      final raf = await File(path).open();
+      try {
+        return await raf.read(defaultMagicNumbersMaxLength);
+      } finally {
+        await raf.close();
+      }
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static bool _hasKnownMediaExtension(String filename) {
+    final lower = filename.toLowerCase();
+    return lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.png') ||
+        lower.endsWith('.webp') ||
+        lower.endsWith('.gif') ||
+        lower.endsWith('.mp4') ||
+        lower.endsWith('.m4v') ||
+        lower.endsWith('.mov') ||
+        lower.endsWith('.webm') ||
+        lower.endsWith('.mkv') ||
+        lower.endsWith('.avi');
+  }
+
+  static String? _extensionForMime(String? mime) {
+    return switch ((mime ?? '').toLowerCase()) {
+      'image/jpeg' => 'jpg',
+      'image/png' => 'png',
+      'image/webp' => 'webp',
+      'image/gif' => 'gif',
+      'video/mp4' => 'mp4',
+      'video/quicktime' => 'mov',
+      'video/webm' => 'webm',
+      'video/x-matroska' => 'mkv',
+      _ => null,
+    };
   }
 }

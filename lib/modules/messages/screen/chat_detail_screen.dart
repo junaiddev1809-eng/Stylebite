@@ -26,6 +26,58 @@ import '../widgets/chat_conversation_options_sheet.dart';
 import '../widgets/chat_message_options_sheet.dart';
 import '../widgets/chat_reaction_picker_sheet.dart';
 
+/// Only remote stills (or non-video local files) — never encode device paths
+/// into shared cards that other users must load.
+String _remoteStillUrl(String raw) {
+  final value = raw.trim();
+  if (value.isEmpty) {
+    return '';
+  }
+  if (ChatMessageModel.looksLikeVideoUrl(value)) {
+    return '';
+  }
+  final lower = value.toLowerCase();
+  if (lower.startsWith('http://') || lower.startsWith('https://')) {
+    return value;
+  }
+  return '';
+}
+
+Widget _shareStillPreview(InAppSharePayload share) {
+  final url = _remoteStillUrl(share.previewUrl);
+  if (url.isEmpty) {
+    return ColoredBox(
+      color: const Color(0xFFF1EBE8),
+      child: Center(
+        child: Icon(
+          share.isReel || share.isVideo
+              ? Icons.play_circle_fill_rounded
+              : Icons.image_rounded,
+          color: AppColors.hintText,
+          size: 36,
+        ),
+      ),
+    );
+  }
+  return Stack(
+    fit: StackFit.expand,
+    children: [
+      AppCachedImage(imageUrl: url),
+      if (share.isReel || share.isVideo)
+        const ColoredBox(
+          color: Color(0x22000000),
+          child: Center(
+            child: Icon(
+              Icons.play_circle_fill_rounded,
+              color: Colors.white,
+              size: 40,
+            ),
+          ),
+        ),
+    ],
+  );
+}
+
 class ChatDetailScreen extends StatefulWidget {
   const ChatDetailScreen({
     super.key,
@@ -1226,9 +1278,8 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
 
     if (message.hasMedia) {
       final caption = message.body.trim();
-      final previewUrl = message.thumbnailUrl.trim().isNotEmpty
-          ? message.thumbnailUrl.trim()
-          : message.mediaUrl.trim();
+      // Prefer a real still frame — never feed .mp4 into AppCachedImage.
+      final previewUrl = message.stillPreviewUrl;
       final Widget mediaChild;
       if (previewUrl.isNotEmpty) {
         mediaChild = Stack(
@@ -1259,10 +1310,10 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
           child: Center(
             child: Icon(
               message.isVideo
-                  ? Icons.videocam_rounded
+                  ? Icons.play_circle_fill_rounded
                   : Icons.image_rounded,
               color: isMine ? Colors.white70 : AppColors.hintText,
-              size: 40,
+              size: message.isVideo ? 56 : 40,
             ),
           ),
         );
@@ -1387,17 +1438,23 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
                 child: SizedBox(
                   width: 36,
                   height: 36,
-                  child: reply.thumbnailUrl.trim().isEmpty &&
-                          reply.mediaUrl.trim().isEmpty
+                  child: reply.stillPreviewUrl.isEmpty
                       ? ColoredBox(
                           color: isMine
                               ? Colors.white24
                               : const Color(0xFFE7DDD8),
+                          child: Icon(
+                            reply.isVideo
+                                ? Icons.play_arrow_rounded
+                                : Icons.image_rounded,
+                            size: 16,
+                            color: isMine
+                                ? Colors.white70
+                                : AppColors.hintText,
+                          ),
                         )
                       : AppCachedImage(
-                          imageUrl: reply.thumbnailUrl.trim().isNotEmpty
-                              ? reply.thumbnailUrl
-                              : reply.mediaUrl,
+                          imageUrl: reply.stillPreviewUrl,
                           fit: BoxFit.cover,
                         ),
                 ),
@@ -1645,9 +1702,7 @@ class _SharedPostCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               child: AspectRatio(
                 aspectRatio: share.isReel ? 0.78 : 1,
-                child: share.previewUrl.trim().isEmpty
-                    ? const ColoredBox(color: Color(0xFFF1EBE8))
-                    : AppCachedImage(imageUrl: share.previewUrl),
+                child: _shareStillPreview(share),
               ),
             ),
             const SizedBox(height: 8),
@@ -1777,11 +1832,22 @@ class _StoryThumb extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (previewUrl.trim().isEmpty)
-              const ColoredBox(color: Color(0xFF2A2A2A))
+            if (_remoteStillUrl(previewUrl).isEmpty)
+              ColoredBox(
+                color: const Color(0xFF2A2A2A),
+                child: Center(
+                  child: Icon(
+                    isVideo
+                        ? Icons.play_circle_fill_rounded
+                        : Icons.auto_awesome_rounded,
+                    color: Colors.white54,
+                    size: 22,
+                  ),
+                ),
+              )
             else
               AppCachedImage(
-                imageUrl: previewUrl,
+                imageUrl: _remoteStillUrl(previewUrl),
                 fit: BoxFit.cover,
               ),
             if (isVideo)

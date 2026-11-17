@@ -63,16 +63,19 @@ class InAppSharePayload {
     final username = post.profileUsername.trim().isNotEmpty
         ? post.profileUsername.trim()
         : post.username.trim();
-    final preview = (post.thumbnailUrl ?? '').trim().isNotEmpty
-        ? post.thumbnailUrl!.trim()
-        : post.imageUrl.trim();
+    final isReel = ReelOpenHelper.isReel(post);
+    final preview = _remotePreviewUrl(
+      post.thumbnailUrl,
+      post.imageUrl,
+    );
     return InAppSharePayload(
-      kind: ReelOpenHelper.isReel(post) ? 'reel' : 'post',
+      kind: isReel ? 'reel' : 'post',
       id: post.id,
       caption: _short(post.caption),
       previewUrl: preview,
       authorName: post.authorName.trim(),
       username: username.replaceFirst('@', ''),
+      isVideo: isReel,
     );
   }
 
@@ -81,9 +84,10 @@ class InAppSharePayload {
       kind: 'reel',
       id: reel.id,
       caption: _short(reel.caption),
-      previewUrl: reel.imageUrl.trim(),
+      previewUrl: _remotePreviewUrl(reel.imageUrl),
       authorName: reel.authorName.trim(),
       username: reel.handle.trim().replaceFirst('@', ''),
+      isVideo: true,
     );
   }
 
@@ -91,14 +95,11 @@ class InAppSharePayload {
     required StoryItem story,
     required String reply,
   }) {
-    // Prefer a still frame for video stories so the chat card isn't a blank video URL.
-    final preview = story.posterUrl.trim().isNotEmpty
-        ? story.posterUrl.trim()
-        : story.isVideo
-            ? ''
-            : (story.mediaUrl.trim().isNotEmpty
-                ? story.mediaUrl.trim()
-                : story.mediaPath.trim());
+    // Never encode local mediaPath — recipients cannot load device paths.
+    // Prefer poster/still over raw video URLs for the chat card.
+    final preview = story.isVideo
+        ? _remotePreviewUrl(story.posterUrl)
+        : _remotePreviewUrl(story.posterUrl, story.mediaUrl);
     final id = story.remoteId.trim().isNotEmpty
         ? story.remoteId.trim()
         : story.id.replaceFirst(RegExp(r'^p'), '');
@@ -106,11 +107,7 @@ class InAppSharePayload {
       kind: 'story',
       id: id,
       caption: _short(story.caption),
-      previewUrl: preview.isNotEmpty
-          ? preview
-          : (story.mediaUrl.trim().isNotEmpty
-              ? story.mediaUrl.trim()
-              : story.mediaPath.trim()),
+      previewUrl: preview,
       authorName: '',
       username: story.username.trim().replaceFirst('@', ''),
       reply: reply.trim(),
@@ -198,5 +195,29 @@ class InAppSharePayload {
       return cleaned;
     }
     return '${cleaned.substring(0, 137)}...';
+  }
+
+  /// Absolute http(s) still only — skip local paths and raw video files.
+  static String _remotePreviewUrl(String? a, [String? b, String? c]) {
+    for (final raw in <String?>[a, b, c]) {
+      final value = (raw ?? '').trim();
+      if (value.isEmpty) {
+        continue;
+      }
+      final lower = value.toLowerCase().split('?').first;
+      final isVideo = lower.endsWith('.mp4') ||
+          lower.endsWith('.mov') ||
+          lower.endsWith('.webm') ||
+          lower.endsWith('.mkv') ||
+          lower.endsWith('.m4v') ||
+          lower.endsWith('.avi');
+      if (isVideo) {
+        continue;
+      }
+      if (lower.startsWith('http://') || lower.startsWith('https://')) {
+        return value;
+      }
+    }
+    return '';
   }
 }

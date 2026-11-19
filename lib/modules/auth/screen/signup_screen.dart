@@ -58,41 +58,67 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 const SizedBox(height: 28),
                 Center(
-                  child: Stack(
+                  child: Column(
                     children: [
-                      Obx(
-                        () => CircleAvatar(
-                          radius: 50,
-                          backgroundColor: Colors.grey[200],
-                          backgroundImage: _controller.selectedImagePath.value != null
-                              ? FileImage(File(_controller.selectedImagePath.value!))
-                              : null,
-                          child: _controller.selectedImagePath.value == null
-                              ? Icon(
-                                  Icons.person_outline,
-                                  size: 50,
-                                  color: Colors.grey[400],
-                                )
-                              : null,
+                      GestureDetector(
+                        onTap: _controller.pickImage,
+                        child: Stack(
+                          children: [
+                            Obx(
+                              () => CircleAvatar(
+                                radius: 50,
+                                backgroundColor: Colors.grey[200],
+                                backgroundImage:
+                                    _controller.selectedImagePath.value != null
+                                    ? FileImage(
+                                        File(
+                                          _controller.selectedImagePath.value!,
+                                        ),
+                                      )
+                                    : null,
+                                child: _controller.selectedImagePath.value == null
+                                    ? Icon(
+                                        Icons.person_outline,
+                                        size: 50,
+                                        color: Colors.grey[400],
+                                      )
+                                    : null,
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.camera_alt,
+                                  size: 20,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: GestureDetector(
-                          onTap: _controller.pickImage,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt,
-                              size: 20,
-                              color: Colors.white,
-                            ),
+                      const SizedBox(height: 10),
+                      Obx(
+                        () => Text(
+                          _controller.avatarError.value ??
+                              'Profile photo required',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: _controller.avatarError.value != null
+                                ? Colors.redAccent
+                                : AppColors.hintText,
                           ),
                         ),
                       ),

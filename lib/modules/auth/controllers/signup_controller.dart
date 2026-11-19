@@ -24,6 +24,7 @@ class SignUpController extends GetxController {
   final isLoading = false.obs;
 
   final RxnString selectedImagePath = RxnString();
+  final avatarError = RxnString();
   final _picker = ImagePicker();
 
   final usernameError = RxnString();
@@ -188,6 +189,7 @@ class SignUpController extends GetxController {
         );
         await editedFile.writeAsBytes(editedBytes);
         selectedImagePath.value = editedFile.path;
+        avatarError.value = null;
       }
     }
   }
@@ -197,6 +199,19 @@ class SignUpController extends GetxController {
   }) async {
     try {
       if (!formKey.currentState!.validate()) {
+        return;
+      }
+
+      final avatarPath = selectedImagePath.value?.trim() ?? '';
+      if (avatarPath.isEmpty) {
+        avatarError.value = 'Please add a profile photo to continue.';
+        errorSnackBar(message: 'Please add a profile photo to create your account.');
+        return;
+      }
+      if (!File(avatarPath).existsSync()) {
+        avatarError.value = 'Please choose your profile photo again.';
+        selectedImagePath.value = null;
+        errorSnackBar(message: 'Please choose your profile photo again.');
         return;
       }
 
@@ -262,7 +277,7 @@ class SignUpController extends GetxController {
         'auth/register',
         fields: fields,
         fileFieldName: 'avatar',
-        filePath: selectedImagePath.value,
+        filePath: avatarPath,
       );
 
       if (response == null) {
@@ -293,7 +308,13 @@ class SignUpController extends GetxController {
             emailError.value = errors['email'][0].toString();
             emailAvailable.value = false;
           }
+          if (errors['avatar'] != null) {
+            avatarError.value = errors['avatar'][0].toString();
+          }
           formKey.currentState?.validate();
+          if (errors['avatar'] != null) {
+            errorSnackBar(message: errors['avatar'][0].toString());
+          }
         } else {
           final message =
               responseData['message']?.toString() ?? 'Registration failed';
@@ -304,6 +325,10 @@ class SignUpController extends GetxController {
                 : message;
             emailAvailable.value = false;
             formKey.currentState?.validate();
+          } else if (message.toLowerCase().contains('profile photo') ||
+              message.toLowerCase().contains('avatar')) {
+            avatarError.value = message;
+            errorSnackBar(message: message);
           } else {
             errorSnackBar(message: message);
           }

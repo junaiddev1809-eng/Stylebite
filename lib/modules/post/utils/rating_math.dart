@@ -63,7 +63,8 @@ double _clampRating(double raw, {required double fallback}) {
   if (raw > 5) {
     return 5;
   }
-  return raw;
+  // Match admin / API: two decimal places (e.g. 2.84, not 2.9).
+  return (raw * 100).roundToDouble() / 100;
 }
 
 /// Same contest total the server stores: (average × 70) + (likes × 0.3).

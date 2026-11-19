@@ -398,7 +398,7 @@ class ReelItemModel {
       handle: username.isEmpty ? '@stylebite' : '@$username',
       caption: (json['caption'] ?? '').toString(),
       tags: parsePostTags(json),
-      rating: ratingAverage <= 0 ? '0.0' : ratingAverage.toStringAsFixed(1),
+      rating: ratingAverage <= 0 ? '0.00' : ratingAverage.toStringAsFixed(2),
       likes: _formatCount(_asInt(engagement['like_count'])),
       comments: _formatCount(_asInt(engagement['comment_count'])),
       imageUrl: mediaType == ReelMediaType.video

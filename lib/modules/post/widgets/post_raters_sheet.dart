@@ -168,7 +168,12 @@ class _PostRatersSheetState extends State<PostRatersSheet> {
         _page = pagination.currentPage == 0 ? nextPage : pagination.currentPage;
         _hasMore = pagination.hasMorePages;
         _totalRatings = ratingCount ?? _totalRatings;
-        if (ratingAvg != null) {
+        // Prefer the post-card average when the sheet was opened with one.
+        // Older /ratings APIs still round rating_avg to 1 decimal (2.9),
+        // which then renders as 2.90 and disagrees with the badge (2.87).
+        if (widget.ratingAvg != null && widget.ratingAvg! > 0) {
+          _ratingAvg = widget.ratingAvg;
+        } else if (ratingAvg != null) {
           _ratingAvg = ratingAvg;
         }
         _isLoading = false;
@@ -208,7 +213,7 @@ class _PostRatersSheetState extends State<PostRatersSheet> {
     if (avg == null || avg <= 0) {
       return null;
     }
-    return 'Average ${avg.toStringAsFixed(1)}';
+    return 'Average ${avg.toStringAsFixed(2)}';
   }
 
   @override

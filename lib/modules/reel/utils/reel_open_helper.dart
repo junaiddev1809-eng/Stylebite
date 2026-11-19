@@ -154,8 +154,8 @@ class ReelOpenHelper {
       caption: post.caption,
       tags: post.tags,
       rating: post.displayRating <= 0
-          ? '0.0'
-          : post.displayRating.toStringAsFixed(1),
+          ? '0.00'
+          : post.displayRating.toStringAsFixed(2),
       likes: post.likes,
       comments: post.comments,
       imageUrl: cover,

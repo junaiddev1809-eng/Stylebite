@@ -343,7 +343,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      post.displayRating.toStringAsFixed(1),
+                                      post.displayRating.toStringAsFixed(2),
                                       style: AppFonts.beVietnam(
                                         size: 13,
                                         weight: FontWeight.w700,

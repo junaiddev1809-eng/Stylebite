@@ -591,7 +591,7 @@ class PostInteractionStore extends GetxController {
       isSaved: _saveKnown.contains(reel.id) ? state?.isSaved : null,
       saveCount: _saveKnown.contains(reel.id) ? state?.saveCount : null,
       viewerRating: hasRating ? _viewerRatings[reel.id] : null,
-      rating: hasRating && avg != null ? avg.toStringAsFixed(1) : null,
+      rating: hasRating && avg != null ? avg.toStringAsFixed(2) : null,
       ratingCount: hasRating && _ratingCounts.containsKey(reel.id)
           ? _ratingCounts[reel.id]
           : null,

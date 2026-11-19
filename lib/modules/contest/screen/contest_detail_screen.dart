@@ -1937,7 +1937,7 @@ class _ContestPhotoBadges extends StatelessWidget {
         ],
         _InfoPill(
           emoji: '⭐',
-          label: average.toStringAsFixed(1),
+          label: average.toStringAsFixed(2),
           background: AppColors.surface,
           foreground: AppColors.text,
         ),

@@ -219,16 +219,9 @@ class ProfileController extends GetxController {
   String get vibeCountLabel => _formatCount(user.value?.followerCount ?? 0);
   String get vibeFlowLabel => _formatCount(user.value?.followingCount ?? 0);
 
-  // `style_points` from the profile endpoint doesn't reflect real reviews
-  // (can sit at 0 while community ratings exist), so prefer the actual
-  // average rating from ratings-distribution whenever it has data.
-  String get stylePointsLabel {
-    final rating = styleRating.value;
-    if (rating != null && rating.totalRatings > 0) {
-      return rating.averageRating.toStringAsFixed(1);
-    }
-    return _formatCount(user.value?.stylePoints ?? 0);
-  }
+  // Match admin Style Points: profiles.style_points (integer score).
+  // Star average belongs in the ratings sheet, not this tile.
+  String get stylePointsLabel => _formatCount(user.value?.stylePoints ?? 0);
 
   bool get hasMoreOutfits => outfitPagination.value.hasMorePages;
   bool get hasMoreFood => foodPagination.value.hasMorePages;

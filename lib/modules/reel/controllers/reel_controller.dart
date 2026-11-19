@@ -911,7 +911,7 @@ class ReelController extends GetxController {
     _updateReel(
       currentReel.copyWith(
         viewerRating: rating,
-        rating: nextAverage.toStringAsFixed(1),
+        rating: nextAverage.toStringAsFixed(2),
         ratingCount: nextCount,
       ),
     );
@@ -944,7 +944,7 @@ class ReelController extends GetxController {
       _updateReel(
         latest.copyWith(
           viewerRating: rating,
-          rating: confirmedAvg.toStringAsFixed(1),
+          rating: confirmedAvg.toStringAsFixed(2),
           ratingCount: confirmedCount,
         ),
       );

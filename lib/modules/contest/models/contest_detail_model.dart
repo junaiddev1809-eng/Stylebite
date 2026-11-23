@@ -32,6 +32,8 @@ class ContestDetailModel {
     this.prizes = const [],
     this.rules = const [],
     this.winningRules,
+    this.minParticipantsToStart,
+    this.participantsToStartMet = true,
   });
 
   final int id;
@@ -48,6 +50,8 @@ class ContestDetailModel {
   final DateTime? endAt;
   final int participantCount;
   final int maxParticipants;
+  final int? minParticipantsToStart;
+  final bool participantsToStartMet;
   final DateTime? enrollmentStartAt;
   final DateTime? enrollmentEndAt;
   final DateTime? votingStartAt;
@@ -60,6 +64,16 @@ class ContestDetailModel {
   final List<ContestPrize> prizes;
   final List<String> rules;
   final ContestWinningRules? winningRules;
+
+  bool get hasMinParticipantsToStart =>
+      minParticipantsToStart != null && minParticipantsToStart! > 0;
+
+  String get minParticipantsToStartLabel {
+    final min = minParticipantsToStart;
+    if (min == null || min <= 0) return '';
+    final label = min == 1 ? 'participant' : 'participants';
+    return 'Contest starts only after at least $min $label join.';
+  }
 
   String get statusLabel => status.replaceAll('_', ' ').toUpperCase();
 
@@ -220,6 +234,13 @@ class ContestDetailModel {
       endAt: _readDate(json['end_at']),
       participantCount: _readInt(json['participant_count']),
       maxParticipants: _readInt(json['max_participants']),
+      minParticipantsToStart: _readOptionalPositiveInt(
+        json['min_participants_to_start'],
+      ),
+      participantsToStartMet: _readBool(
+        json['participants_to_start_met'],
+        fallback: true,
+      ),
       enrollmentStartAt: _readDate(json['enrollment_start_at']),
       enrollmentEndAt: _readDate(json['enrollment_end_at']),
       votingStartAt: _readDate(json['voting_start_at']),
@@ -297,6 +318,13 @@ List<String> _readRules(dynamic value) {
 int _readInt(dynamic value, {int fallback = 0}) {
   if (value is int) return value;
   return int.tryParse('${value ?? ''}') ?? fallback;
+}
+
+int? _readOptionalPositiveInt(dynamic value) {
+  if (value == null) return null;
+  final parsed = value is int ? value : int.tryParse('$value');
+  if (parsed == null || parsed <= 0) return null;
+  return parsed;
 }
 
 double _readDouble(dynamic value, {double fallback = 0}) {

@@ -29,10 +29,14 @@ class _ContestRulesCardState extends State<ContestRulesCard> {
   bool _expanded = false;
 
   bool get _hasWinning => widget.contest.winningRules != null;
+  bool get _hasMinStart => widget.contest.hasMinParticipantsToStart;
   bool get _hasRules => widget.contest.rules.isNotEmpty;
-  bool get _hasContent => _hasWinning || _hasRules;
+  bool get _hasContent => _hasWinning || _hasMinStart || _hasRules;
 
   String get _previewLine {
+    if (_hasMinStart) {
+      return widget.contest.minParticipantsToStartLabel;
+    }
     if (_hasWinning) {
       return widget.contest.winningRules!.scoreFormulaLabel;
     }
@@ -145,6 +149,21 @@ class _ContestRulesCardState extends State<ContestRulesCard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (contest.hasMinParticipantsToStart) ...[
+          Text(
+            contest.minParticipantsToStartLabel,
+            style: AppFonts.beVietnam(size: 13, color: AppColors.text),
+          ),
+          if (!contest.participantsToStartMet) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Waiting for entrants: ${contest.liveParticipantCount}/${contest.minParticipantsToStart}.',
+              style: AppFonts.beVietnam(size: 13, color: AppColors.hintText),
+            ),
+          ],
+          if (contest.winningRules != null || contest.rules.isNotEmpty)
+            const SizedBox(height: 12),
+        ],
         if (contest.winningRules != null) ...[
           Text(
             contest.winningRules!.scoreFormulaLabel,

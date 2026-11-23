@@ -147,7 +147,8 @@ class _ContestRankingScreenState extends State<ContestRankingScreen> {
                     const SizedBox(height: 12),
                     _countdownCard(contest),
                     if (contest.rules.isNotEmpty ||
-                        contest.winningRules != null) ...[
+                        contest.winningRules != null ||
+                        contest.hasMinParticipantsToStart) ...[
                       const SizedBox(height: 12),
                       ContestRulesCard(
                         contest: contest,

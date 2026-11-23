@@ -374,6 +374,16 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
                                   value:
                                       '${contest.liveParticipantCount}/${contest.maxParticipants}',
                                 ),
+                                if (contest.hasMinParticipantsToStart) ...[
+                                  const SizedBox(height: 10),
+                                  _metaTile(
+                                    icon: Icons.how_to_reg_rounded,
+                                    label: 'Min to start',
+                                    value: contest.participantsToStartMet
+                                        ? '${contest.minParticipantsToStart} met'
+                                        : '${contest.liveParticipantCount}/${contest.minParticipantsToStart}',
+                                  ),
+                                ],
                                 const SizedBox(height: 10),
                                 _metaTile(
                                   icon: Icons.timer_outlined,
@@ -403,7 +413,8 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
                             ),
                           ),
                           if (contest.rules.isNotEmpty ||
-                              contest.winningRules != null) ...[
+                              contest.winningRules != null ||
+                              contest.hasMinParticipantsToStart) ...[
                             const SizedBox(height: 16),
                             ContestRulesCard(contest: contest),
                           ],

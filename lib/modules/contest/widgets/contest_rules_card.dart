@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_fonts.dart';
 import '../models/contest_detail_model.dart';
+import '../utils/contest_official_rules.dart';
 
-/// Collapsed by default with a "See full rules" control — expands in place.
+/// Official Contest Rules — always available for App Store Guideline 5.3.2.
 class ContestRulesCard extends StatefulWidget {
   const ContestRulesCard({
     super.key,
@@ -13,6 +14,7 @@ class ContestRulesCard extends StatefulWidget {
     this.padding = const EdgeInsets.all(14),
     this.borderRadius = 16,
     this.showBorder = true,
+    this.startExpanded = true,
   });
 
   final ContestDetailModel contest;
@@ -20,38 +22,20 @@ class ContestRulesCard extends StatefulWidget {
   final EdgeInsetsGeometry padding;
   final double borderRadius;
   final bool showBorder;
+  final bool startExpanded;
 
   @override
   State<ContestRulesCard> createState() => _ContestRulesCardState();
 }
 
 class _ContestRulesCardState extends State<ContestRulesCard> {
-  bool _expanded = false;
+  late bool _expanded = widget.startExpanded;
 
-  bool get _hasWinning => widget.contest.winningRules != null;
-  bool get _hasMinStart => widget.contest.hasMinParticipantsToStart;
-  bool get _hasRules => widget.contest.rules.isNotEmpty;
-  bool get _hasContent => _hasWinning || _hasMinStart || _hasRules;
-
-  String get _previewLine {
-    if (_hasMinStart) {
-      return widget.contest.minParticipantsToStartLabel;
-    }
-    if (_hasWinning) {
-      return widget.contest.winningRules!.scoreFormulaLabel;
-    }
-    if (_hasRules) {
-      return widget.contest.rules.first;
-    }
-    return '';
-  }
+  List<String> get _officialRules =>
+      ContestOfficialRules.mergeWithRequired(widget.contest.rules);
 
   @override
   Widget build(BuildContext context) {
-    if (!_hasContent) {
-      return const SizedBox.shrink();
-    }
-
     return Container(
       width: double.infinity,
       padding: widget.padding,
@@ -76,11 +60,26 @@ class _ContestRulesCardState extends State<ContestRulesCard> {
         children: [
           if (widget.showOuterTitle) ...[
             Text(
-              'Contest rules',
+              'Official Contest Rules',
               style: AppFonts.plusJakarta(size: 16, weight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
           ],
+          // Always visible — reviewers must see Apple non-involvement without expanding.
+          Text(
+            ContestOfficialRules.appleDisclaimer,
+            style: AppFonts.beVietnam(
+              size: 13,
+              weight: FontWeight.w700,
+              color: AppColors.text,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            ContestOfficialRules.sponsor,
+            style: AppFonts.beVietnam(size: 13, color: AppColors.hintText),
+          ),
+          const SizedBox(height: 10),
           AnimatedSize(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeInOut,
@@ -97,7 +96,7 @@ class _ContestRulesCardState extends State<ContestRulesCard> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    _expanded ? 'Show less' : 'See full rules',
+                    _expanded ? 'Show less' : 'See full official rules',
                     style: AppFonts.beVietnam(
                       size: 13,
                       weight: FontWeight.w700,
@@ -122,20 +121,27 @@ class _ContestRulesCardState extends State<ContestRulesCard> {
   }
 
   Widget _collapsedBody() {
+    final preview = _officialRules
+        .where(
+          (rule) =>
+              !ContestOfficialRules.isAppleDisclaimer(rule) &&
+              !ContestOfficialRules.isSponsorLine(rule),
+        )
+        .take(2)
+        .toList(growable: false);
+
+    if (preview.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          _previewLine,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: AppFonts.beVietnam(size: 13, color: AppColors.text),
-        ),
-        if (_hasWinning && _hasRules) ...[
-          const SizedBox(height: 6),
+        for (var i = 0; i < preview.length; i++) ...[
+          if (i > 0) const SizedBox(height: 6),
           Text(
-            '1. ${widget.contest.rules.first}',
-            maxLines: 1,
+            preview[i],
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: AppFonts.beVietnam(size: 13, color: AppColors.hintText),
           ),
@@ -146,6 +152,8 @@ class _ContestRulesCardState extends State<ContestRulesCard> {
 
   Widget _fullBody() {
     final contest = widget.contest;
+    final rules = _officialRules;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -161,8 +169,7 @@ class _ContestRulesCardState extends State<ContestRulesCard> {
               style: AppFonts.beVietnam(size: 13, color: AppColors.hintText),
             ),
           ],
-          if (contest.winningRules != null || contest.rules.isNotEmpty)
-            const SizedBox(height: 12),
+          const SizedBox(height: 12),
         ],
         if (contest.winningRules != null) ...[
           Text(
@@ -174,9 +181,9 @@ class _ContestRulesCardState extends State<ContestRulesCard> {
             'Need at least ${contest.winningRules!.minRatingVoters} active ratings to win a prize place.',
             style: AppFonts.beVietnam(size: 13, color: AppColors.hintText),
           ),
-          if (contest.rules.isNotEmpty) const SizedBox(height: 12),
+          const SizedBox(height: 12),
         ],
-        for (var i = 0; i < contest.rules.length; i++) ...[
+        for (var i = 0; i < rules.length; i++) ...[
           if (i > 0) const SizedBox(height: 8),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,8 +199,16 @@ class _ContestRulesCardState extends State<ContestRulesCard> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  contest.rules[i],
-                  style: AppFonts.beVietnam(size: 13, color: AppColors.text),
+                  rules[i],
+                  style: AppFonts.beVietnam(
+                    size: 13,
+                    weight:
+                        ContestOfficialRules.isAppleDisclaimer(rules[i]) ||
+                            ContestOfficialRules.isSponsorLine(rules[i])
+                        ? FontWeight.w700
+                        : FontWeight.w400,
+                    color: AppColors.text,
+                  ),
                 ),
               ),
             ],

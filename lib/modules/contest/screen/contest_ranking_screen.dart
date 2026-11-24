@@ -146,17 +146,13 @@ class _ContestRankingScreenState extends State<ContestRankingScreen> {
                     _rewardCard(contest),
                     const SizedBox(height: 12),
                     _countdownCard(contest),
-                    if (contest.rules.isNotEmpty ||
-                        contest.winningRules != null ||
-                        contest.hasMinParticipantsToStart) ...[
-                      const SizedBox(height: 12),
-                      ContestRulesCard(
-                        contest: contest,
-                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-                        borderRadius: 24,
-                        showBorder: false,
-                      ),
-                    ],
+                    const SizedBox(height: 12),
+                    ContestRulesCard(
+                      contest: contest,
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                      borderRadius: 24,
+                      showBorder: false,
+                    ),
                     const SizedBox(height: 12),
                     _summaryCard(contest, liveCount, visible.length),
                     const SizedBox(height: 12),

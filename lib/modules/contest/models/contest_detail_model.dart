@@ -279,10 +279,14 @@ class ContestWinningRules {
   const ContestWinningRules({
     required this.minRatingVoters,
     required this.scoreFormulaLabel,
+    this.sponsor = '',
+    this.appleDisclaimer = '',
   });
 
   final int minRatingVoters;
   final String scoreFormulaLabel;
+  final String sponsor;
+  final String appleDisclaimer;
 
   static ContestWinningRules? maybeFromJson(Map<String, dynamic>? json) {
     if (json == null || json.isEmpty) return null;
@@ -292,6 +296,8 @@ class ContestWinningRules {
         json['score_formula_label'],
         fallback: 'Final score = (average rating × 70) + (likes × 0.3)',
       ),
+      sponsor: _readString(json['sponsor']),
+      appleDisclaimer: _readString(json['apple_disclaimer']),
     );
   }
 }

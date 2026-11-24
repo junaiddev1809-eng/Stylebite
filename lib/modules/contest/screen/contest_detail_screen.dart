@@ -412,12 +412,8 @@ class _ContestDetailScreenState extends State<ContestDetailScreen> {
                               ],
                             ),
                           ),
-                          if (contest.rules.isNotEmpty ||
-                              contest.winningRules != null ||
-                              contest.hasMinParticipantsToStart) ...[
-                            const SizedBox(height: 16),
-                            ContestRulesCard(contest: contest),
-                          ],
+                          const SizedBox(height: 16),
+                          ContestRulesCard(contest: contest),
                           if (contest.prizes.isNotEmpty) ...[
                             const SizedBox(height: 16),
                             _sectionTitle('Prizes'),
